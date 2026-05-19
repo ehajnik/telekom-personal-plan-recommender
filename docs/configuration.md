@@ -9,6 +9,12 @@ Loaded from `.env` at project root via `python-dotenv` (`config/ollama_settings.
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API base URL (no trailing slash) |
 | `OLLAMA_MODEL` | `llama3.2` | Model tag; must exist locally (`ollama pull`) |
 | `OLLAMA_ENABLED` | `true` | `false` forces rule-based profile and offer |
+| `OLLAMA_TIMEOUT` | `120` | Client timeout in seconds |
+| `OLLAMA_NUM_PREDICT` | `1024` | Max tokens per completion |
+| `OLLAMA_FALLBACK_ON_ERROR` | `true` | Use rule-based providers if Ollama fails |
+| `LOG_LEVEL` | `INFO` | Python log level (`DEBUG`, `WARNING`, …) |
+
+See also [Ollama runbook](runbook-ollama.md).
 
 Copy `.env.example` to `.env` and adjust for your workstation.
 
