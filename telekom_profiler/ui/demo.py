@@ -129,63 +129,63 @@ def create_demo() -> gr.Blocks:
     with gr.Blocks(title="Private Customer Profiler", fill_width=True) as demo:
         profile_state = gr.State(value=None)
 
-        with gr.Row(elem_classes=["dt-header-row"]):
-            gr.HTML(
-                _header_html(),
-                elem_classes=["dt-header-block"],
-                padding=False,
-                container=False,
-            )
+        with gr.Column(elem_classes=["dt-shell"]):
+            with gr.Row(elem_classes=["dt-grid-row", "dt-header-row"]):
+                gr.HTML(_header_html(), elem_classes=["dt-header-block"])
 
-        with gr.Row(elem_classes=["dt-info-row"]):
-            gr.Markdown(inference_mode_label(), elem_classes=["dt-inference-mode"])
+            with gr.Row(elem_classes=["dt-grid-row", "dt-info-row"]):
+                gr.Markdown(inference_mode_label(), elem_classes=["dt-inference-mode"])
 
-        with gr.Row(elem_classes=["dt-template-row"]):
-            profile_pick = gr.Dropdown(
-                choices=template_choices,
-                value=CUSTOM_PROFILE,
-                label="Profile template",
-            )
-
-        with gr.Row(elem_classes=["dt-sliders-row"]):
-            with gr.Column(elem_classes=["dt-feature-col"]):
-                gr.Markdown("**Usage**", elem_classes=["dt-section-title"])
-                usage_inputs = [_make_slider(USAGE_SLIDERS[k]) for k in USAGE_SLIDERS]
-
-            with gr.Column(elem_classes=["dt-feature-col"]):
-                gr.Markdown(
-                    "**Trends** — overlays only, not used in clustering",
-                    elem_classes=["dt-section-title"],
-                )
-                trend_inputs = [_make_slider(TREND_SLIDERS[k]) for k in TREND_SLIDERS]
-
-        all_inputs = usage_inputs + trend_inputs
-
-        with gr.Row(elem_classes=["dt-btn-row"]):
-            profile_btn = gr.Button("Profile", variant="primary")
-            offer_btn = gr.Button("Generate offer", variant="secondary")
-
-        scoring_out = gr.Markdown(
-            format_scoring_summary(None),
-            elem_classes=["dt-scoring-summary"],
-        )
-
-        with gr.Row(elem_classes=["dt-results-row"]):
-            with gr.Column(elem_classes=["dt-result-col"], scale=1, min_width=0):
-                gr.Markdown("**Profile**", elem_classes=["dt-section-title"])
-                profile_out = gr.Markdown(
-                    MSG_RUN_PROFILE,
-                    elem_classes=["dt-result-body"],
-                    padding=False,
+            with gr.Row(elem_classes=["dt-grid-row", "dt-template-row"]):
+                profile_pick = gr.Dropdown(
+                    choices=template_choices,
+                    value=CUSTOM_PROFILE,
+                    label="Profile template",
                 )
 
-            with gr.Column(elem_classes=["dt-result-col"], scale=1, min_width=0):
-                gr.Markdown("**Offer**", elem_classes=["dt-section-title"])
-                offer_out = gr.Markdown(
-                    MSG_GENERATE_OFFER,
-                    elem_classes=["dt-result-body"],
-                    padding=False,
+            with gr.Row(elem_classes=["dt-grid-row", "dt-sliders-row"]):
+                with gr.Column(elem_classes=["dt-card", "dt-feature-col"]):
+                    gr.Markdown("**Usage**", elem_classes=["dt-section-title"])
+                    usage_inputs = [_make_slider(USAGE_SLIDERS[k]) for k in USAGE_SLIDERS]
+
+                with gr.Column(elem_classes=["dt-card", "dt-feature-col"]):
+                    gr.Markdown(
+                        "**Trends** — overlays only, not used in clustering",
+                        elem_classes=["dt-section-title"],
+                    )
+                    trend_inputs = [_make_slider(TREND_SLIDERS[k]) for k in TREND_SLIDERS]
+
+            all_inputs = usage_inputs + trend_inputs
+
+            with gr.Row(elem_classes=["dt-grid-row", "dt-btn-row"]):
+                profile_btn = gr.Button("Profile", variant="primary")
+                offer_btn = gr.Button("Generate offer", variant="secondary")
+
+            with gr.Row(elem_classes=["dt-grid-row", "dt-results-section"]):
+                gr.Markdown("## Results", elem_classes=["dt-results-heading"])
+
+            with gr.Row(elem_classes=["dt-grid-row"]):
+                scoring_out = gr.Markdown(
+                    format_scoring_summary(None),
+                    elem_classes=["dt-scoring-summary"],
                 )
+
+            with gr.Row(elem_classes=["dt-grid-row", "dt-results-row"]):
+                with gr.Column(elem_classes=["dt-card", "dt-result-col"], scale=1, min_width=0):
+                    gr.Markdown("**Profile**", elem_classes=["dt-section-title"])
+                    profile_out = gr.Markdown(
+                        MSG_RUN_PROFILE,
+                        elem_classes=["dt-result-body"],
+                        padding=False,
+                    )
+
+                with gr.Column(elem_classes=["dt-card", "dt-result-col"], scale=1, min_width=0):
+                    gr.Markdown("**Offer**", elem_classes=["dt-section-title"])
+                    offer_out = gr.Markdown(
+                        MSG_GENERATE_OFFER,
+                        elem_classes=["dt-result-body"],
+                        padding=False,
+                    )
 
         profile_pick.change(
             load_profile_preset,
