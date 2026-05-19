@@ -35,10 +35,9 @@ CRM or billing integration, real-time CDR feeds, production SSO, central audit l
 
 ## Standard user workflow
 
-1. Select a **subscriber** from the trained cluster map (or use sliders only).  
-2. Optionally pick a **profile template** or adjust **usage features** and **trends** (manual override).  
-3. Execute **Run profile** — primary profile, distance table, overlay badges, metric-backed narrative.  
-4. Execute **Generate offer** — plan recommendation with catalog SKUs (requires completed profile).
+1. Pick a **profile template** or adjust **usage features** and **trends**.  
+2. Click **Profile** — primary profile, distance table, overlay badges, metric-backed narrative.  
+3. Click **Generate offer** — plan recommendation with catalog SKUs (requires completed profile).
 
 Default local URL: `http://127.0.0.1:7860` (port assigned by Gradio; confirm in terminal output).
 

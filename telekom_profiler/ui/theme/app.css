@@ -4,13 +4,12 @@
 
 .gradio-container {
   font-family: "TeleNeo Office", Helvetica, Arial, sans-serif !important;
-  max-width: 72rem !important;
+  max-width: 64rem !important;
   margin: 0 auto !important;
-  padding: 0.75rem 1.25rem 2rem !important;
+  padding: 0.5rem 1rem 1.25rem !important;
   overflow-x: hidden !important;
 }
 
-/* Uniform content width for all main rows */
 .gradio-container .main,
 .gradio-container .wrap,
 .gradio-container .contain,
@@ -26,24 +25,25 @@
   display: flex !important;
   flex-direction: column !important;
   align-items: stretch !important;
+  gap: 0.35rem !important;
 }
 
 footer {
   display: none !important;
 }
 
-/* ── Two-column rows (sliders + results) — flex, equal width ──────────────── */
+/* ── Two-column rows ──────────────────────────────────────────────────────── */
 
 .gradio-container .gr-row.dt-sliders-row,
 .gradio-container .gr-row.dt-results-row {
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
-  gap: 1.25rem !important;
+  gap: 0.75rem !important;
   width: 100% !important;
   max-width: 100% !important;
   align-items: flex-start !important;
-  box-sizing: border-box !important;
+  margin: 0 !important;
 }
 
 .gradio-container .gr-row.dt-sliders-row > .gr-column,
@@ -59,99 +59,88 @@ footer {
 .gradio-container .gr-column.dt-result-col {
   display: flex !important;
   flex-direction: column !important;
-  gap: 0.5rem !important;
+  gap: 0.25rem !important;
   min-width: 0 !important;
   overflow: hidden !important;
 }
 
-/* ── Action buttons ───────────────────────────────────────────────────────── */
-
-.gradio-container .gr-row.dt-btn-row {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: wrap !important;
-  align-items: center !important;
-  gap: 0.75rem !important;
-  width: 100% !important;
-  margin: 0.25rem 0 1rem !important;
+/* Tighter sliders */
+.gradio-container .dt-feature-col .block {
+  padding: 0.15rem 0 !important;
+  margin: 0 !important;
 }
 
-.gradio-container .gr-row.dt-btn-row > .gr-column,
-.gradio-container .gr-row.dt-btn-row > .block {
-  flex: 0 0 auto !important;
-  width: auto !important;
-  max-width: none !important;
+.gradio-container .dt-feature-col label {
+  font-size: 0.8rem !important;
+}
+
+/* ── Toolbar (template + actions) ───────────────────────────────────────── */
+
+.gradio-container .gr-row.dt-toolbar {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-end !important;
+  gap: 0.5rem 0.75rem !important;
+  width: 100% !important;
+  margin: 0.25rem 0 0.35rem !important;
+}
+
+.gradio-container .gr-row.dt-toolbar > .gr-column,
+.gradio-container .gr-row.dt-toolbar > .block,
+.gradio-container .gr-row.dt-toolbar > button {
+  flex: 0 1 auto !important;
   min-width: 0 !important;
 }
 
-.gradio-container .gr-row.dt-btn-row button {
-  min-width: 10rem !important;
+.gradio-container .block.dt-inference-mode {
+  flex: 1 1 12rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
-/* ── Header (full content width, same as sliders/results) ─────────────────── */
+.gradio-container .block.dt-inference-mode .md,
+.gradio-container .block.dt-inference-mode .prose {
+  margin: 0 !important;
+  font-size: 0.78rem !important;
+  line-height: 1.25 !important;
+}
+
+.gradio-container .gr-row.dt-toolbar button {
+  min-width: 7.5rem !important;
+  height: 2.25rem !important;
+  margin: 0 !important;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
 
 .gradio-container .gr-row.dt-header-row {
   display: flex !important;
-  flex-direction: column !important;
   width: 100% !important;
-  max-width: 100% !important;
-  margin: 0 0 1rem 0 !important;
+  margin: 0 0 0.35rem 0 !important;
   padding: 0 !important;
-  gap: 0 !important;
 }
 
-.gradio-container .gr-row.dt-header-row > .gr-column,
-.gradio-container .gr-row.dt-header-row > .block,
-.gradio-container .gr-row.dt-header-row > * {
-  flex: 1 1 100% !important;
+.gradio-container .block.dt-header-block {
   width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
+  padding: 0 !important;
   margin: 0 !important;
-  padding: 0 !important;
-}
-
-.gradio-container .block.dt-header-block,
-.gradio-container .dt-header-block {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  padding: 0 !important;
-  margin: 0 0 1rem 0 !important;
   border: none !important;
   background: transparent !important;
-  box-shadow: none !important;
-}
-
-.gradio-container .block.dt-header-block > .gap,
-.gradio-container .block.dt-header-block > div,
-.gradio-container .block.dt-header-block .html-container,
-.gradio-container .block.dt-header-block .html-component,
-.gradio-container .block.dt-header-block .prose {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  box-sizing: border-box !important;
 }
 
 #dt-header {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
   background: #e20074;
-  padding: 16px 24px;
+  padding: 10px 16px;
   border-radius: 6px;
-  margin: 0;
 }
 
 #dt-header .dt-logo {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
   border-radius: 4px;
   overflow: hidden;
@@ -160,44 +149,25 @@ footer {
 #dt-header .dt-text h1 {
   color: #fff !important;
   margin: 0 !important;
-  font-size: 1.35rem !important;
+  font-size: 1.1rem !important;
   font-weight: 700 !important;
-  border: none !important;
 }
 
 #dt-header .dt-text p {
   color: rgba(255, 255, 255, 0.9) !important;
-  margin: 4px 0 0 !important;
-  font-size: 0.85rem !important;
+  margin: 2px 0 0 !important;
+  font-size: 0.75rem !important;
 }
 
-/* ── Profile template row ─────────────────────────────────────────────────── */
-
-.gradio-container .gr-row.dt-action-bar {
-  width: 100% !important;
-  margin: 1rem 0 !important;
-  display: flex !important;
-  flex-wrap: wrap !important;
-  align-items: center !important;
-  gap: 1rem !important;
-}
-
-.gradio-container .gr-row.dt-action-bar > .gr-column,
-.gradio-container .block.dt-inference-mode {
-  flex: 1 1 auto !important;
-  max-width: 100% !important;
-  width: auto !important;
-  min-width: 0 !important;
-}
+/* ── Scoring summary ──────────────────────────────────────────────────────── */
 
 .gradio-container .block.dt-scoring-summary {
   width: 100% !important;
-  margin: 0 0 0.75rem !important;
-  padding: 0.65rem 1rem !important;
+  margin: 0.25rem 0 !important;
+  padding: 0.45rem 0.75rem !important;
   border: 1px solid #e5e5e5 !important;
   border-radius: 6px !important;
   background: #fafafa !important;
-  box-sizing: border-box !important;
 }
 
 .dark .gradio-container .block.dt-scoring-summary {
@@ -208,75 +178,38 @@ footer {
 .gradio-container .block.dt-scoring-summary .md,
 .gradio-container .block.dt-scoring-summary .prose {
   margin: 0 !important;
-  font-size: 0.85rem !important;
+  font-size: 0.8rem !important;
+  line-height: 1.3 !important;
 }
 
-/* ── Section titles (h3) ──────────────────────────────────────────────────── */
+/* ── Section titles ───────────────────────────────────────────────────────── */
 
 .gradio-container .block.dt-section-title {
   margin: 0 !important;
   padding: 0 !important;
   border: none !important;
   background: transparent !important;
-  box-shadow: none !important;
-  flex: 0 0 auto !important;
 }
 
 .gradio-container .block.dt-section-title .md,
 .gradio-container .block.dt-section-title .prose {
-  margin: 0 !important;
-  padding: 0 !important;
+  margin: 0 0 0.15rem !important;
+  font-size: 0.82rem !important;
+  line-height: 1.25 !important;
 }
 
-.gradio-container .block.dt-section-title h3 {
-  color: var(--body-text-color) !important;
-  font-size: 0.95rem !important;
-  font-weight: 600 !important;
-  line-height: 1.3 !important;
-  margin: 0 0 0.35rem !important;
-  padding: 0 !important;
-}
-
-.gradio-container .block.dt-section-title p {
-  margin: 0 !important;
-  padding: 0 !important;
-  font-size: 0.8rem !important;
-  line-height: 1.35 !important;
-  color: var(--body-text-color-subdued, var(--body-text-color)) !important;
-}
-
-/* ── Results heading (h2) ─────────────────────────────────────────────────── */
-
-.gradio-container .block.dt-results-heading {
-  margin: 0.75rem 0 0.5rem !important;
-  padding: 0 !important;
-  width: 100% !important;
-  flex: 0 0 auto !important;
-}
-
-.gradio-container .block.dt-results-heading h2 {
-  color: #e20074 !important;
-  font-size: 1.1rem !important;
-  font-weight: 700 !important;
-  border-bottom: 2px solid #e20074 !important;
-  padding-bottom: 4px !important;
-  margin: 0 !important;
-}
-
-/* ── Result scroll panels (fixed size — content must not expand layout) ───── */
+/* ── Result panels ────────────────────────────────────────────────────────── */
 
 .gradio-container .block.dt-result-body {
-  flex: 0 0 22rem !important;
+  flex: 0 0 14rem !important;
   width: 100% !important;
-  min-width: 0 !important;
-  height: 22rem !important;
-  max-height: 22rem !important;
+  height: 14rem !important;
+  max-height: 14rem !important;
   overflow: hidden !important;
-  box-sizing: border-box !important;
   margin: 0 !important;
   padding: 0 !important;
   border: 1px solid #e5e5e5 !important;
-  border-radius: 8px !important;
+  border-radius: 6px !important;
   background: #fafafa !important;
 }
 
@@ -285,48 +218,22 @@ footer {
   background: #262626 !important;
 }
 
-/* Gradio wrappers: clip and scroll inside the fixed box */
 .gradio-container .block.dt-result-body > .gap {
   height: 100% !important;
-  max-height: 22rem !important;
-  min-height: 0 !important;
+  max-height: 14rem !important;
   overflow: hidden !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  box-sizing: border-box !important;
 }
 
 .gradio-container .block.dt-result-body .md,
 .gradio-container .block.dt-result-body .prose {
   height: 100% !important;
-  max-height: 22rem !important;
-  min-height: 0 !important;
-  overflow-x: hidden !important;
+  max-height: 14rem !important;
   overflow-y: auto !important;
   margin: 0 !important;
-  padding: 0.75rem 1rem !important;
-  box-sizing: border-box !important;
-  width: 100% !important;
-  max-width: 100% !important;
+  padding: 0.5rem 0.65rem !important;
+  font-size: 0.82rem !important;
+  line-height: 1.35 !important;
   overflow-wrap: anywhere !important;
-  word-break: break-word !important;
-}
-
-.gradio-container .block.dt-result-body .prose > *:first-child,
-.gradio-container .block.dt-result-body .md > *:first-child {
-  margin-top: 0 !important;
-}
-
-.gradio-container .block.dt-result-body table {
-  display: block !important;
-  max-width: 100% !important;
-  overflow-x: auto !important;
-}
-
-.gradio-container .block.dt-result-body h3 {
-  font-size: 0.9rem !important;
-  margin: 0.65rem 0 0.3rem !important;
-  color: var(--body-text-color) !important;
 }
 
 .gradio-container .prose strong,
@@ -334,37 +241,21 @@ footer {
   color: #e20074 !important;
 }
 
-.dark .gradio-container .prose p,
-.dark .gradio-container .prose li,
-.dark .gradio-container .md p {
-  color: var(--body-text-color) !important;
-}
-
-/* ── Narrow screens: stack columns ────────────────────────────────────────── */
-
 @media (max-width: 768px) {
   .gradio-container .gr-row.dt-sliders-row,
   .gradio-container .gr-row.dt-results-row {
     flex-direction: column !important;
-    flex-wrap: wrap !important;
   }
 
   .gradio-container .gr-row.dt-sliders-row > .gr-column,
   .gradio-container .gr-row.dt-results-row > .gr-column {
     max-width: 100% !important;
     width: 100% !important;
-    flex: 1 1 auto !important;
   }
 
   .gradio-container .block.dt-result-body {
-    flex: 0 0 18rem !important;
-    height: 18rem !important;
-    max-height: 18rem !important;
-  }
-
-  .gradio-container .block.dt-result-body > .gap,
-  .gradio-container .block.dt-result-body .md,
-  .gradio-container .block.dt-result-body .prose {
-    max-height: 18rem !important;
+    flex: 0 0 12rem !important;
+    height: 12rem !important;
+    max-height: 12rem !important;
   }
 }

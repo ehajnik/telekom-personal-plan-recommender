@@ -10,10 +10,10 @@ from telekom_profiler.paths import ARTIFACTS_DIR
 CUSTOM_PROFILE: Final[str] = "— Custom —"
 PLACEHOLDER_PREFIX: Final[str] = "_"
 
-MSG_RUN_PROFILE: Final[str] = "_Run the profile to see analysis here._"
-MSG_AFTER_PROFILE: Final[str] = "_Click **Generate offer** after running the profile._"
-MSG_RUN_PROFILE_FIRST: Final[str] = "_Run the profile first, then generate an offer._"
-MSG_GENERATE_OFFER: Final[str] = "_Generate an offer after profiling._"
+MSG_RUN_PROFILE: Final[str] = "_Profile analysis appears here._"
+MSG_AFTER_PROFILE: Final[str] = "_Use **Generate offer** when ready._"
+MSG_RUN_PROFILE_FIRST: Final[str] = "_Complete profiling before generating an offer._"
+MSG_GENERATE_OFFER: Final[str] = "_Tariff recommendation appears here._"
 
 SliderSpec = tuple[str, int, int, int]
 
