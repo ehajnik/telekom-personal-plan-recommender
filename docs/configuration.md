@@ -17,8 +17,8 @@ cp .env.example .env
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API base URL (no trailing slash) |
 | `OLLAMA_MODEL` | `llama3.2` | Model tag; must exist on the host (`ollama pull`) |
 | `OLLAMA_ENABLED` | `true` | When `false`, selects rule-based profile and offer providers |
-| `OLLAMA_TIMEOUT` | `120` | HTTP client timeout (seconds) |
-| `OLLAMA_NUM_PREDICT` | `1024` | Maximum completion tokens per request |
+| `OLLAMA_TIMEOUT` | `180` | HTTP client timeout (seconds); higher on CPU-only hosts |
+| `OLLAMA_NUM_PREDICT` | `512` | Maximum completion tokens per request |
 | `OLLAMA_FALLBACK_ON_ERROR` | `true` | On LLM failure, delegate to rule-based providers |
 | `LOG_LEVEL` | `INFO` | Root log level (`DEBUG`, `WARNING`, `ERROR`, …) |
 
@@ -40,6 +40,20 @@ OLLAMA_FALLBACK_ON_ERROR=false
 ```
 
 Failures surface in the UI instead of silently falling back. Use only when validating LLM integration.
+
+### 1.3 CPU-only workstations (no dedicated GPU)
+
+The repository defaults assume **CPU inference** via local Ollama. Archetype scoring remains deterministic in code or ML; the LLM only generates narrative markdown.
+
+| Goal | Suggested `OLLAMA_MODEL` | Notes |
+|------|--------------------------|-------|
+| Default balance | `llama3.2` | Matches `.env.example`; `ollama pull llama3.2` |
+| Faster / less RAM | `llama3.2:1b`, `qwen2.5:3b`, `phi3:mini` | Set `OLLAMA_MODEL` accordingly after `ollama pull` |
+| No local LLM | — | `OLLAMA_ENABLED=false` (recommended for CI) |
+
+Keep `OLLAMA_FALLBACK_ON_ERROR=true` on laptops so timeouts fall back to rule-based providers. Avoid 7B+ models (for example `llama3:latest`) on CPU-only hosts.
+
+Operational detail: [Ollama runbook — CPU-only](runbook-ollama.md#8-cpu-only-workstations-no-dedicated-gpu).
 
 ---
 

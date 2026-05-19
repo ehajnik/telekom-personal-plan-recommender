@@ -30,8 +30,8 @@ Ensure `ollama serve` is running when `OLLAMA_ENABLED=true`.
 | `OLLAMA_HOST` | `http://localhost:11434` | Start Ollama or correct service URL |
 | `OLLAMA_MODEL` | `llama3.2` | `ollama pull <model>` |
 | `OLLAMA_ENABLED` | `true` | Set `false` for rule-based-only operation |
-| `OLLAMA_TIMEOUT` | `120` | Increase for large models on CPU |
-| `OLLAMA_NUM_PREDICT` | `1024` | Reduce (e.g. `512`) to shorten latency |
+| `OLLAMA_TIMEOUT` | `180` | Increase further for 7B+ models on CPU |
+| `OLLAMA_NUM_PREDICT` | `512` | Increase for longer narratives; decrease to shorten latency |
 | `OLLAMA_FALLBACK_ON_ERROR` | `true` | Set `false` to surface errors to the UI |
 | `LOG_LEVEL` | `INFO` | Set `DEBUG` for verbose client logging |
 
@@ -109,3 +109,49 @@ Fallback activation logs warnings from `telekom_profiler.services.fallback`.
 | L1 | Verify Ollama service, model pull, `.env` flags per sections 1–4 |
 | L2 | Application team — provider wiring, timeouts, fallback behaviour |
 | L3 | AI platform team — gateway quotas, approved models, network egress |
+
+---
+
+## 8. CPU-only workstations (no dedicated GPU)
+
+Segmentation and tariff logic do not use a GPU. Only optional Ollama narrative generation is affected.
+
+### 8.1 Recommended setup
+
+Copy `.env.example` (CPU-tuned defaults) and pull the configured model:
+
+```bash
+cp .env.example .env
+ollama serve   # separate terminal
+ollama pull llama3.2
+```
+
+Default `.env` values:
+
+```env
+OLLAMA_MODEL=llama3.2
+OLLAMA_TIMEOUT=180
+OLLAMA_NUM_PREDICT=512
+OLLAMA_FALLBACK_ON_ERROR=true
+```
+
+Each full UI flow may run **two** sequential LLM calls (profile, then offer). Expect multi-minute latency on CPU; lowering `OLLAMA_NUM_PREDICT` or disabling the LLM reduces wait time.
+
+### 8.2 Model selection
+
+| Model tag | When to use |
+|-----------|-------------|
+| `llama3.2` | Default; good quality on 8–16 GB RAM |
+| `llama3.2:1b` | Tighter RAM or faster workshops |
+| `qwen2.5:3b`, `phi3:mini` | Alternatives with similar size class |
+| `llama3:latest` (8B+) | **Not recommended** on CPU-only — timeouts and RAM pressure |
+
+Deterministic archetype labels always come from `ScoringResult` in code/ML, not from the LLM ([ADR 001](adr/001-scoring-in-code.md)).
+
+### 8.3 Rule-based only
+
+```env
+OLLAMA_ENABLED=false
+```
+
+No Ollama process required. Use for CI, offline development, or demos where narrative latency is unacceptable.

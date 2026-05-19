@@ -61,7 +61,8 @@ cp .env.example .env
 python scripts/generate_synthetic_data.py --subscribers 1000
 python scripts/subscriber_profiling.py
 
-# Optional LLM: ollama serve && ollama pull llama3.2
+# Optional LLM (CPU-friendly defaults in .env.example):
+# ollama serve && ollama pull llama3.2
 
 python app.py
 ```

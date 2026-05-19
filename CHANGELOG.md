@@ -10,6 +10,10 @@ Version bumps are driven by [Commitizen](https://commitizen-tools.github.io/comm
 
 ## [Unreleased]
 
+### Changed
+
+- Ollama defaults tuned for CPU-only workstations: `OLLAMA_TIMEOUT=180`, `OLLAMA_NUM_PREDICT=512`; documented model guidance in configuration and runbook
+
 ---
 
 ## [0.2.0] - 2026-05-19
