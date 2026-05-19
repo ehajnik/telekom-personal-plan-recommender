@@ -26,7 +26,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 pip install -r requirements.txt
-pip install -e ".[dev]"
+pip install -e ".[dev,ml]"
 
 cp .env.example .env
 # Optional LLM path:
@@ -50,7 +50,29 @@ The process prints the Gradio URL (typically `http://127.0.0.1:7860`). Port assi
 
 ---
 
-## 4. Quality assurance
+## 4. ML profiling pipeline (PoC)
+
+Generate synthetic billing history and train K-Means profiles (writes to `artifacts/`, gitignored):
+
+```bash
+python scripts/generate_synthetic_data.py --subscribers 1000 --seed 42
+python scripts/subscriber_profiling.py --min-silhouette 0.5
+```
+
+| Output | Purpose |
+|--------|---------|
+| `data/raw/private_mobile_usage_*_12_months.csv` | Monthly panel input |
+| `artifacts/kmeans.pkl`, `scaler.pkl` | Trained model |
+| `artifacts/subscriber_cluster_map.csv` | Subscriber dropdown + distances |
+| `artifacts/profile_characteristics.json` | Profile labels and slider presets |
+
+**Design rule:** trend columns are excluded from `CLUSTER_FEATURES`; they feed overlays only.
+
+Set `PROFILER_MODE=rules` to force legacy L1 archetypes (used in unit tests). Default `auto` selects ML when artifacts exist.
+
+---
+
+## 5. Quality assurance
 
 Run the full gate locally before opening a pull request (mirrors CI):
 
@@ -74,7 +96,7 @@ CI configuration: `.github/workflows/ci.yml`.
 
 ---
 
-## 5. Engineering conventions
+## 6. Engineering conventions
 
 | Topic | Standard |
 |-------|----------|
@@ -94,9 +116,9 @@ CI configuration: `.github/workflows/ci.yml`.
 
 ---
 
-## 6. Extending providers
+## 7. Extending providers
 
-### 6.1 Profile provider
+### 7.1 Profile provider
 
 Implement `ProfileProvider` and inject into `ProfilerEngine`:
 
@@ -124,7 +146,7 @@ result = engine.profile(usage)
 
 Add unit tests with mocked HTTP; do not require Ollama in CI.
 
-### 6.2 Offer provider
+### 7.2 Offer provider
 
 Implement `OfferProvider.recommend(profile: ProfileResult, usage: CustomerUsage) -> str` using the same injection pattern.
 
@@ -132,7 +154,7 @@ Further integration patterns: [Integration guide](integration.md).
 
 ---
 
-## 7. Modifying prompts and reference data
+## 8. Modifying prompts and reference data
 
 | Asset | Location | Validation |
 |-------|----------|------------|
@@ -146,7 +168,7 @@ Templates use `{placeholder}` syntax. After edits, run the sanity script to dete
 
 ---
 
-## 8. Modifying archetypes and presets
+## 9. Modifying archetypes and presets
 
 1. Update `ARCHETYPE_CENTROIDS` in `domain/archetypes.py`.
 2. Align `PROFILES` presets in `config/sliders.py` for demo consistency.
@@ -156,7 +178,7 @@ Templates use `{placeholder}` syntax. After edits, run the sanity script to dete
 
 ---
 
-## 9. Local troubleshooting
+## 10. Local troubleshooting
 
 ### Application issues
 
@@ -172,13 +194,13 @@ See [Ollama runbook](runbook-ollama.md). Set `OLLAMA_ENABLED=false` to isolate U
 
 ---
 
-## 10. IDE configuration
+## 11. IDE configuration
 
 Point the interpreter to `.venv/bin/python`. Mark `telekom_profiler` as the source root if the IDE does not detect the editable install automatically.
 
 ---
 
-## 11. Versioning and releases
+## 12. Versioning and releases
 
 | Source | Field |
 |--------|-------|

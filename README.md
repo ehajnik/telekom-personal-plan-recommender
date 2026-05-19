@@ -22,8 +22,9 @@ The solution is delivered as an installable Python package (`telekom_profiler`) 
 | Usage capture | Six standardised signals (four usage levels, two trends) via UI or API |
 | Customer profiling | Markdown profile with archetype, overlays, narrative, and risks |
 | Offer recommendation | Tariff and add-on suggestion against prototype catalogue |
-| Demo personas | Five archetype-aligned presets for workshops and UAT |
-| Inference modes | Local Ollama (optional) with deterministic rule-based fallback |
+| Demo personas | Profile templates from ML training or legacy archetype presets |
+| ML segmentation | K-Means on 12-month usage (k=5); trends drive overlays only |
+| Inference modes | Local Ollama (optional) with rule-based / ML fallback |
 
 ### Out of scope (current release)
 
@@ -33,10 +34,10 @@ CRM or billing integration, real-time CDR feeds, production SSO, central audit l
 
 ## Standard user workflow
 
-1. Select an optional **profile template** (archetype preset) or retain custom slider values.  
-2. Adjust **usage features** and **trends**.  
-3. Execute **Run profile** — produces customer profile and deterministic scoring summary.  
-4. Execute **Generate offer** — produces tariff recommendation (requires completed profile).
+1. Select a **subscriber** from the trained cluster map (or use sliders only).  
+2. Optionally pick a **profile template** or adjust **usage features** and **trends** (manual override).  
+3. Execute **Run profile** — primary profile, distance table, overlay badges, metric-backed narrative.  
+4. Execute **Generate offer** — plan recommendation with catalog SKUs (requires completed profile).
 
 Default local URL: `http://127.0.0.1:7860` (port assigned by Gradio; confirm in terminal output).
 
@@ -52,13 +53,20 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 pip install -r requirements.txt
-pip install -e ".[dev]"    # editable install + lint/type tools
+pip install -e ".[dev,ml]"  # editable install + lint + ML stack
 
 cp .env.example .env
-# Optional: ollama serve && ollama pull llama3.2
+
+# ML PoC: generate 12-month panel and train K-Means (artifacts/ gitignored)
+python scripts/generate_synthetic_data.py --subscribers 1000
+python scripts/subscriber_profiling.py
+
+# Optional LLM: ollama serve && ollama pull llama3.2
 
 python app.py
 ```
+
+Set `PROFILER_MODE=auto` (default) to use ML when `artifacts/` exists, else legacy rule-based archetypes.
 
 | Command | Purpose |
 |---------|---------|
@@ -87,7 +95,8 @@ The application follows a **layered, provider-based** design:
 | Application | `telekom_profiler.services` | `ProfilerEngine`, provider orchestration |
 | Domain | `telekom_profiler.domain` | Models, archetype scoring, rule engines |
 | Integration | `prompts`, `llm`, `data` | Prompt assembly, Ollama client, reference data |
-| Configuration | `telekom_profiler.config` | Sliders, thresholds, environment |
+| ML pipeline | `telekom_profiler.ml`, `scripts/` | Synthetic data, feature engineering, K-Means training |
+| Configuration | `telekom_profiler.config` | Sliders, thresholds, environment, profiler mode |
 
 **Design principles:**
 

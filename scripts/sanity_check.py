@@ -40,6 +40,7 @@ def check_package_files() -> None:
     required = [
         ASSETS_DIR / "telekom-logo.svg",
         DATA_DIR / "consumer_archetypes.md",
+        DATA_DIR / "plans_and_options.md",
         DATA_DIR / "tariffs_private.md",
         PROMPT_TEMPLATES_DIR / "run_profile.md",
         PROMPT_TEMPLATES_DIR / "run_offer.md",
@@ -75,27 +76,32 @@ def check_prompts() -> None:
     for token in (
         "{slider_features}",
         "{centroid_distances}",
+        "{distance_table}",
         "{overlay_signals}",
         "{required_primary}",
         "{required_confidence}",
+        "{metrics_block}",
     ):
         if token in profile_prompt:
             raise ValueError(f"Unfilled placeholder {token} in profile prompt")
 
     profile = "Test profile body"
     offer_prompt = build_offer_prompt(profile)
-    if "{customer_profile}" in offer_prompt or "{tariffs_and_options}" in offer_prompt:
-        raise ValueError("Unfilled placeholders in offer prompt")
+    for token in ("{customer_profile}", "{tariffs_and_options}", "{primary_profile}", "{overlay_signals}"):
+        if token in offer_prompt:
+            raise ValueError(f"Unfilled placeholder {token} in offer prompt")
     if profile not in offer_prompt:
         raise ValueError("Customer profile not injected into offer prompt")
 
 
 def check_typed_models() -> None:
+    import os
     from unittest.mock import patch
 
     from telekom_profiler.domain import CustomerUsage, build_scoring_result
     from telekom_profiler.services.analysis import profile_customer_structured
 
+    os.environ["PROFILER_MODE"] = "rules"
     data = {
         "data_gb": 95.0,
         "voice_min": 200.0,
@@ -180,6 +186,23 @@ def check_demo_builds() -> None:
         raise TypeError(f"Expected Gradio Blocks, got {type(demo)}")
 
 
+def check_ml_artifacts_optional() -> None:
+    from telekom_profiler.config.profiler_settings import artifacts_available
+    from telekom_profiler.paths import ARTIFACTS_DIR
+
+    if not artifacts_available():
+        print("    (ML artifacts absent — run generate + subscriber_profiling for ML UI)")
+        return
+    required = [
+        ARTIFACTS_DIR / "kmeans.pkl",
+        ARTIFACTS_DIR / "scaler.pkl",
+        ARTIFACTS_DIR / "subscriber_cluster_map.csv",
+    ]
+    missing = [p for p in required if not p.is_file()]
+    if missing:
+        raise FileNotFoundError("Incomplete artifacts: " + ", ".join(str(p) for p in missing))
+
+
 def check_entrypoint() -> None:
     app_path = ROOT / "app.py"
     code = app_path.read_text(encoding="utf-8")
@@ -198,6 +221,7 @@ def main() -> int:
         ("Services (LLM fallback)", check_services_fallback),
         ("Theme & CSS", check_theme_css),
         ("Gradio demo builds", check_demo_builds),
+        ("ML artifacts (optional)", check_ml_artifacts_optional),
         ("app.py entrypoint", check_entrypoint),
     ]
     for name, fn in checks:

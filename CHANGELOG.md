@@ -10,7 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- Centralised business thresholds in `telekom_profiler/config/thresholds.py`
+- ML PoC: synthetic 12-month usage generator, `subscriber_profiling.py` training pipeline
+- K-Means segmentation (k=5) with artifacts under `artifacts/` (scaler, model, cluster map)
+- `telekom_profiler.ml` feature engineering, inference, and overlay detection
+- Subscriber dropdown in UI; distance table and overlay badges in scoring panel
+- Consumer catalog `plans_and_options.md` with SKUs for offer prompts
+- `PROFILER_MODE` (`auto` / `ml` / `rules`) and optional `[ml]` dependencies
+- ML unit tests and CI train-on-synthetic step (silhouette ≥ 0.5)
+
+### Changed
+
+- Profile scoring uses trained clusters when artifacts present; legacy L1 fallback otherwise
+- Ollama/rule providers use ML or rules base per `PROFILER_MODE`
+- Centralised business thresholds in `telekom_profiler/config/thresholds.py` (existing)
 - Typed `CustomerUsage` validation and clamping; `ProfileResult` state serialisation for Gradio
 - Fallback providers when Ollama fails (`OLLAMA_FALLBACK_ON_ERROR`)
 - Ollama tuning: `OLLAMA_TIMEOUT`, `OLLAMA_NUM_PREDICT`
