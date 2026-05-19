@@ -40,6 +40,12 @@ jobs:
           PROFILER_MODE: "rules"
         run: python scripts/sanity_check.py
 
+      - name: Conventional commit messages (PRs)
+        if: github.event_name == 'pull_request'
+        run: |
+          pip install commitizen
+          cz check --rev-range "origin/${{ github.base_ref }}..HEAD"
+
       - name: Ruff
         run: ruff check telekom_profiler tests scripts
 

@@ -202,10 +202,41 @@ Point the interpreter to `.venv/bin/python`. Mark `telekom_profiler` as the sour
 
 ## 12. Versioning and releases
 
+This project uses **Semantic Versioning** with **[Conventional Commits](https://www.conventionalcommits.org/)** and **[Commitizen](https://commitizen-tools.github.io/commitizen/)**.
+
 | Source | Field |
 |--------|-------|
-| Package | `telekom_profiler.__version__` |
-| Metadata | `pyproject.toml` → `[project].version` |
-| History | `CHANGELOG.md` |
+| Canonical version | `pyproject.toml` → `[project].version` |
+| Runtime | `telekom_profiler.__version__` (from package metadata) |
+| History | `CHANGELOG.md` (updated on `cz bump`) |
+| Git tags | `v0.2.0`, `v0.3.0`, … |
 
-Bump version and changelog entries per team release policy before tagging.
+While `major_version_zero` is enabled (default in `pyproject.toml`), **0.x** releases treat `feat` as a **minor** bump and `fix` as **patch** (per [SemVer](https://semver.org/) pre-1.0 guidance).
+
+### Local release (maintainers)
+
+```bash
+pip install -e ".[dev]"
+# Preview next version from commits since last tag
+cz bump --dry-run
+# Apply bump + CHANGELOG + git commit + tag
+cz bump minor --yes   # or patch | major
+git push origin main --tags
+```
+
+### GitHub Actions release
+
+1. Ensure **CI** is green on `main`.
+2. Run workflow **Release** (`.github/workflows/release.yml`) → choose `patch`, `minor`, or `major`.
+3. The workflow runs `cz bump`, pushes the version commit, and pushes the `v*` tag.
+
+### Before the first tag on a clone
+
+If no `v*` tags exist yet, create the baseline tag once (already `0.2.0` in metadata):
+
+```bash
+git tag -a v0.2.0 -m "release: v0.2.0"
+git push origin v0.2.0
+```
+
+Future bumps use `cz bump` only.

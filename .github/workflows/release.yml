@@ -1,0 +1,48 @@
+# Bump version + CHANGELOG from conventional commits, tag, and push.
+# Trigger manually when main is green and you want a release.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Semver increment (0.x — feat bumps minor per major_version_zero)
+        required: true
+        default: minor
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Commitizen
+        run: python -m pip install --upgrade pip commitizen
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version, changelog, commit, and tag
+        run: cz bump ${{ inputs.bump }} --yes
+
+      - name: Push commit and tag
+        run: |
+          git push origin HEAD:main
+          git push origin --tags

@@ -10,7 +10,7 @@ Documentation: ``docs/`` in the repository root. Public service API:
 ``telekom_profiler.services.profile_customer``, ``ProfilerEngine``.
 """
 
-__version__ = "0.1.0"
+from telekom_profiler._version import __version__
 __all__ = ["__version__", "create_demo", "main"]
 
 

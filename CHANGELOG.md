@@ -2,15 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) where applicable.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+Version bumps are driven by [Commitizen](https://commitizen-tools.github.io/commitizen/) from [Conventional Commits](https://www.conventionalcommits.org/) on `main`. The canonical version lives in `pyproject.toml`; runtime reads it via `telekom_profiler.__version__`.
 
 ---
 
 ## [Unreleased]
 
-### Changed
+---
 
-- Consumer catalog aligned with **Telekom Deutschland** official price lists (MagentaMobil XS–XL, Prepaid, Young, PlusKarte, Travel & Surf); rule-based offers updated accordingly
+## [0.2.0] - 2026-05-19
 
 ### Added
 
@@ -21,12 +23,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Consumer catalog `plans_and_options.md` with SKUs for offer prompts
 - `PROFILER_MODE` (`auto` / `ml` / `rules`) and optional `[ml]` dependencies
 - ML unit tests and CI train-on-synthetic step (silhouette ≥ 0.5)
+- Commitizen-based semver releases (`cz bump`, GitHub **Release** workflow)
 
 ### Changed
 
+- Consumer catalog aligned with **Telekom Deutschland** official price lists (MagentaMobil XS–XL, Prepaid, Young, PlusKarte, Travel & Surf)
 - Profile scoring uses trained clusters when artifacts present; legacy L1 fallback otherwise
 - Ollama/rule providers use ML or rules base per `PROFILER_MODE`
-- Centralised business thresholds in `telekom_profiler/config/thresholds.py` (existing)
+- Rule-based offers bias tariff selection by primary archetype from scoring
+- Profile prompts require deterministic primary archetype from code scoring
+- UI session uses `gr.State` with `ProfileResult` instead of markdown-only handoff
+- Centralised business thresholds in `telekom_profiler/config/thresholds.py`
 - Typed `CustomerUsage` validation and clamping; `ProfileResult` state serialisation for Gradio
 - Fallback providers when Ollama fails (`OLLAMA_FALLBACK_ON_ERROR`)
 - Ollama tuning: `OLLAMA_TIMEOUT`, `OLLAMA_NUM_PREDICT`
@@ -34,14 +41,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Structured logging via `telekom_profiler/logging_config.py`
 - Technical documentation set under `docs/` including ADR and Ollama runbook
 - Developer tooling: Ruff, Mypy, GitHub Actions CI
-
-### Changed
-
-- Rule-based offers bias tariff selection by primary archetype from scoring
-- Profile prompts require deterministic primary archetype from code scoring
-- UI session uses `gr.State` with `ProfileResult` instead of markdown-only handoff
-- Removed duplicate root `styles/`, `data/`, and `assets/` directories (package paths only)
 - Documentation rewritten for enterprise readability and integration clarity
+- Removed duplicate root `styles/`, `data/`, and `assets/` directories (package paths only)
 
 ### Fixed
 
@@ -50,6 +51,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## [0.1.0] — initial packaged release
+## [0.1.0] - 2026-05-19
 
-Baseline Gradio application with rule-based and Ollama providers, five B2C archetypes, and Telekom branding.
+### Added
+
+- Baseline Gradio application with rule-based and Ollama providers, five B2C archetypes, and Telekom branding

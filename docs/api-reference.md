@@ -9,7 +9,7 @@ Stable Python surface for programmatic integration, automated tests, and headles
 ```python
 import telekom_profiler
 
-telekom_profiler.__version__   # e.g. "0.1.0"
+telekom_profiler.__version__   # e.g. "0.2.0" (from pyproject.toml / install metadata)
 telekom_profiler.create_demo() # gradio.Blocks
 telekom_profiler.main()        # configure logging, reset engine, launch UI
 ```

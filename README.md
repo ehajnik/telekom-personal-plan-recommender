@@ -12,6 +12,7 @@ The solution is delivered as an installable Python package (`telekom_profiler`) 
 | **Documentation** | [docs/](docs/README.md) |
 | **Python** | 3.10+ |
 | **CI** | Unit tests, sanity checks, ruff, mypy (see `.github/workflows/ci.yml`) |
+| **Version** | Semver via Commitizen — see [Versioning](docs/development.md#12-versioning-and-releases) |
 
 ---
 
