@@ -2,22 +2,81 @@
 
 from __future__ import annotations
 
+from telekom_profiler.config.thresholds import (
+    ARCHETYPE_CHATTERBOX,
+    ARCHETYPE_ESSENTIAL,
+    ARCHETYPE_MESSENGER,
+    ARCHETYPE_ROAMER,
+    ARCHETYPE_STREAMER,
+    OFFER_DATA_BOOST_GB,
+    OFFER_DATA_L_GB,
+    OFFER_DATA_M_GB,
+    OFFER_DATA_PREPAID_MAX_GB,
+    OFFER_DATA_XL_GB,
+    OFFER_MULTISIM_DATA_GB,
+    OFFER_ROAMING_ADDON_DAYS,
+    OFFER_VOICE_PREPAID_MAX,
+)
+from telekom_profiler.domain.models import ScoringResult
 
-def render_offer_report(_profile_text: str, data: dict[str, float]) -> str:
+_TARIFF_XL = ("MagentaMobil XL", "€69.95", "Unlimited DE data; fits heavy streaming.")
+_TARIFF_L = ("MagentaMobil L", "€59.95", "50 GB matches sustained high data use.")
+_TARIFF_M = ("MagentaMobil M", "€49.95", "Balanced data and flat voice.")
+_TARIFF_S = ("MagentaMobil S", "€39.95", "Entry postpaid for light-medium use.")
+_TARIFF_PREPAID = (
+    "MagentaMobil Prepaid M",
+    "€14.95",
+    "Low usage suits flexible prepaid.",
+)
+
+
+def _select_tariff(
+    data: dict[str, float],
+    scoring: ScoringResult | None,
+) -> tuple[str, str, str]:
+    """Pick base tariff from usage thresholds, biased by primary archetype when known."""
+    primary = scoring.primary_name if scoring else None
+
+    if primary == ARCHETYPE_ESSENTIAL and data["data_gb"] < OFFER_DATA_M_GB:
+        return _TARIFF_PREPAID
+    if primary == ARCHETYPE_CHATTERBOX and data["data_gb"] < OFFER_DATA_L_GB:
+        return _TARIFF_M
+    if primary == ARCHETYPE_STREAMER or data["data_gb"] >= OFFER_DATA_XL_GB:
+        return _TARIFF_XL
+    if primary == ARCHETYPE_ROAMER and data["data_gb"] >= OFFER_DATA_M_GB:
+        return _TARIFF_L
+    if primary == ARCHETYPE_MESSENGER and OFFER_DATA_M_GB <= data["data_gb"] < OFFER_DATA_L_GB:
+        return _TARIFF_M
+
+    if data["data_gb"] >= OFFER_DATA_XL_GB:
+        return _TARIFF_XL
+    if data["data_gb"] >= OFFER_DATA_L_GB:
+        return _TARIFF_L
+    if data["data_gb"] >= OFFER_DATA_M_GB:
+        return _TARIFF_M
+    if data["data_gb"] < OFFER_DATA_PREPAID_MAX_GB and data["voice_min"] < OFFER_VOICE_PREPAID_MAX:
+        return _TARIFF_PREPAID
+    return _TARIFF_S
+
+
+def render_offer_report(
+    _profile_text: str,
+    data: dict[str, float],
+    *,
+    scoring: ScoringResult | None = None,
+) -> str:
     """Build offer markdown aligned with ``prompts/templates/run_offer.md``."""
-    if data["data_gb"] >= 70:
-        tariff = ("MagentaMobil XL", "€69.95", "Unlimited DE data; fits heavy streaming.")
-    elif data["data_gb"] >= 35:
-        tariff = ("MagentaMobil L", "€59.95", "50 GB matches sustained high data use.")
-    elif data["data_gb"] >= 15:
-        tariff = ("MagentaMobil M", "€49.95", "Balanced data and flat voice.")
-    elif data["data_gb"] < 8 and data["voice_min"] < 300:
-        tariff = ("MagentaMobil Prepaid M", "€14.95", "Low usage suits flexible prepaid.")
-    else:
-        tariff = ("MagentaMobil S", "€39.95", "Entry postpaid for light-medium use.")
+    tariff = _select_tariff(data, scoring)
+    primary_note = ""
+    if scoring:
+        primary_note = f" Primary archetype: **{scoring.primary_name}**."
 
     addons: list[tuple[str, str, str]] = []
-    if data["roaming_days"] >= 8:
+    roaming_threshold = OFFER_ROAMING_ADDON_DAYS
+    if scoring and scoring.primary_name == ARCHETYPE_ROAMER:
+        roaming_threshold = max(4.0, OFFER_ROAMING_ADDON_DAYS - 2)
+
+    if data["roaming_days"] >= roaming_threshold:
         addons.append(
             (
                 "EU Roaming Plus",
@@ -25,10 +84,18 @@ def render_offer_report(_profile_text: str, data: dict[str, float]) -> str:
                 f"{data['roaming_days']:.0f} roaming days/month — extra EU data pool.",
             )
         )
-    if data["data_gb"] >= 45 and tariff[0] != "MagentaMobil XL":
+    if data["data_gb"] >= OFFER_DATA_BOOST_GB and tariff[0] != _TARIFF_XL[0]:
         addons.append(("Data Boost 5 GB", "€4.95", "Safety buffer if between tiers."))
-    if data["data_gb"] >= 25:
+    if data["data_gb"] >= OFFER_MULTISIM_DATA_GB:
         addons.append(("MultiSIM Tablet", "€4.95", "Second device on shared allowance."))
+    if scoring and scoring.primary_name == ARCHETYPE_CHATTERBOX:
+        addons.append(
+            (
+                "Flat Voice Comfort",
+                "€2.95",
+                "Unlimited domestic voice aligned with Chatterbox usage.",
+            )
+        )
 
     channel = (
         "**Postpaid (MagentaMobil)** — predictable bill, flat rates."
@@ -47,7 +114,7 @@ def render_offer_report(_profile_text: str, data: dict[str, float]) -> str:
     )
 
     return f"""### 1. Recommended main tariff
-**{tariff[0]}** — {tariff[2]}
+**{tariff[0]}** — {tariff[2]}{primary_note}
 
 ### 2. Recommended add-ons and options
 {addon_bullets}
@@ -70,6 +137,6 @@ def render_offer_report(_profile_text: str, data: dict[str, float]) -> str:
 
 ### 6. Next steps for the agent
 - Compare recommended tier with current contract in CRM.
-- If roaming days ≥ 8, confirm travel countries for EU vs world pack.
+- If roaming days ≥ {OFFER_ROAMING_ADDON_DAYS:.0f}, confirm travel countries for EU vs world pack.
 - Offer self-service tariff change in MeinMagenta app where eligible.
 """
