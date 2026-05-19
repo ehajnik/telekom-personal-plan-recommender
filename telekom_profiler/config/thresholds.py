@@ -31,10 +31,10 @@ UPSELL_SMS: Final[float] = 100.0
 
 # --- Offer tiers (domain/offers.py) ---
 
-OFFER_DATA_XL_GB: Final[float] = 70.0
-OFFER_DATA_L_GB: Final[float] = 35.0
-OFFER_DATA_M_GB: Final[float] = 15.0
-OFFER_DATA_PREPAID_MAX_GB: Final[float] = 8.0
+OFFER_DATA_XL_GB: Final[float] = 100.0
+OFFER_DATA_L_GB: Final[float] = 50.0
+OFFER_DATA_M_GB: Final[float] = 20.0
+OFFER_DATA_PREPAID_MAX_GB: Final[float] = 13.0
 OFFER_VOICE_PREPAID_MAX: Final[float] = 300.0
 OFFER_DATA_BOOST_GB: Final[float] = 45.0
 OFFER_MULTISIM_DATA_GB: Final[float] = 25.0

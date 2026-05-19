@@ -20,7 +20,7 @@ Profile produced by the usage analytics step:
 
 ## Input: Available consumer tariffs and options
 
-Current **private** portfolio (indicative; use only what appears here):
+Current **private** portfolio for **Telekom Deutschland** (indicative; use only what appears here):
 
 ```
 {tariffs_and_options}
@@ -53,7 +53,7 @@ Table using catalog prices (prefer **monthly brutto** as shown in DE consumer ma
 Flag introductory discounts, young tariffs, or hardware bundles only if in the catalog.
 
 ### 5. Important caveats
-Coverage limits, fair-use policies, roaming zone restrictions, speed caps after data allowance, cancellation terms—only facts supported by the catalog or profile.
+Coverage limits, **EU fair-use** on unlimited tiers, **Roaming-Ländergruppen** (EU/LG1 vs LG2/3), **Travel & Surf** pass requirements outside EU allowance, **64 kbit/s** throttling after included data, **24-month** binding vs **Flex** (no minimum)—only facts supported by the catalog or profile. Prices are **brutto (inkl. USt)**.
 
 ### 6. Next steps for the agent
 2–3 concrete actions (e.g. check current contract end date, offer app tariff change, schedule shop appointment for device upgrade).

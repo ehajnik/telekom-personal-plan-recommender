@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Consumer catalog aligned with **Telekom Deutschland** official price lists (MagentaMobil XS–XL, Prepaid, Young, PlusKarte, Travel & Surf); rule-based offers updated accordingly
+
 ### Added
 
 - ML PoC: synthetic 12-month usage generator, `subscriber_profiling.py` training pipeline

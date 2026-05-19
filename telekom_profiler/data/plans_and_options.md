@@ -1,46 +1,106 @@
-# Consumer mobile plans and options (PoC catalog)
+# Telekom Deutschland — private mobile catalog (PoC)
 
-Reference catalog for plan recommendations. Replace with live PCM/BSS feed in production.
+Reference for **B2C** plan recommendations in Germany. Prices are **brutto (inkl. USt)** from official Telekom price lists; verify in BSS/PCM before customer quotes.
 
-## Postpaid — MagentaMobil (SKU)
+| Source | Stand | URL |
+|--------|-------|-----|
+| MagentaMobil postpaid | 07.10.2025 | [Preisliste Telefonieren & Surfen (Privat)](https://www.telekom.de/agb/downloads/54137.pdf) |
+| MagentaMobil Prepaid | 29.04.2025 | [Preisliste MagentaMobil Prepaid](https://www.telekom.de/agb/downloads/54139.pdf) |
+| Roaming / Travel & Surf | 01.04.2025 | [Preisliste Mobilfunknutzung im Ausland (Privat)](https://www.telekom.de/agb/downloads/54138.pdf) |
 
-| SKU | Plan | Monthly (brutto) | Data (DE) | Voice/SMS | Roaming |
-|-----|------|------------------|-----------|-----------|---------|
-| MM-S-001 | **MagentaMobil S** | €39.95 | 10 GB | Flat DE | EU fair use |
-| MM-M-001 | **MagentaMobil M** | €49.95 | 25 GB | Flat DE | EU + 2 GB extra |
-| MM-L-001 | **MagentaMobil L** | €59.95 | 50 GB | Flat DE | EU + 6 GB extra |
-| MM-XL-001 | **MagentaMobil XL** | €69.95 | Unlimited* | Flat DE | EU + 12 GB extra |
+**Notes:** Postpaid typically **24-month** minimum term (Flex variants: no minimum, SIM-only). Prepaid billed in **4-week** cycles. Unlimited DE data (XL) subject to **FUP** and EU **fair-use** caps per price list annex.
 
-## Prepaid (SKU)
+---
 
-| SKU | Plan | Monthly (brutto) | Data | Voice |
+## Postpaid — MagentaMobil (Hauptvertrag, ohne Smartphone)
+
+| SKU | Plan | Monthly (brutto) | Data (DE) | Voice/SMS (DE) | Roaming (high level) |
+|-----|------|------------------|-----------|----------------|----------------------|
+| MM-XS-001 | **MagentaMobil XS** | €29.95 | 20 GB | Flat | Basic Roaming; EU fair use |
+| MM-S-001 | **MagentaMobil S** | €39.95 | 30 GB | Flat | Basic Roaming |
+| MM-M-001 | **MagentaMobil M** | €49.95 | 50 GB | Flat | Basic Roaming |
+| MM-L-001 | **MagentaMobil L** | €59.95 | 100 GB | Flat | Unbegrenzt Sprache DE → EU/CH/GB/TR; **+5 GB** Daten Roaming LG 2+3 |
+| MM-XL-001 | **MagentaMobil XL** | €84.95 | Unbegrenzt* | Flat | Wie L; **+5 GB** Roaming LG 2+3 |
+
+\*Nach Inklusivvolumen bzw. bei unbegrenzt: Drosselung **64/16 kbit/s** im Monat (6.4); XL zusätzlich Streaming-FUP (6.5).
+
+**Einmaliger Bereitstellungspreis:** €39,95 (alle Stufen). **Geschwindigkeit:** bis 300/50 Mbit/s (5G wo verfügbar). **HotSpot** an Telekom HotSpots inklusive.
+
+**MagentaMobil Flex** (XS–XL): gleiche Inklusivleistungen, **ohne Mindestlaufzeit**, nur **ohne Smartphone**.
+
+---
+
+## Postpaid — MagentaMobil Young (18–27 Jahre)
+
+| SKU | Plan | Monthly (brutto) | Data (DE) | Notes |
+|-----|------|------------------|-----------|-------|
+| MM-Y-S-001 | **MagentaMobil Young S** | €29.95 | 30 GB | Ab 28. Lebensjahr → Konditionen MagentaMobil S |
+| MM-Y-M-001 | **MagentaMobil Young M** | €39.95 | 100 GB | Keine PlusKarten buchbar |
+| MM-Y-L-001 | **MagentaMobil Young L** | €49.95 | 200 GB | Sprache EU/CH/GB/TR ab L |
+| MM-Y-XL-001 | **MagentaMobil Young XL** | €74.95 | Unbegrenzt* | **200 GB** nutzbares EU-Datenvolumen (Sonderregel) |
+
+---
+
+## Zweitvertrag — MagentaMobil PlusKarte
+
+| SKU | Plan | Monthly (brutto) | Data | Notes |
 |-----|------|------------------|------|-------|
-| MP-S-001 | **Prepaid S** | €9.95 | 3 GB | 9 ct/min |
-| MP-M-001 | **Prepaid M** | €14.95 | 8 GB | 9 ct/min |
-| MP-L-001 | **Prepaid L** | €19.95 | 15 GB | Flat DE |
+| MM-PLUS-001 | **MagentaMobil PlusKarte** | €19.95 | Wie Hauptvertrag | Bis 5× pro Hauptvertrag (XS–XL); Bereitstellung €19,95 |
+| MM-PLUSP-001 | **MagentaMobil PlusKarte+** | €9.95 | Wie Hauptvertrag | Nur als Drittvertrag nach PlusKarte; Bereitstellung €9,95 |
+| MM-PLUS-KT-001 | **PlusKarte Kids & Teens** | €9.95 | 5 GB (Kinder) / 10 GB (Teens) | Altersnachweis erforderlich |
 
-## Family and youth
+---
 
-| SKU | Plan | Notes |
-|-----|------|-------|
-| FAM-001 | **MagentaMobil Family M** | 2–5 lines, shared 40 GB pool |
-| FAM-002 | **MagentaMobil Family L** | 2–5 lines, shared 100 GB pool |
-| YTH-001 | **MagentaYoung M** | Age 18–27, 20 GB, social zero-rating |
+## Prepaid — MagentaMobil Prepaid (Grundpreis je **4 Wochen**)
 
-## Add-ons (SKU)
+| SKU | Plan | Price / 4 weeks | Data (DE) | Voice (DE) |
+|-----|------|-----------------|-----------|------------|
+| MP-PP-BASIC-001 | **Prepaid Basic** | €0.00 | Pay-per-use (DayFlat optional) | 0,09 €/min |
+| MP-PP-S-001 | **Prepaid S** | €4.95 | 1 GB | 50 Freimin. sonst 0,09 €/min |
+| MP-PP-M-001 | **Prepaid M** | €9.95 | 13 GB | Flat Telekom-Netz |
+| MP-PP-L-001 | **Prepaid L** | €14.95 | 25 GB | Flat |
+| MP-PP-XL-001 | **Prepaid XL** | €19.95 | 50 GB | Flat |
+| MP-PP-MAX-001 | **Prepaid Max** | €99.95 | Unbegrenzt | Flat |
 
-| SKU | Add-on | Monthly | Purpose |
-|-----|--------|---------|---------|
-| ADD-5GB-001 | Data Boost 5 GB | €4.95 | Extra data one month |
-| ADD-EU-001 | EU Roaming Plus | €5.95 | Frequent EU travellers |
-| ADD-WORLD-001 | World Roaming Pack | €14.95 | Selected non-EU zones |
-| ADD-MULTI-001 | MultiSIM Tablet | €4.95 | Second device |
-| ADD-WATCH-001 | Smartwatch / IoT SIM | €4.95 | Wearable line |
+**Datenmitnahme** (M–XL, Jahrestarif): ungenutztes Volumen in nächsten 4-Wochen-Zeitraum. **HotSpot Flat** ab M. Ab Inklusivvolumen: Drosselung 64/16 kbit/s.
+
+**Jahrestarif:** €99,95 einmalig, 13 GB/Monat (156 GB/Jahr), 100 € Startguthaben.
+
+---
+
+## Roaming & Ausland — Travel & Surf (Datenpässe)
+
+Buchung z. B. unter [pass.telekom.de](https://pass.telekom.de). In **EU + Roaming-LG 1** (inkl. CH, GB): Inlandspreis des Tarifs; danach **SpeedOn** / Reload — keine Passpflicht in LG 1.
+
+| SKU | Product | Price (brutto) | Typical volume | When to recommend |
+|-----|---------|----------------|----------------|-------------------|
+| ADD-TS-DAY-001 | **Travel & Surf DayPass** | ab ca. €5,95 | 1 Tag | Kurztrip LG 2/3 |
+| ADD-TS-2DAY-001 | **Travel & Surf 2-DayPass** | ab ca. €5,95 | 1+ GB (LG2) | Wochenendreise |
+| ADD-TS-WEEK-001 | **Travel & Surf WeekPass** | ab ca. €15,95 | 3 GB (LG2) | 1 Woche Ausland |
+| ADD-TS-4W-001 | **Travel & Surf 4-WeekPass** | ab ca. €49,95 | 20 GB (LG2) | Längerer Aufenthalt LG 2/3 |
+| ADD-TMB-001 | **Travel Mobil Basic** | €14,95 / Buchung | Voice+SMS+Daten Paket | Häufige Nicht-EU-Reisen (mit T&S) |
+
+Preise und GB je Land/LG: [ebs01.telekom.de/preisinformationen-ausland](https://ebs01.telekom.de/preisinformationen-ausland/) (tagesaktuell).
+
+**MagentaMobil L/XL:** zusätzlich **5 GB** Inklusivdaten Roaming LG 2+3 (Hauptkarte).
+
+---
+
+## Sonstige Optionen
+
+| SKU | Option | Price | Notes |
+|-----|--------|-------|-------|
+| ADD-M1-001 | **MagentaEINS Vorteil** | Rabatt | Kombi mit MagentaZuhause; z. B. mehr EU-Daten bei Young L |
+| ADD-SPEC-001 | **MagentaMobil Special** | €10.00 | 10 GB + 100 GB Datendepot (24 Mon.), MeinMagenta-Aktivierung |
+
+---
 
 ## Selection hints (PoC)
 
-- **Light / occasional** → Prepaid S/M or MagentaMobil S
-- **Streaming & data-heavy** → MagentaMobil L/XL or Family L
-- **Voice-centric** → MagentaMobil S/M with voice focus
-- **Roaming / travel-heavy** → MagentaMobil M/L + ADD-EU-001 or ADD-WORLD-001
-- **Underutilized / overspending** → Downgrade tier or Prepaid; review idle lines on FAM plans
+- **Light / occasional** → Prepaid S/M oder MagentaMobil XS/S
+- **Streaming & data-heavy** → MagentaMobil L/XL oder Prepaid XL/Max
+- **Voice-centric** → MagentaMobil S/M (Flat DE); bei hoher Auslandssprache → L (unbegrenzt EU/CH/GB/TR)
+- **Roaming / travel-heavy** → MagentaMobil L/XL + Travel & Surf Pass; prüfen LG 1 vs 2/3
+- **Underutilized / overspending** → Downgrade Stufe oder Prepaid; **Flex** ohne Bindung
+- **Mehrere Geräte** → PlusKarte / PlusKarte+ statt fiktives „Family pool“
+- **18–27** → MagentaMobil Young (höheres Datenvolumen, niedrigerer Grundpreis)
