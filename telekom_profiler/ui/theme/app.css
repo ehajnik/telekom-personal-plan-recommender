@@ -6,6 +6,7 @@
   --dt-radius: 8px;
   --dt-gap: 1rem;
   --dt-pad: 1.125rem;
+  --dt-slider-gap: 0.45rem;
   --dt-shell-max: 68rem;
   --dt-border: #d8d8dc;
   --dt-surface: #ffffff;
@@ -174,12 +175,12 @@ footer {
 .gradio-container .gr-column.dt-feature-col {
   display: flex !important;
   flex-direction: column !important;
-  gap: 0 !important;
+  gap: var(--dt-slider-gap) !important;
 }
 
 .gradio-container .block.dt-section-title {
-  margin: 0 0 0.75rem !important;
-  padding: 0 0 0.5rem !important;
+  margin: 0 0 0.5rem !important;
+  padding: 0 0 0.4rem !important;
   border: none !important;
   border-bottom: 1px solid var(--dt-border) !important;
   background: transparent !important;
@@ -196,8 +197,8 @@ footer {
 /* ── Individual sliders (bordered, spaced) ────────────────────────────────── */
 
 .gradio-container .block.dt-slider-item {
-  margin: 0 0 0.75rem 0 !important;
-  padding: 0.75rem 0.875rem 0.875rem !important;
+  margin: 0 !important;
+  padding: 0.5rem 0.65rem 0.55rem !important;
   background: var(--dt-surface) !important;
   border: 1px solid var(--dt-border) !important;
   border-radius: 6px !important;
@@ -205,14 +206,10 @@ footer {
   box-sizing: border-box !important;
 }
 
-.gradio-container .dt-feature-col .block.dt-slider-item:last-of-type {
-  margin-bottom: 0 !important;
-}
-
 .gradio-container .block.dt-slider-item > label,
 .gradio-container .block.dt-slider-item label {
   display: block !important;
-  margin: 0 0 0.625rem 0 !important;
+  margin: 0 0 0.4rem 0 !important;
   padding: 0 !important;
   font-size: 0.8125rem !important;
   font-weight: 500 !important;
@@ -238,13 +235,13 @@ footer {
   border-radius: 4px !important;
   color: var(--dt-text) !important;
   font-size: 0.8125rem !important;
-  margin-bottom: 0.5rem !important;
+  margin-bottom: 0.35rem !important;
 }
 
 .gradio-container .block.dt-slider-item input[type="range"] {
   display: block !important;
   width: 100% !important;
-  margin: 0.25rem 0 0 !important;
+  margin: 0.15rem 0 0 !important;
   accent-color: var(--dt-magenta) !important;
   cursor: pointer !important;
   height: 6px !important;
@@ -283,11 +280,10 @@ footer {
   border: 2px solid #fff !important;
 }
 
-/* ── Info + template panels ───────────────────────────────────────────────── */
+/* ── Info strip ───────────────────────────────────────────────────────────── */
 
-.gradio-container .block.dt-inference-mode,
-.gradio-container .gr-row.dt-template-row .block {
-  padding: 0.75rem var(--dt-pad) !important;
+.gradio-container .block.dt-inference-mode {
+  padding: 0.65rem var(--dt-pad) !important;
   background: var(--dt-surface) !important;
   border: 1px solid var(--dt-border) !important;
   border-radius: var(--dt-radius) !important;
@@ -301,18 +297,71 @@ footer {
   color: var(--dt-muted) !important;
 }
 
-.gradio-container .gr-row.dt-template-row label {
+/* ── Profile template dropdown (Telekom accent) ─────────────────────────── */
+
+.gradio-container .block.dt-template-dropdown {
+  padding: 0.65rem 0.875rem !important;
+  background: var(--dt-surface) !important;
+  border: 1px solid var(--dt-border) !important;
+  border-radius: var(--dt-radius) !important;
+  box-shadow: none !important;
+}
+
+.gradio-container .block.dt-template-dropdown > label,
+.gradio-container .block.dt-template-dropdown label {
   font-size: 0.8125rem !important;
   font-weight: 600 !important;
   color: var(--dt-text) !important;
+  margin-bottom: 0.4rem !important;
 }
 
-.gradio-container .gr-row.dt-template-row input,
-.gradio-container .gr-row.dt-template-row .wrap,
-.gradio-container .gr-row.dt-template-row .single-select {
-  background: var(--dt-page) !important;
-  border-color: var(--dt-border) !important;
+.gradio-container .block.dt-template-dropdown .wrap,
+.gradio-container .block.dt-template-dropdown .single-select,
+.gradio-container .block.dt-template-dropdown .multiselect {
+  background: var(--dt-surface) !important;
+  border: 1px solid var(--dt-border) !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.gradio-container .block.dt-template-dropdown .wrap:hover,
+.gradio-container .block.dt-template-dropdown .wrap:focus-within {
+  border-color: var(--dt-magenta) !important;
+  box-shadow: 0 0 0 1px var(--dt-magenta) !important;
+}
+
+.gradio-container .block.dt-template-dropdown input,
+.gradio-container .block.dt-template-dropdown select,
+.gradio-container .block.dt-template-dropdown textarea {
+  background: var(--dt-surface) !important;
   color: var(--dt-text) !important;
+  border: none !important;
+  font-size: 0.875rem !important;
+}
+
+.gradio-container .block.dt-template-dropdown .icon-wrap,
+.gradio-container .block.dt-template-dropdown button {
+  color: var(--dt-magenta) !important;
+}
+
+.gradio-container .block.dt-template-dropdown [role="listbox"],
+.gradio-container .block.dt-template-dropdown ul.options {
+  background: var(--dt-surface) !important;
+  border: 1px solid var(--dt-border) !important;
+  border-radius: 6px !important;
+}
+
+.gradio-container .block.dt-template-dropdown [role="option"]:hover,
+.gradio-container .block.dt-template-dropdown li.selected {
+  background: #fdf0f7 !important;
+  color: var(--dt-magenta) !important;
+}
+
+.dark .gradio-container .block.dt-template-dropdown [role="option"]:hover,
+.dark .gradio-container .block.dt-template-dropdown li.selected {
+  background: #3d1529 !important;
+  color: #f48bbf !important;
 }
 
 /* ── Results ──────────────────────────────────────────────────────────────── */

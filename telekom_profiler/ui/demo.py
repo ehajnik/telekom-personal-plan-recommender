@@ -148,6 +148,7 @@ def create_demo() -> gr.Blocks:
                     choices=template_choices,
                     value=CUSTOM_PROFILE,
                     label="Profile template",
+                    elem_classes=["dt-template-dropdown"],
                 )
 
             with gr.Row(elem_classes=["dt-grid-row", "dt-sliders-row"]):
