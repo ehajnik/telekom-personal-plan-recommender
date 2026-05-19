@@ -45,7 +45,14 @@ def _header_html() -> str:
 
 def _make_slider(spec: SliderSpec) -> gr.Slider:
     label, minimum, maximum, default = spec
-    return gr.Slider(minimum, maximum, value=default, label=label, step=1)
+    return gr.Slider(
+        minimum,
+        maximum,
+        value=default,
+        label=label,
+        step=1,
+        elem_classes=["dt-slider-item"],
+    )
 
 
 def _slider_data(*values: float) -> CustomerUsage:
