@@ -1,0 +1,275 @@
+/* Telekom brand — Gradio 6 light/dark (.dark on <body>) */
+
+/* ── Page ─────────────────────────────────────────────────────────────────── */
+
+.gradio-container {
+  font-family: "TeleNeo Office", Helvetica, Arial, sans-serif !important;
+  max-width: 72rem !important;
+  margin: 0 auto !important;
+  padding: 0.75rem 1.25rem 2rem !important;
+}
+
+footer {
+  display: none !important;
+}
+
+/* ── Two-column grids (sliders + results) ─────────────────────────────────── */
+
+.gradio-container .gr-row.dt-sliders-row,
+.gradio-container .gr-row.dt-results-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 1.25rem !important;
+  width: 100% !important;
+  align-items: start !important;
+}
+
+.gradio-container .gr-row.dt-sliders-row > .gr-column,
+.gradio-container .gr-row.dt-results-row > .gr-column {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Feature / result columns: vertical stack with even spacing */
+.gradio-container .gr-column.dt-feature-col,
+.gradio-container .gr-column.dt-result-col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.65rem !important;
+  min-width: 0 !important;
+}
+
+/* ── Action buttons ───────────────────────────────────────────────────────── */
+
+.gradio-container .gr-row.dt-btn-row {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  width: 100% !important;
+  margin: 0.25rem 0 1rem !important;
+}
+
+.gradio-container .gr-row.dt-btn-row > .gr-column,
+.gradio-container .gr-row.dt-btn-row > .block {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+}
+
+.gradio-container .gr-row.dt-btn-row button {
+  min-width: 10rem !important;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.gradio-container .gr-row.dt-header-row {
+  width: 100% !important;
+  margin-bottom: 0 !important;
+}
+
+.gradio-container .gr-row.dt-header-row > .gr-column,
+.gradio-container .gr-row.dt-header-row > .block {
+  flex: 1 1 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.gradio-container .block.dt-header-block {
+  width: 100% !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.gradio-container .block.dt-header-block .html-component {
+  width: 100% !important;
+  padding: 0 !important;
+}
+
+#dt-header {
+  width: 100%;
+  box-sizing: border-box;
+  background: #e20074;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-radius: 6px;
+}
+
+#dt-header .dt-logo {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+#dt-header .dt-text h1 {
+  color: #fff !important;
+  margin: 0 !important;
+  font-size: 1.35rem !important;
+  font-weight: 700 !important;
+  border: none !important;
+}
+
+#dt-header .dt-text p {
+  color: rgba(255, 255, 255, 0.9) !important;
+  margin: 4px 0 0 !important;
+  font-size: 0.85rem !important;
+}
+
+/* ── Profile template row ─────────────────────────────────────────────────── */
+
+.gradio-container .gr-row.dt-action-bar {
+  width: 100% !important;
+  margin: 1rem 0 !important;
+}
+
+.gradio-container .gr-row.dt-action-bar > .gr-column {
+  flex: 1 1 auto !important;
+  max-width: 22rem !important;
+}
+
+/* ── Section titles (h3) — uniform spacing everywhere ─────────────────────── */
+
+.gradio-container .block.dt-section-title {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.gradio-container .block.dt-section-title .md,
+.gradio-container .block.dt-section-title .prose {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.gradio-container .block.dt-section-title h3 {
+  color: var(--body-text-color) !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+  margin: 0 0 0.4rem !important;
+  padding: 0 !important;
+}
+
+.gradio-container .block.dt-section-title p {
+  margin: 0 0 0.5rem !important;
+  padding: 0 !important;
+  font-size: 0.8rem !important;
+  line-height: 1.35 !important;
+  color: var(--body-text-color-subdued, var(--body-text-color)) !important;
+}
+
+/* Result column: tight gap between title and scroll box */
+.gradio-container .gr-column.dt-result-col > .block.dt-section-title {
+  margin-bottom: 0 !important;
+}
+
+.gradio-container .gr-column.dt-result-col > .block.dt-section-title h3 {
+  margin-bottom: 0.35rem !important;
+}
+
+/* ── Results heading (h2) ─────────────────────────────────────────────────── */
+
+.gradio-container .block.dt-results-heading {
+  margin: 0.75rem 0 0.65rem !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
+
+.gradio-container .block.dt-results-heading h2 {
+  color: #e20074 !important;
+  font-size: 1.1rem !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid #e20074 !important;
+  padding-bottom: 4px !important;
+  margin: 0 !important;
+}
+
+/* ── Result panels (equal width, fixed scroll area) ───────────────────────── */
+
+.gradio-container .block.dt-result-body {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 14rem !important;
+  height: 24rem !important;
+  max-height: 24rem !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 0.75rem 1rem !important;
+  border: 1px solid #e5e5e5 !important;
+  border-radius: 8px !important;
+  background: #fafafa !important;
+}
+
+.dark .gradio-container .block.dt-result-body {
+  border-color: #404040 !important;
+  background: #262626 !important;
+}
+
+.gradio-container .block.dt-result-body > .gap,
+.gradio-container .block.dt-result-body > div {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+.gradio-container .block.dt-result-body .md,
+.gradio-container .block.dt-result-body .prose {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+.gradio-container .block.dt-result-body table {
+  display: block !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+}
+
+/* Markdown inside result panels — don't inherit magenta h3 from section rules */
+.gradio-container .block.dt-result-body h3 {
+  font-size: 0.9rem !important;
+  margin: 0.75rem 0 0.35rem !important;
+  color: var(--body-text-color) !important;
+}
+
+.gradio-container .prose strong,
+.gradio-container .md strong {
+  color: #e20074 !important;
+}
+
+.dark .gradio-container .prose p,
+.dark .gradio-container .prose li,
+.dark .gradio-container .md p {
+  color: var(--body-text-color) !important;
+}
+
+/* ── Narrow screens: stack columns ────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .gradio-container .gr-row.dt-sliders-row,
+  .gradio-container .gr-row.dt-results-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .gradio-container .block.dt-result-body {
+    height: 18rem !important;
+    max-height: 18rem !important;
+  }
+}

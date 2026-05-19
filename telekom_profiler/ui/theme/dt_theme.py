@@ -1,22 +1,11 @@
-"""
-Deutsche Telekom Magenta brand theme for Gradio (light + dark).
-
-Exports:
-    DT_THEME — Gradio ``Theme`` with Telekom palette (light + dark tokens).
-    DT_CSS   — Contents of ``styles/app.css`` for component-level overrides.
-
-Usage::
-
-    from styles.dt_theme import DT_CSS, DT_THEME
-
-    demo.launch(theme=DT_THEME, css=DT_CSS)
-"""
+"""Deutsche Telekom Magenta Gradio theme (light + dark)."""
 
 from pathlib import Path
 
 import gradio as gr
 
-# Telekom palette
+from telekom_profiler.paths import THEME_DIR
+
 MAGENTA = "#E20074"
 MAGENTA_HOVER = "#C0005F"
 MAGENTA_LIGHT = "#F48BBF"
@@ -43,7 +32,7 @@ DT_MAGENTA = gr.themes.Color(
     c950="#650030",
 )
 
-DT_CSS = (Path(__file__).parent / "app.css").read_text(encoding="utf-8")
+DT_CSS = (THEME_DIR / "app.css").read_text(encoding="utf-8")
 
 DT_THEME = (
     gr.themes.Base(
@@ -56,7 +45,6 @@ DT_THEME = (
         ),
     )
     .set(
-        # ── Light mode (Telekom white UI) ────────────────────────────────────
         body_background_fill=WHITE,
         body_text_color=TEXT,
         body_text_color_subdued=TEXT_MUTED,
@@ -83,7 +71,6 @@ DT_THEME = (
         table_border_color=BORDER,
         table_even_background_fill=WHITE,
         table_odd_background_fill=LIGHT_GRAY,
-        # ── Dark mode (Telekom dark + magenta accents) ─────────────────────
         body_background_fill_dark=DARK,
         body_text_color_dark=LIGHT_GRAY,
         body_text_color_subdued_dark=TEXT_MUTED,
