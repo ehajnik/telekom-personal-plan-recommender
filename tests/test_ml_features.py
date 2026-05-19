@@ -15,6 +15,50 @@ from telekom_profiler.ml.features import (
 from telekom_profiler.ml.schema import CLUSTER_FEATURES, TREND_COLS
 
 
+class ProfileCharacteristicsTests(unittest.TestCase):
+    def test_document_schema(self) -> None:
+        from telekom_profiler.ml.profile_characteristics import (
+            build_profile_characteristics_document,
+            build_profile_entry,
+            load_profiles_document,
+        )
+
+        row = {
+            "data_gb_mean": 40.0,
+            "voice_min_mean": 200.0,
+            "sms_count_mean": 30.0,
+            "roaming_days_mean": 5.0,
+            "countries_visited_mean": 3.0,
+            "lines_total_mean": 2.0,
+            "lines_active_mean": 1.5,
+            "active_line_ratio": 0.75,
+            "roaming_days_ratio": 0.15,
+            "roaming_intensity": 0.45,
+            "data_per_active_line": 26.0,
+            "pct_idle_lines": 0.25,
+            "session_intensity": 1200.0,
+            "evening_peak_share": 0.4,
+            "weekend_share": 0.35,
+            "plan_tier_mean": 2.0,
+            "plan_usage_gap": 1.0,
+            "avg_session_mb_mean": 30.0,
+            "active_days_mean": 20.0,
+            "data_trend": 0.1,
+            "voice_trend": -0.05,
+            "roaming_trend": 0.02,
+            "lines_trend": 0.0,
+        }
+        entry = build_profile_entry("Streaming & data-heavy", 2, row)
+        doc = build_profile_characteristics_document({"Streaming & data-heavy": entry})
+        self.assertIn("profiles", doc)
+        self.assertIn("overlays", doc)
+        self.assertIsInstance(entry["signature"], list)
+        self.assertIn("avg_monthly_data_gb", entry["centroid"])
+        self.assertIn("data_gb", entry["slider_defaults"])
+        loaded = load_profiles_document(doc)
+        self.assertEqual(loaded["profiles"]["Streaming & data-heavy"]["cluster_idx"], 2)
+
+
 class MlFeatureTests(unittest.TestCase):
     def test_cluster_features_exclude_trends(self) -> None:
         for col in TREND_COLS:

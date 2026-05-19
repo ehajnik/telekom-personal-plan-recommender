@@ -83,8 +83,10 @@ def profile_template_choices() -> list[str]:
     path = ARTIFACTS_DIR / "profile_characteristics.json"
     if path.is_file():
         try:
-            chars = json.loads(path.read_text(encoding="utf-8"))
-            labels = sorted(chars.keys())
+            from telekom_profiler.ml.profile_characteristics import load_profiles_document
+
+            doc = load_profiles_document(json.loads(path.read_text(encoding="utf-8")))
+            labels = sorted(doc.get("profiles", {}).keys())
             return [CUSTOM_PROFILE, *labels]
         except (json.JSONDecodeError, OSError):
             pass

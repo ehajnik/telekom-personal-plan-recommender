@@ -14,17 +14,15 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 
-from telekom_profiler.ml.features import (
-    build_subscriber_features,
-    feature_matrix,
-    load_usage_panel,
-    metrics_snapshot,
-)
+from telekom_profiler.ml.features import build_subscriber_features, feature_matrix, load_usage_panel
 from telekom_profiler.ml.overlays import compute_ml_overlays
+from telekom_profiler.ml.profile_characteristics import (
+    build_profile_characteristics_document,
+    build_profile_entry,
+)
 from telekom_profiler.ml.schema import (
     CLUSTER_FEATURES,
     LABEL_DISCRIMINATORS,
-    PROFILE_EMOJI,
     PROFILE_LABELS,
     SUBSCRIBER_ID_COL,
 )
@@ -93,21 +91,6 @@ def _confidence(primary_d: float, secondary_d: float | None) -> str:
     return "Low"
 
 
-def _slider_defaults_from_centroid(
-    centroid: dict[str, float],
-    label: str,
-) -> dict[str, int]:
-    """Map centroid to UI slider defaults."""
-    return {
-        "data_gb": int(min(150, max(0, round(centroid.get("data_gb_mean", 30))))),
-        "voice_min": int(min(3000, max(0, round(centroid.get("voice_min_mean", 400))))),
-        "sms_count": int(min(500, max(0, round(centroid.get("sms_count_mean", 50))))),
-        "roaming_days": int(min(30, max(0, round(centroid.get("roaming_days_mean", 2))))),
-        "data_trend": int(min(50, max(-50, round(centroid.get("data_trend", 0) * 50)))),
-        "voice_trend": int(min(50, max(-50, round(centroid.get("voice_trend", 0) * 50)))),
-    }
-
-
 def train_and_save(
     input_csv: Path,
     artifacts_dir: Path,
@@ -149,26 +132,17 @@ def train_and_save(
         row = {CLUSTER_FEATURES[j]: float(centroids_unscaled[i, j]) for j in range(len(CLUSTER_FEATURES))}
         centroid_rows.append(row)
 
-    profile_characteristics: dict[str, Any] = {}
+    profiles_by_label: dict[str, Any] = {}
     for cluster_idx, label in label_map.items():
         row = centroid_rows[cluster_idx]
         row_with_trends = {**row}
-        # Use cluster mean trends from members
         members = features_df[cluster_indices == cluster_idx]
         if len(members):
             for tc in ("data_trend", "voice_trend", "roaming_trend", "lines_trend"):
                 row_with_trends[tc] = float(members[tc].mean())
-        profile_characteristics[label] = {
-            "cluster_idx": cluster_idx,
-            "emoji": PROFILE_EMOJI.get(label, "📱"),
-            "centroid_summary": metrics_snapshot(row),
-            "slider_defaults": _slider_defaults_from_centroid(row_with_trends, label),
-            "signature": (
-                f"Typical: {row['data_gb_mean']:.0f} GB data, "
-                f"{row['voice_min_mean']:.0f} voice min, "
-                f"{row['roaming_days_mean']:.1f} roaming days."
-            ),
-        }
+        profiles_by_label[label] = build_profile_entry(label, cluster_idx, row_with_trends)
+
+    profile_characteristics = build_profile_characteristics_document(profiles_by_label)
 
     # Distances in scaled space to each centroid
     map_rows: list[dict[str, Any]] = []

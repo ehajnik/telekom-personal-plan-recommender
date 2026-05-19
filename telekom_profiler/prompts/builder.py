@@ -68,9 +68,21 @@ def build_profile_prompt(
         compute_archetype_distances(data)
     )
     overlays = list(scoring.overlays) if scoring.overlays else compute_overlays(data)
-    chars_path = DATA_DIR / "consumer_archetypes.md"
-    if not chars_path.is_file():
-        chars_path = DATA_DIR / "plans_and_options.md"
+    profile_chars_text = _read_text(str(DATA_DIR / "consumer_archetypes.md"))
+    try:
+        from telekom_profiler.config.profiler_settings import artifacts_available
+        from telekom_profiler.ml.profile_characteristics import (
+            format_profiles_for_prompt,
+            read_profile_characteristics,
+        )
+        from telekom_profiler.paths import ARTIFACTS_DIR
+
+        if artifacts_available():
+            doc = read_profile_characteristics(str(ARTIFACTS_DIR / "profile_characteristics.json"))
+            profile_chars_text = format_profiles_for_prompt(doc)
+    except (ImportError, OSError, FileNotFoundError):
+        pass
+
     return _fill_template(
         _read_text(str(PROMPT_TEMPLATES_DIR / "run_profile.md")),
         {
@@ -78,7 +90,7 @@ def build_profile_prompt(
             "centroid_distances": format_centroid_distances(distances),
             "distance_table": format_distance_table(scoring),
             "overlay_signals": format_overlay_signals(overlays),
-            "profile_characteristics": _read_text(str(chars_path)),
+            "profile_characteristics": profile_chars_text,
             "required_primary": scoring.primary_name,
             "required_confidence": scoring.confidence,
             "metrics_block": metrics_block or "_No extended metrics._",

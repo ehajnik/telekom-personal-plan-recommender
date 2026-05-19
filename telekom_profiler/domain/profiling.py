@@ -125,10 +125,35 @@ _ML_PROFILE_CONTEXT: dict[str, str] = {
 }
 
 
+def _format_centroid_table(centroid: dict[str, float]) -> str:
+    rows = [
+        ("Lines (total / active)", f"{centroid.get('lines_total', 0):.0f} / {centroid.get('lines_active', 0):.0f}"),
+        ("Active line ratio", f"{centroid.get('active_line_ratio', 0):.3f}"),
+        ("Data (GB / month)", f"{centroid.get('avg_monthly_data_gb', 0):.1f}"),
+        ("Voice (min / month)", f"{centroid.get('avg_monthly_voice_min', 0):.0f}"),
+        ("SMS / month", f"{centroid.get('avg_monthly_sms', 0):.0f}"),
+        ("Idle line share", f"{centroid.get('pct_idle_lines', 0):.1%}"),
+        ("Roaming days / month", f"{centroid.get('avg_roaming_days', 0):.1f}"),
+        ("Roaming days ratio", f"{centroid.get('roaming_days_ratio', 0):.3f}"),
+        ("Countries visited", f"{centroid.get('countries_visited', 0):.1f}"),
+        ("Roaming intensity", f"{centroid.get('roaming_intensity', 0):.2f}"),
+        ("Session intensity", f"{centroid.get('session_intensity', 0):.0f}"),
+        ("Data per active line (GB)", f"{centroid.get('data_per_active_line', 0):.1f}"),
+        ("Plan tier / usage gap", f"{centroid.get('plan_tier', 0):.1f} / {centroid.get('plan_usage_gap', 0):.2f}"),
+        ("Data trend / month", f"{centroid.get('mean_data_trend_per_month', 0):+.1f}"),
+        ("Voice trend / month", f"{centroid.get('mean_voice_trend_per_month', 0):+.1f}"),
+        ("Roaming trend / month", f"{centroid.get('mean_roaming_trend_per_month', 0):+.2f}"),
+    ]
+    body = "\n".join(f"| {name} | {val} |" for name, val in rows)
+    return f"| Metric | Value |\n|--------|-------|\n{body}"
+
+
 def render_ml_profile_report(
     primary_label: str,
     metrics: dict[str, float],
     overlays: tuple[str, ...] | list[str],
+    *,
+    profile: dict | None = None,
 ) -> str:
     """Profile markdown with concrete 12-month metrics (ML path)."""
     overlay_text = (
@@ -136,33 +161,35 @@ def render_ml_profile_report(
         if overlays
         else "*No overlays active — clear dominant profile.*"
     )
-    ctx = _ML_PROFILE_CONTEXT.get(primary_label, "Consumer mobile subscriber.")
-    return f"""### 1. Primary usage profile
-**{primary_label}** (K-Means segmentation on 12-month baseline features).
+    prof = profile or {}
+    emoji = prof.get("emoji", "")
+    signatures = prof.get("signature") or []
+    examples = prof.get("examples") or []
+    centroid = prof.get("centroid") or metrics
 
-### 2. Overlay characteristics
+    sig_block = "\n".join(f"- {s}" for s in signatures) if signatures else f"- {_ML_PROFILE_CONTEXT.get(primary_label, '')}"
+    ex_block = "\n".join(f"- {e}" for e in examples) if examples else "- —"
+    title = f"{emoji} {primary_label}".strip() if emoji else primary_label
+
+    return f"""### 1. Primary usage profile
+**{title}** (K-Means segmentation on 12-month baseline features).
+
+### 2. Profile signature
+{sig_block}
+
+### 3. Overlay characteristics
 {overlay_text}
 
-### 3. Measured usage (12-month averages)
-| Metric | Value |
-|--------|-------|
-| Data | **{metrics.get("avg_monthly_data_gb", 0):.1f} GB** / month |
-| Voice | **{metrics.get("avg_monthly_voice_min", 0):.0f} min** / month |
-| SMS | **{metrics.get("avg_monthly_sms", 0):.0f}** / month |
-| Roaming days | **{metrics.get("avg_roaming_days", 0):.1f}** |
-| Countries visited | **{metrics.get("countries_visited", 0):.1f}** |
-| Active line ratio | **{metrics.get("active_line_ratio", 0):.2f}** |
-| Idle line share | **{metrics.get("pct_idle_lines", 0):.0%}** |
-| Session intensity | **{metrics.get("session_intensity", 0):.0f}** |
+### 4. Example customer situations
+{ex_block}
 
-### 4. Customer context
-- {ctx}
-- Segmentation based on baseline behaviour; trends shown as overlays only.
+### 5. Centroid metrics (12-month baseline)
+{_format_centroid_table(centroid)}
 
-### 5. Pain points & risks
-- Plan–usage mismatch if current tier diverges from metrics above.
+### 6. Pain points & risks
+- Plan–usage mismatch if current tier diverges from centroid metrics.
 - Review roaming packs if travel-heavy overlay is active.
 
-### 6. Upsell & retention signals
+### 7. Upsell & retention signals
 - Align catalog SKU to primary profile and active overlays (see offer step).
 """

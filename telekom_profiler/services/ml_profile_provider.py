@@ -6,6 +6,8 @@ from telekom_profiler.domain.models import CustomerUsage, ProfileResult
 from telekom_profiler.domain.profiling import render_ml_profile_report
 from telekom_profiler.ml.features import features_from_usage
 from telekom_profiler.ml.inference import (
+    get_profile,
+    load_artifacts,
     predict_from_features,
     predict_subscriber,
     scoring_result_from_prediction,
@@ -26,7 +28,14 @@ class MlProfileProvider:
             pred = predict_from_features(features_from_usage(usage))
 
         scoring = scoring_result_from_prediction(pred)
-        markdown = render_ml_profile_report(pred.primary_label, pred.metrics, pred.overlays)
+        bundle = load_artifacts()
+        profile = get_profile(bundle.profile_characteristics, pred.primary_label)
+        markdown = render_ml_profile_report(
+            pred.primary_label,
+            pred.metrics,
+            pred.overlays,
+            profile=profile,
+        )
         return ProfileResult(
             markdown=markdown,
             usage=usage,

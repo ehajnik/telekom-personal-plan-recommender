@@ -78,8 +78,13 @@ def load_profile_preset(profile_name: str, *current_values: float) -> list[float
     chars_path = ARTIFACTS_DIR / "profile_characteristics.json"
     if chars_path.is_file():
         try:
-            chars = json.loads(chars_path.read_text(encoding="utf-8"))
-            preset = chars.get(profile_name, {}).get("slider_defaults")
+            from telekom_profiler.ml.profile_characteristics import (
+                get_profile,
+                load_profiles_document,
+            )
+
+            doc = load_profiles_document(json.loads(chars_path.read_text(encoding="utf-8")))
+            preset = get_profile(doc, profile_name).get("slider_defaults")
             if preset:
                 return [
                     float(preset.get(key, current))

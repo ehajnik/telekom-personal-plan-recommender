@@ -17,8 +17,14 @@ from sklearn.preprocessing import StandardScaler
 
 from telekom_profiler.config.profiler_settings import artifacts_available as _settings_artifacts
 from telekom_profiler.domain.models import ArchetypeScore, CustomerUsage, ScoringResult
-from telekom_profiler.ml.features import features_from_usage, metrics_snapshot
+from telekom_profiler.ml.features import features_from_usage
 from telekom_profiler.ml.overlays import compute_ml_overlays
+from telekom_profiler.ml.profile_characteristics import (
+    build_centroid,
+    get_profile,
+    load_profiles_document,
+    metrics_from_centroid,
+)
 from telekom_profiler.ml.schema import CLUSTER_FEATURES, SUBSCRIBER_ID_COL
 from telekom_profiler.paths import ARTIFACTS_DIR
 
@@ -63,8 +69,8 @@ def load_artifacts(artifacts_dir: str | None = None) -> _ArtifactBundle:
 
     label_raw = json.loads((base / "label_map.json").read_text(encoding="utf-8"))
     label_map = {int(k): v for k, v in label_raw.items()}
-    profile_chars = json.loads(
-        (base / "profile_characteristics.json").read_text(encoding="utf-8")
+    profile_chars = load_profiles_document(
+        json.loads((base / "profile_characteristics.json").read_text(encoding="utf-8"))
     )
     cluster_features = tuple(
         json.loads((base / "cluster_features.json").read_text(encoding="utf-8"))
@@ -134,6 +140,7 @@ def predict_from_features(
             secondary_distance=secondary_dist,
         )
     )
+    centroid = build_centroid(feature_row)
     return MlPrediction(
         subscriber_id=subscriber_id,
         primary_label=label,
@@ -142,7 +149,7 @@ def predict_from_features(
         overlays=overlays,
         confidence=_confidence(primary_dist, secondary_dist),
         feature_row=feature_row,
-        metrics=metrics_snapshot(feature_row),
+        metrics=metrics_from_centroid(centroid),
     )
 
 
@@ -179,7 +186,7 @@ def predict_subscriber(
 
 def _defaults_for_subscriber(map_row: pd.Series, bundle: _ArtifactBundle) -> CustomerUsage:
     label = str(map_row["cluster_label"])
-    chars = bundle.profile_characteristics.get(label, {})
+    chars = get_profile(bundle.profile_characteristics, label)
     sliders = chars.get("slider_defaults", {})
     return CustomerUsage.from_mapping(
         {
@@ -220,7 +227,7 @@ def get_slider_defaults_for_subscriber(
     if match.empty:
         return {}
     label = str(match.iloc[0]["cluster_label"])
-    chars = bundle.profile_characteristics.get(label, {})
+    chars = get_profile(bundle.profile_characteristics, label)
     sliders = dict(chars.get("slider_defaults", {}))
     row = match.iloc[0]
     sliders["data_trend"] = int(min(50, max(-50, round(float(row.get("data_trend", 0)) * 50))))
