@@ -19,6 +19,13 @@ dev = [
   "ruff>=0.8.0",
   "mypy>=1.13.0",
 ]
+ml = [
+  "pandas>=2.0.0,<3",
+  "numpy>=1.24.0,<3",
+  "scikit-learn>=1.3.0,<2",
+  "scipy>=1.11.0,<2",
+  "joblib>=1.3.0,<2",
+]
 
 [project.scripts]
 telekom-profiler = "telekom_profiler:main"
@@ -45,6 +52,10 @@ select = ["E", "F", "I", "UP"]
 [tool.ruff.lint.per-file-ignores]
 "telekom_profiler/domain/profiling.py" = ["E501"]
 "telekom_profiler/domain/offers.py" = ["E501"]
+"telekom_profiler/ml/train.py" = ["E501"]
+"telekom_profiler/ml/inference.py" = ["E501"]
+"telekom_profiler/ui/demo.py" = ["E501"]
+"scripts/*.py" = ["E402", "E501"]
 
 [tool.mypy]
 python_version = "3.10"
