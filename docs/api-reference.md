@@ -1,46 +1,76 @@
 # API reference
 
-Public Python API for programmatic use and integration tests.
+Stable Python surface for programmatic integration, automated tests, and headless services. Internal UI code may import additional modules; integrators should depend only on symbols listed here unless coordinated with the owning team.
 
-## Package entry
+---
+
+## 1. Package entry
 
 ```python
 import telekom_profiler
-telekom_profiler.__version__  # "0.1.0"
-telekom_profiler.create_demo()  # Gradio Blocks
-telekom_profiler.main()         # launch UI
+
+telekom_profiler.__version__   # e.g. "0.1.0"
+telekom_profiler.create_demo() # gradio.Blocks
+telekom_profiler.main()        # configure logging, reset engine, launch UI
 ```
 
-## Services (`telekom_profiler.services`)
+---
 
-### Functions
+## 2. Services (`telekom_profiler.services`)
+
+### 2.1 Functions
 
 #### `profile_customer(data, *, engine=None) -> str`
 
-Returns profile markdown. Uses Ollama when enabled.
+Returns profile markdown. Delegates to `ProfilerEngine.profile()`. Uses Ollama when enabled.
+
+For scoring metadata and `source`, use `profile_customer_structured`.
 
 #### `profile_customer_structured(data, *, engine=None) -> ProfileResult`
 
-Returns typed result including `scoring` and `source`.
+**Preferred integration entry.** Returns typed `ProfileResult` including `scoring` and `source`.
 
-#### `recommend_offer(profile_text, data, *, engine=None) -> str`
+```python
+from telekom_profiler.services import profile_customer_structured
 
-Returns offer markdown. `profile_text` must not be a placeholder (`_` prefix).
+result = profile_customer_structured({"data_gb": 40, ...})
+```
 
-### Classes
+#### `recommend_offer(profile, data, *, engine=None) -> str`
 
-#### `ProfilerEngine(profile_provider=None, offer_provider=None)`
+Returns offer markdown.
 
-| Method | Description |
-|--------|-------------|
-| `profile(usage)` | `CustomerUsage` or dict → `ProfileResult` |
-| `recommend(profile, usage)` | `ProfileResult` or str + usage → offer markdown |
+| `profile` type | Behaviour |
+|----------------|-----------|
+| `ProfileResult` | Preferred; passes full context to providers |
+| `str` | Legacy markdown; still supported |
+
+`data` may be `CustomerUsage` or a mapping. Caller must ensure profile is not a placeholder.
+
+---
+
+### 2.2 `ProfilerEngine`
+
+```python
+from telekom_profiler.services import ProfilerEngine
+
+engine = ProfilerEngine(profile_provider=None, offer_provider=None)
+```
+
+| Method | Signature | Returns |
+|--------|-----------|---------|
+| `profile` | `(usage: CustomerUsage \| Mapping) -> ProfileResult` | Profile with scoring |
+| `recommend` | `(profile: ProfileResult \| str, usage: CustomerUsage \| Mapping) -> str` | Offer markdown |
+
+Construct with custom providers for production backends. Default providers are selected from environment flags.
 
 #### `get_engine() -> ProfilerEngine`
 
-Process-wide singleton with default providers.
+Process-wide singleton used by the UI and convenience functions. Call `reset_engine()` after environment changes in long-running tests.
 
-### Protocols
+---
+
+### 2.3 Protocols (`services.protocols`)
 
 #### `ProfileProvider`
 
@@ -54,79 +84,117 @@ def profile(self, usage: CustomerUsage) -> ProfileResult: ...
 def recommend(self, profile: ProfileResult, usage: CustomerUsage) -> str: ...
 ```
 
-### Built-in providers (`services.providers`)
+---
 
-| Class | `source` | Behaviour |
-|-------|----------|-----------|
-| `RuleBasedProfileProvider` | `rule_based` | `render_profile_report` + scoring |
-| `OllamaProfileProvider` | `ollama` | Ollama + scoring |
+### 2.4 Built-in providers (`services.providers`, `services.fallback`)
+
+| Class | `source` (typical) | Description |
+|-------|-------------------|-------------|
+| `RuleBasedProfileProvider` | `rule_based` | Deterministic report + scoring |
+| `OllamaProfileProvider` | `ollama` | LLM narrative + scoring |
+| `FallbackProfileProvider` | `rule_based_fallback` | Ollama with rule fallback |
 | `RuleBasedOfferProvider` | `rule_based` | Threshold catalogue |
-| `OllamaOfferProvider` | `ollama` | Ollama + tariff markdown |
+| `OllamaOfferProvider` | `ollama` | LLM offer narrative |
+| `FallbackOfferProvider` | (via rules) | Ollama with rule fallback |
 
-## Domain (`telekom_profiler.domain`)
+Factory functions `default_profile_provider()` and `default_offer_provider()` honour `OLLAMA_ENABLED` and `OLLAMA_FALLBACK_ON_ERROR`.
 
-### Models
+---
 
-| Class | Fields / methods |
-|-------|------------------|
+## 3. Domain (`telekom_profiler.domain`)
+
+### 3.1 Models
+
+| Class | Description |
+|-------|-------------|
 | `CustomerUsage` | Six usage fields; `from_mapping()`, `as_dict()`, `defaults()` |
-| `ArchetypeScore` | `name`, `distance` |
+| `ArchetypeScore` | `name: str`, `distance: float` |
 | `ScoringResult` | `primary`, `secondary`, `all_distances`, `overlays`, `confidence` |
-| `ProfileResult` | `markdown`, `usage`, `scoring`, `source`, `is_placeholder` |
+| `ProfileResult` | `markdown`, `usage`, `scoring`, `source`, `is_placeholder`, `to_state_dict()`, `from_state_dict()` |
 
-### Functions
+### 3.2 Functions
 
 | Function | Returns |
 |----------|---------|
-| `compute_archetype_distances(data)` | `list[tuple[str, float]]` sorted by distance |
+| `compute_archetype_distances(data)` | `list[tuple[str, float]]` ascending by distance |
 | `compute_overlays(data)` | `list[str]` |
 | `build_scoring_result(usage)` | `ScoringResult` |
-| `render_profile_report(data)` | Profile markdown |
-| `render_offer_report(profile_text, data)` | Offer markdown |
+| `render_profile_report(data)` | Profile markdown (rule-based) |
+| `render_offer_report(profile_text, data, *, scoring=None)` | Offer markdown (rule-based) |
 | `usage_slider_maxima()` | `dict[str, float]` |
 
-### Constants
+### 3.3 Constants
 
-- `ARCHETYPE_NAMES` — tuple of five archetype names
-- `ARCHETYPE_CENTROIDS` — name → usage tuple
+- `ARCHETYPE_NAMES` — five archetype identifiers  
+- `ARCHETYPE_CENTROIDS` — name → `(data_gb, voice_min, sms_count, roaming_days)`  
 
-## Prompts (`telekom_profiler.prompts`)
+---
+
+## 4. Prompts (`telekom_profiler.prompts`)
 
 | Function | Description |
 |----------|-------------|
-| `build_profile_prompt(data)` | Filled profile prompt string |
-| `build_offer_prompt(customer_profile)` | Filled offer prompt string |
+| `build_profile_prompt(data)` | Filled profile-generation prompt |
+| `build_offer_prompt(customer_profile)` | Filled offer-generation prompt |
 | `format_slider_features(data)` | Human-readable feature block |
-| `format_centroid_distances(distances)` | Distance listing |
-| `format_overlay_signals(overlays)` | Overlay listing |
+| `format_centroid_distances(distances)` | Distance listing for prompts |
+| `format_overlay_signals(overlays)` | Overlay listing for prompts |
 
-## LLM (`telekom_profiler.llm.client`)
+---
+
+## 5. LLM client (`telekom_profiler.llm.client`)
 
 #### `chat_completion(user_prompt, *, temperature=0.3) -> str`
 
-Single-turn Ollama chat. Raises `RuntimeError` on failure.
+Single-turn completion against configured Ollama host and model. Raises `RuntimeError` on transport or API errors.
 
-## Configuration (`telekom_profiler.config`)
+---
 
-Exported from `config.sliders`: `USAGE_SLIDERS`, `TREND_SLIDERS`, `SLIDER_KEYS`, `PROFILES`, messages, `CUSTOM_PROFILE`.
+## 6. Configuration modules
 
-`config.ollama_settings`: `OLLAMA_HOST`, `OLLAMA_MODEL`, `OLLAMA_ENABLED`, `llm_enabled()`.
+### `telekom_profiler.config` (sliders)
 
-## Paths (`telekom_profiler.paths`)
+`USAGE_SLIDERS`, `TREND_SLIDERS`, `SLIDER_KEYS`, `PROFILES`, message constants, `CUSTOM_PROFILE`.
 
-| Constant | Path |
-|----------|------|
-| `PACKAGE_ROOT` | `telekom_profiler/` package dir |
-| `ASSETS_DIR` | Logo SVG |
+### `telekom_profiler.config.ollama_settings`
+
+`OLLAMA_HOST`, `OLLAMA_MODEL`, `OLLAMA_ENABLED`, `OLLAMA_TIMEOUT`, `OLLAMA_NUM_PREDICT`, `OLLAMA_FALLBACK_ON_ERROR`, `llm_enabled()`, `fallback_on_error()`.
+
+### `telekom_profiler.config.thresholds`
+
+Business thresholds for overlays and offer selection (import specific constants as needed).
+
+---
+
+## 7. Paths (`telekom_profiler.paths`)
+
+| Name | Resolves to |
+|------|-------------|
+| `PACKAGE_ROOT` | Installed `telekom_profiler/` directory |
+| `ASSETS_DIR` | Brand assets |
 | `DATA_DIR` | Reference markdown |
 | `PROMPT_TEMPLATES_DIR` | Prompt templates |
-| `THEME_DIR` | CSS + theme |
+| `THEME_DIR` | CSS and Gradio theme helpers |
 
-## UI (`telekom_profiler.ui.demo`)
+---
+
+## 8. UI (`telekom_profiler.ui.demo`)
 
 | Function | Description |
 |----------|-------------|
-| `create_demo()` | Construct Gradio `Blocks` |
-| `main()` | Launch with Telekom theme |
+| `create_demo()` | Construct `gr.Blocks` application |
+| `main()` | Launch with Telekom theme and CSS |
 
-CSS hooks: see README section *UI structure & CSS hooks*.
+Presentation hooks (`elem_classes`) are documented in the root [README](../README.md#repository-structure). Prefer `services` API for non-UI integrations.
+
+---
+
+## 9. Versioning policy
+
+Breaking changes to symbols in this reference require:
+
+1. Version bump in `pyproject.toml`  
+2. `CHANGELOG.md` entry  
+3. Coordination with downstream integration teams  
+
+Additive fields on dataclasses are non-breaking; renaming or removing fields is breaking.

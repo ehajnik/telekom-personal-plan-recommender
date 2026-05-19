@@ -1,8 +1,24 @@
 # Domain model
 
-## Customer usage snapshot
+Business and technical specification of data contracts used across the Private Customer Profiler. This document is the authoritative reference for integration teams implementing CRM, billing, or segmentation feeds.
 
-`CustomerUsage` (`telekom_profiler.domain.models`) is the canonical input for profiling and offers.
+---
+
+## 1. Overview
+
+The domain layer (`telekom_profiler.domain`) defines:
+
+- **Input:** `CustomerUsage` — normalised usage snapshot  
+- **Scoring:** `ScoringResult` — deterministic archetype and overlay metadata  
+- **Output:** `ProfileResult` — profile markdown plus scoring; offer output as markdown string  
+
+Scoring is always computed in application code ([ADR 001](adr/001-scoring-in-code.md)), independent of LLM narrative.
+
+---
+
+## 2. Customer usage snapshot
+
+`CustomerUsage` (`domain/models.py`) is the canonical input for profiling and offer generation.
 
 | Field | Type | Role |
 |-------|------|------|
@@ -13,32 +29,56 @@
 | `data_trend` | float | Data trajectory (−50 … +50) |
 | `voice_trend` | float | Voice trajectory (−50 … +50) |
 
-**Usage features** (`data_gb`, `voice_min`, `sms_count`, `roaming_days`) feed archetype distance calculation.
+### 2.1 Feature classification
 
-**Trends** (`data_trend`, `voice_trend`) drive **overlay flags** and narrative text; they are documented as *not* clustering inputs in the UI and prompts.
+| Group | Fields | Used for |
+|-------|--------|----------|
+| Usage levels | `data_gb`, `voice_min`, `sms_count`, `roaming_days` | Archetype distance (L1 on normalised values) |
+| Trends | `data_trend`, `voice_trend` | Overlay flags and narrative; not clustering inputs in the current model |
+
+### 2.2 Construction and validation
 
 ```python
 from telekom_profiler.domain import CustomerUsage
 
-usage = CustomerUsage.from_mapping({"data_gb": 95, ...})
-usage.as_dict()  # legacy dict for prompts
+usage = CustomerUsage.from_mapping({"data_gb": 95, ...}, clamp=True)
+usage.as_dict()  # serialisation for prompts and APIs
 ```
 
-## Consumer archetypes
+When `clamp=True`, values are bounded to slider minima/maxima from configuration, preventing out-of-range UI or API input from distorting scoring.
 
-Five core B2C usage archetypes are defined in `ARCHETYPE_CENTROIDS` (`domain/archetypes.py`). Each centroid is a tuple `(data_gb, voice_min, sms_count, roaming_days)` representing a typical subscriber.
+### 2.3 JSON contract (integration)
+
+```json
+{
+  "data_gb": 95.0,
+  "voice_min": 200.0,
+  "sms_count": 30.0,
+  "roaming_days": 8.0,
+  "data_trend": 15.0,
+  "voice_trend": -5.0
+}
+```
+
+Upstream systems should document aggregation rules (e.g. three-month average for usage levels, month-over-month delta mapped to trend scale).
+
+---
+
+## 3. Consumer archetypes
+
+Five B2C usage archetypes are defined by centroids in `ARCHETYPE_CENTROIDS` (`domain/archetypes.py`). Each centroid is `(data_gb, voice_min, sms_count, roaming_days)`.
 
 | Archetype | Typical signature |
 |-----------|-------------------|
 | **Streamer** | Very high data, moderate voice, low roaming |
 | **Chatterbox** | Low data, very high voice |
-| **Essential** | Low across all usage dimensions |
+| **Essential** | Low usage across dimensions |
 | **Roamer** | Elevated roaming days |
 | **Messenger** | High SMS, moderate data |
 
-### Distance metric
+### 3.1 Distance metric
 
-Usage values are **normalized** by slider maxima (from `USAGE_SLIDERS`), then compared to each centroid using **Manhattan (L1) distance**. Lower distance ⇒ closer match.
+Usage values are normalised by slider maxima (`usage_slider_maxima()`), then compared to each centroid using **Manhattan (L1) distance**. The archetype with the lowest distance is the nearest match.
 
 ```python
 from telekom_profiler.domain import compute_archetype_distances
@@ -47,60 +87,91 @@ ranked = compute_archetype_distances(usage.as_dict())
 primary_name, primary_distance = ranked[0]
 ```
 
-### Confidence
+### 3.2 Confidence
 
-`confidence_label(primary, secondary)` returns `High`, `Medium`, or `Low` based on the gap between the best and second-best distances. Used in rule-based profiles and available on `ScoringResult`.
+`confidence_label(primary, secondary)` returns `High`, `Medium`, or `Low` based on the separation between the first and second ranked archetypes. Exposed on `ScoringResult.confidence` and injected into LLM prompts as `required_confidence`.
 
-## Overlays
+---
 
-Overlays are cross-cutting tags applied on top of the primary archetype (`compute_overlays`):
+## 4. Overlays
 
-| Condition | Overlay |
-|-----------|---------|
-| `data_trend > 10` | Data growth |
-| `voice_trend < -10` | Voice decline |
-| `roaming_days >= 8` | Roaming-heavy |
-| Low data + low voice + low roaming | Budget-sensitive |
+Overlays are cross-cutting tags applied in addition to the primary archetype (`compute_overlays`, thresholds in `config/thresholds.py`):
 
-Overlays appear in prompts and rule-based profile section 2.
+| Condition (conceptual) | Overlay label |
+|------------------------|---------------|
+| Strong positive data trend | Data growth |
+| Strong negative voice trend | Voice decline |
+| Elevated roaming days | Roaming-heavy |
+| Low usage across key dimensions | Budget-sensitive |
 
-## Scoring result
+Overlays appear in rule-based profile section 2, in prompt context, and in the UI scoring summary.
 
-`ScoringResult` bundles deterministic outputs:
+---
 
-- `primary`, `secondary` — `ArchetypeScore(name, distance)`
-- `all_distances` — full ranking
-- `overlays` — active overlay strings
-- `confidence` — High / Medium / Low
+## 5. Scoring result
 
-Built via `build_scoring_result(usage)`; attached to every `ProfileResult` from built-in providers.
+`ScoringResult` aggregates deterministic segmentation metadata:
 
-## Profile and offer artefacts
+| Member | Description |
+|--------|-------------|
+| `primary`, `secondary` | `ArchetypeScore(name, distance)` |
+| `all_distances` | Full ranked list |
+| `overlays` | Active overlay strings |
+| `confidence` | `High` / `Medium` / `Low` |
 
-| Type | Contents |
-|------|----------|
-| `ProfileResult` | `markdown`, `usage`, optional `scoring`, `source` (`rule_based` / `ollama`) |
-| Offer output | Markdown string (tariff tables, add-ons, agent next steps) |
+Built via `build_scoring_result(usage)` and attached to every `ProfileResult` from built-in providers. Downstream analytics should key off `scoring.primary.name` rather than parsing profile markdown.
 
-Rule-based generators: `render_profile_report()`, `render_offer_report()`.
+---
 
-LLM generators: `build_profile_prompt()` + `build_offer_prompt()` → Ollama.
+## 6. Profile and offer artefacts
 
-## Profile templates (UI presets)
+| Artefact | Type | Contents |
+|----------|------|----------|
+| Profile | `ProfileResult` | `markdown`, `usage`, `scoring`, `source` |
+| Offer | `str` (markdown) | Tariff tables, add-ons, agent next steps |
 
-`PROFILES` in `config/sliders.py` maps template names to partial slider overrides. Presets align with archetype centroids for demo scenarios. `— Custom —` applies no override.
+### 6.1 Profile result
 
-## Reference data
+| Field | Values / notes |
+|-------|----------------|
+| `source` | `rule_based`, `ollama`, `rule_based_fallback`, or custom provider tag |
+| `is_placeholder` | Derived from markdown prefix; blocks offer generation |
+| `to_state_dict()` / `from_state_dict()` | Gradio session serialisation |
 
-| File | Used by |
-|------|---------|
-| `telekom_profiler/data/consumer_archetypes.md` | Profile prompt — archetype descriptions |
-| `telekom_profiler/data/tariffs_private.md` | Offer prompt — prototype tariff catalogue |
+### 6.2 Generation paths
 
-Replace these files (or load from API) for production catalogue alignment.
+| Path | Profile | Offer |
+|------|---------|-------|
+| Rule-based | `render_profile_report()` | `render_offer_report()` (may use `scoring` for tariff bias) |
+| LLM | `build_profile_prompt()` → Ollama | `build_offer_prompt()` → Ollama |
 
-## LLM vs deterministic primary archetype
+---
 
-The prompt states centroid distances are **indicative only**. The LLM may choose wording that does not exactly match `distances[0]`. For strict alignment, post-process LLM output or constrain the model (e.g. require primary = `{top_archetype}` in the template).
+## 7. LLM narrative vs deterministic scoring
 
-Rule-based `render_profile_report()` always uses `distances[0]` as primary.
+The profile prompt includes `required_primary` and `required_confidence` from code scoring so the narrative aligns with audit metadata. The model may still vary wording in non-primary sections.
+
+| Requirement | Approach |
+|-------------|----------|
+| Strict segment ID for CRM | Use `result.scoring.primary.name` |
+| Agent-readable explanation | Use `result.markdown` |
+| Governance comparison | Log scoring alongside LLM `source` |
+
+Rule-based `render_profile_report()` always uses `distances[0]` as the stated primary archetype.
+
+---
+
+## 8. UI profile templates
+
+`PROFILES` in `config/sliders.py` maps template names to partial slider overrides for workshops and UAT. Presets are aligned with archetype centroids for demonstration; production feeds should populate `CustomerUsage` directly from systems of record.
+
+---
+
+## 9. Reference data files
+
+| File | Consumed by |
+|------|-------------|
+| `data/consumer_archetypes.md` | Profile prompt — archetype descriptions |
+| `data/tariffs_private.md` | Offer prompt — prototype tariff catalogue |
+
+For production, replace static files with synchronised catalogue APIs or scheduled exports; keep the same semantic sections expected by prompt builders.

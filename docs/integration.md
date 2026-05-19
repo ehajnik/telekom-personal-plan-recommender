@@ -1,22 +1,39 @@
 # Integration guide
 
-How to connect the profiler to Telekom Mobile systems of record and approved AI services.
+Patterns for connecting the Private Customer Profiler to Telekom Mobile systems of record, approved AI services, and downstream campaign tooling.
 
-## Integration roadmap
+---
 
-| Phase | Capability | Integration point |
-|-------|------------|-------------------|
-| 1 (today) | Manual sliders + prototype logic | `ui.demo` |
-| 2 | Typed state, no markdown coupling | `ProfileResult` + `gr.State` |
-| 3 | Segmentation service | Custom `ProfileProvider` |
-| 4 | Live PCM / BSS catalogue | Custom `OfferProvider` + tariff API |
-| 5 | CRM write-back | New service after offer approval |
+## 1. Integration principles
 
-## Recommended API contract
+| Principle | Implication |
+|-----------|-------------|
+| Typed contracts | Prefer `CustomerUsage` and `ProfileResult` over raw markdown |
+| Deterministic scoring | Use `ScoringResult` for CRM keys and analytics |
+| Provider substitution | Replace rule/LLM stubs without changing the UI |
+| Fail-safe inference | Respect `OLLAMA_FALLBACK_ON_ERROR` in integrated environments |
 
-### Input: usage vector
+Domain definitions: [Domain model](domain-model.md). Public API: [API reference](api-reference.md).
 
-Use `CustomerUsage` (or JSON with the six keys from [Domain model](domain-model.md)).
+---
+
+## 2. Integration roadmap
+
+| Phase | Capability | Integration surface |
+|-------|------------|---------------------|
+| 1 (current) | Manual sliders, prototype logic | Gradio UI + `ProfilerEngine` |
+| 2 | Structured session state | `ProfileResult.to_state_dict()` in UI (implemented) |
+| 3 | Enterprise segmentation | Custom `ProfileProvider` |
+| 4 | Live product catalogue | Custom `OfferProvider` + PCM/BSS API |
+| 5 | CRM write-back | Post-offer approval workflow (new service) |
+
+---
+
+## 3. API contracts
+
+### 3.1 Input: usage vector
+
+Use `CustomerUsage` or equivalent JSON (six numeric fields). Values should be pre-aggregated by the upstream system.
 
 ```json
 {
@@ -29,33 +46,47 @@ Use `CustomerUsage` (or JSON with the six keys from [Domain model](domain-model.
 }
 ```
 
-Populate from billing (last 3 months average), CDR aggregation, or CRM attributes.
+**Suggested sources:** billing averages, CDR aggregation, CRM attributes, or propensity model outputs mapped to the slider scale.
 
-### Output: profile
-
-Prefer structured `ProfileResult`:
+### 3.2 Output: profile
 
 ```python
-from telekom_profiler.services import ProfilerEngine, profile_customer_structured
+from telekom_profiler.domain import CustomerUsage
+from telekom_profiler.services import profile_customer_structured
 
-result = profile_customer_structured(usage_dict)
-segment = result.scoring.primary_name if result.scoring else None
-markdown_for_agent = result.markdown
+usage = CustomerUsage.from_mapping(payload, clamp=True)
+result = profile_customer_structured(usage.as_dict())
+
+segment_id = result.scoring.primary.name if result.scoring else None
+confidence = result.scoring.confidence if result.scoring else None
+agent_narrative = result.markdown
+provider = result.source
 ```
 
-### Output: offer
-
-Markdown string suitable for agent desktop or PDF generation. Parse tables in downstream systems if needed, or extend `OfferProvider` to return JSON.
-
-## Replacing the LLM
-
-Implement `ProfileProvider` / `OfferProvider` calling your approved gateway:
+### 3.3 Output: offer
 
 ```python
+from telekom_profiler.services import get_engine
+
+offer_markdown = get_engine().recommend(result, usage)
+```
+
+For structured downstream systems, implement a custom `OfferProvider` returning JSON or a domain DTO, then format markdown at the edge if required.
+
+---
+
+## 4. Replacing the LLM backend
+
+Implement `ProfileProvider` and/or `OfferProvider` targeting the corporate model gateway:
+
+```python
+from telekom_profiler.domain.scoring import build_scoring_result
+from telekom_profiler.prompts import build_profile_prompt
+
 class GatewayProfileProvider:
     def profile(self, usage: CustomerUsage) -> ProfileResult:
         prompt = build_profile_prompt(usage.as_dict())
-        text = your_gateway.complete(prompt, model="approved-model")
+        text = corporate_gateway.complete(prompt, model="approved-model-v1")
         return ProfileResult(
             markdown=text,
             usage=usage,
@@ -64,68 +95,100 @@ class GatewayProfileProvider:
         )
 ```
 
-Keep `build_scoring_result()` for consistent archetype metadata in analytics.
+Retain `build_scoring_result()` unless the enterprise segmentation service becomes the system of record for archetype labels—in that case, map API response fields into `ScoringResult` for UI and analytics consistency.
 
-## Replacing rule-based logic
+---
 
-| Function | Replace with |
-|----------|--------------|
+## 5. Replacing rule-based logic
+
+| Prototype component | Production replacement |
+|--------------------|-------------------------|
 | `render_profile_report` | Segmentation API response formatter |
 | `render_offer_report` | PCM recommendation engine |
-| `telekom_profiler/data/tariffs_private.md` | Product catalogue sync |
+| `data/tariffs_private.md` | Catalogue sync job or API cache |
+| `data/consumer_archetypes.md` | Segment definition service export |
 
-## UI state: stop passing markdown
+Inject providers at `ProfilerEngine` construction; avoid forking the Gradio layer.
 
-Current Gradio flow passes profile **markdown** into the offer step. For production:
+---
 
-```python
-profile_state = gr.State(value=None)
+## 6. UI and headless consumption
 
-def run_profile(*values):
-    result = profile_customer_structured(_slider_data(*values))
-    return result.markdown, MSG_AFTER_PROFILE, result
+### 6.1 Current Gradio session model
 
-run_btn.click(..., outputs=[profile_out, offer_hint, profile_state])
-offer_btn.click(generate_offer, inputs=[profile_state, *all_inputs], ...)
-```
+The UI stores `ProfileResult` in `gr.State` via `to_state_dict()`. The offer step deserialises with `ProfileResult.from_state_dict()` and rejects placeholders.
 
-Implement `generate_offer(profile: ProfileResult | None, ...)` to use typed state.
+Integrators embedding Gradio behind SSO should treat session state as browser-local; do not rely on it for server-side audit.
 
-## CRM / agent desktop
+### 6.2 Headless API (recommended for production)
 
-- Embed Gradio in iframe behind SSO, or
-- Expose `ProfilerEngine` via FastAPI:
+Expose `ProfilerEngine` through an internal REST layer:
 
 ```python
 @app.post("/v1/profile")
 def api_profile(body: UsagePayload) -> ProfileResponse:
-    result = get_engine().profile(body.to_usage())
-    return ProfileResponse(markdown=result.markdown, primary=result.scoring.primary_name)
+    usage = CustomerUsage.from_mapping(body.model_dump(), clamp=True)
+    result = get_engine().profile(usage)
+    return ProfileResponse(
+        markdown=result.markdown,
+        primary=result.scoring.primary.name if result.scoring else None,
+        confidence=result.scoring.confidence if result.scoring else None,
+        source=result.source,
+    )
 ```
 
-## Batch / campaign use
+Apply authentication, rate limiting, and request logging at this boundary.
+
+### 6.3 Agent desktop embedding
+
+- **Iframe:** Host Gradio behind reverse proxy + SSO.  
+- **API + native UI:** Preferred for long-term maintainability and accessibility requirements.
+
+---
+
+## 7. Batch and campaign processing
 
 ```python
+from telekom_profiler.services import ProfilerEngine
+from telekom_profiler.domain import CustomerUsage
+
 engine = ProfilerEngine()
 for row in usage_feed:
-    usage = CustomerUsage.from_mapping(row)
+    usage = CustomerUsage.from_mapping(row, clamp=True)
     profile = engine.profile(usage)
     offer = engine.recommend(profile, usage)
-    write_to_campaign_file(profile, offer)
+    write_campaign_output(profile, offer)
 ```
 
-## Prompt and catalogue maintenance
+Run with `OLLAMA_ENABLED=false` for deterministic regression baselines, or queue LLM calls with rate limits and dead-letter handling.
 
-| Asset | Owner | Update cadence |
-|-------|-------|----------------|
-| `consumer_archetypes.md` | Marketing / segmentation | Per archetype refresh |
-| `tariffs_private.md` | Product management | Per tariff change |
-| `run_profile.md` / `run_offer.md` | Data science / AI governance | Per model policy |
+---
 
-Version prompts with git tags; align with model cards for compliance.
+## 8. Prompt and catalogue governance
 
-## Testing integrations
+| Asset | Suggested owner | Cadence |
+|-------|-----------------|---------|
+| `consumer_archetypes.md` | Marketing / segmentation | Per archetype definition change |
+| `tariffs_private.md` | Product management | Per tariff release |
+| `run_profile.md`, `run_offer.md` | AI governance | Per approved model version |
 
-1. Mock external APIs in unit tests.
-2. Use `OLLAMA_ENABLED=false` for deterministic CI.
-3. Contract tests on `CustomerUsage` JSON schema shared with upstream teams.
+Version prompts with application releases; maintain model cards and approval records per corporate AI policy.
+
+---
+
+## 9. Integration testing
+
+| Test type | Approach |
+|-----------|----------|
+| Unit | Mock external APIs; assert `ProfileResult` and `ScoringResult` |
+| Contract | Shared JSON schema for `CustomerUsage` with upstream teams |
+| CI | `OLLAMA_ENABLED=false`; full unittest + sanity script |
+| E2E (optional) | Staged gateway with test credentials |
+
+---
+
+## 10. Related documents
+
+- [Architecture](architecture.md) — extension points  
+- [Deployment](deployment.md) — hosting and security  
+- [ADR 001](adr/001-scoring-in-code.md) — scoring policy  

@@ -1,30 +1,68 @@
-# ADR 001: Deterministic archetype scoring in code
+# ADR 001: Deterministic archetype scoring in application code
 
-## Status
+| Field | Value |
+|-------|-------|
+| **Status** | Accepted |
+| **Date** | 2025 (prototype baseline) |
+| **Deciders** | Application architecture (Private Customer Profiler) |
+| **Supersedes** | — |
 
-Accepted
+---
 
 ## Context
 
-The Private Customer Profiler assigns each subscriber to one of five B2C usage archetypes (Streamer, Chatterbox, Essential, Roamer, Messenger). We can compute proximity scores in Python (L1 distance on normalized usage) or let an LLM infer the segment from free text.
+The Private Customer Profiler assigns each subscriber to one of five B2C usage archetypes (Streamer, Chatterbox, Essential, Roamer, Messenger). Proximity to archetype centroids can be computed deterministically in Python (L1 distance on normalised usage), or inferred solely from LLM-generated narrative.
 
-Campaign and pricing teams need **auditable, repeatable** segment labels for analytics, A/B tests, and CRM workflows. LLM narratives are useful for agents but can drift from the numeric snapshot.
+Campaign, pricing, and CRM teams require **auditable, repeatable** segment labels for analytics, targeting, and approval workflows. LLM output is valuable for agent-facing explanation but is not a suitable system of record for segment identity.
+
+---
 
 ## Decision
 
-1. **Always compute** `ScoringResult` in code via `build_scoring_result()` before any profile is returned.
-2. **Inject** `required_primary` and `required_confidence` into the LLM profile prompt so the narrative aligns with code scoring.
-3. **Display** scoring metadata in the UI (primary, confidence, overlays) independent of profile markdown.
-4. **Use** `scoring.primary_name` in rule-based offer selection when available.
+1. **Always compute** `ScoringResult` via `build_scoring_result()` before returning any profile from built-in providers.  
+2. **Inject** `required_primary` and `required_confidence` into the LLM profile prompt so narrative section 1 aligns with code scoring.  
+3. **Display** scoring metadata in the UI (primary archetype, confidence, overlays) independently of profile markdown.  
+4. **Use** `scoring.primary.name` in rule-based offer selection when available.  
+5. **Expose** `ScoringResult` on `ProfileResult` for API and batch integrators.
+
+---
 
 ## Consequences
 
-- LLM creativity is constrained for section 1 (primary archetype); agents still get rich narrative in other sections.
-- Scoring can be logged and compared to model output for governance.
-- Future segmentation APIs can replace `build_scoring_result()` while keeping the same `ScoringResult` contract.
+### Positive
+
+- Segment labels are reproducible from the same usage input.  
+- Analytics and A/B tests can key on `ScoringResult` without parsing markdown.  
+- Governance can compare LLM narrative to deterministic primary over time.  
+- Future enterprise segmentation APIs can populate the same `ScoringResult` shape.
+
+### Negative / trade-offs
+
+- LLM creativity is constrained for primary archetype wording.  
+- Additional UI surface (scoring summary panel) must be maintained.  
+- Teams must not treat free-text profile output as authoritative segment ID.
+
+---
 
 ## Alternatives considered
 
-- **LLM-only segmentation** — rejected for lack of audit trail.
-- **Post-process LLM output** to extract archetype — fragile parsing; rejected.
-- **Hide scoring from UI** — rejected; agents benefit from seeing ground truth.
+| Alternative | Outcome |
+|-------------|---------|
+| LLM-only segmentation | Rejected — no audit trail, non-deterministic |
+| Post-process LLM markdown to extract archetype | Rejected — fragile, high maintenance |
+| Hide scoring from UI | Rejected — agents benefit from deterministic ground truth |
+
+---
+
+## Compliance and follow-up
+
+- Document segment definitions in [Domain model](../domain-model.md).  
+- When connecting to a corporate segmentation API, either map API segment IDs into `ScoringResult` or replace `build_scoring_result()` behind the same contract.  
+- Review this ADR when AI governance policy changes for customer-facing inference.
+
+---
+
+## References
+
+- [Architecture](../architecture.md) — scoring pipeline  
+- [Integration](../integration.md) — CRM and analytics consumption  

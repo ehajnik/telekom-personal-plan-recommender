@@ -1,36 +1,49 @@
 # Deployment guide
 
-## Status
+Target-state guidance for hosting the Private Customer Profiler in a Telekom Mobile-controlled environment. The repository ships a **development prototype**; this document does not constitute a certified production runbook.
 
-This repository is a **local development prototype**. The guidance below describes how a Telekom Mobile team would harden and deploy a derivative service—not a certified production runbook.
+---
 
-## Deployment topology (target)
+## 1. Deployment status
+
+| Aspect | Current prototype | Production target |
+|--------|-------------------|-------------------|
+| Maturity | Local / workshop use | Hardened internal service |
+| Authentication | None | Corporate SSO (OIDC) |
+| LLM | Local Ollama | Approved internal model gateway |
+| Catalogue | Static markdown | Live PCM / BSS APIs |
+| Secrets | `.env` file | Vault or platform secret store |
+| Observability | Console logs | Centralised JSON logging, metrics |
+
+---
+
+## 2. Reference topology
 
 ```mermaid
 flowchart LR
-  User[Agent / analyst browser]
+  User[Agent or analyst browser]
   LB[Corporate reverse proxy]
-  App[Gradio app container]
-  Ollama[Ollama or LLM gateway]
-  BSS[BSS / PCM APIs - future]
+  App[Application container]
+  LLM[Ollama or LLM gateway]
+  BSS[BSS / PCM APIs]
 
   User --> LB --> App
-  App --> Ollama
-  App -.-> BSS
+  App --> LLM
+  App -.->|future| BSS
 ```
 
-| Component | Prototype | Production target |
-|-----------|-----------|-------------------|
-| UI | Gradio embedded server | Gradio behind nginx / OpenShift route |
-| Auth | None | SSO (OIDC), VPN-only access |
-| LLM | Local Ollama | Approved internal model gateway |
-| Data | Static markdown | Live PCM + CRM APIs |
-| Secrets | `.env` file | Vault / OpenShift secrets |
-| Logs | Console | Central logging (JSON), trace IDs |
+| Component | Recommendation |
+|-----------|----------------|
+| UI | Gradio behind nginx or OpenShift HTTP route |
+| LLM | Sidecar or shared cluster service; `OLLAMA_HOST` points to service DNS |
+| Application | Stateless container; session in browser (`gr.State`) |
+| Data plane | Egress allow-list to LLM and BSS endpoints only |
 
-## Container sketch
+---
 
-Example `Dockerfile` pattern (not shipped in repo):
+## 3. Container image (reference)
+
+Not maintained in this repository; teams should derive from internal base images:
 
 ```dockerfile
 FROM python:3.12-slim
@@ -44,44 +57,85 @@ EXPOSE 7860
 CMD ["python", "-m", "telekom_profiler"]
 ```
 
-Run Ollama as a **sidecar** or dedicated service; set `OLLAMA_HOST` to that service DNS name.
+| Practice | Rationale |
+|----------|-----------|
+| Multi-stage build | Smaller attack surface |
+| Non-root user | Platform policy compliance |
+| Pin dependency versions | Reproducible builds |
+| `OLLAMA_ENABLED=false` in image default | Safe boot without LLM dependency |
 
-## Security checklist
+Run Ollama as a separate deployment; configure `OLLAMA_HOST` to the internal service URL.
 
-- [ ] Disable public `share=True` Gradio links
-- [ ] Enforce HTTPS at reverse proxy
-- [ ] Replace basic auth with corporate SSO
-- [ ] No customer PII in prompts sent to external LLMs without DPA
-- [ ] Network policy: app → Ollama only; app → BSS via approved egress
-- [ ] Scan container images (Trivy, Clair)
-- [ ] Rotate API keys via secret store, not git
+---
 
-## Data protection
+## 4. Security controls
 
-- Slider inputs may represent real customer usage if fed from production—treat as **personal data** under GDPR.
-- Logs must not store full profiles without retention limits.
-- LLM prompts should minimize identifiers (use segment IDs, not MSISDN).
+| Control | Action |
+|---------|--------|
+| Transport | Terminate TLS at reverse proxy; no plain HTTP externally |
+| Authentication | Integrate SSO; remove Gradio basic auth except for sandboxes |
+| Gradio sharing | Disable `share=True` public tunnels |
+| Data minimisation | No MSISDN or account identifiers in LLM prompts |
+| Network policy | Restrict egress to approved LLM and BSS hosts |
+| Supply chain | Scan images (Trivy, Clair, or corporate equivalent) |
+| Secrets | Never commit `.env`; inject via secret store |
 
-## Observability (recommended)
+### 4.1 Data protection (GDPR)
 
-| Signal | Implementation |
-|--------|----------------|
-| Health | HTTP `/health` wrapper or process probe on port 7860 |
-| Latency | Log profile/offer duration; alert on p95 |
-| LLM errors | Count `RuntimeError` from `llm.client` |
-| Provider mode | Log `source` field on `ProfileResult` |
+Slider and API inputs may represent real subscriber usage when connected to production feeds. Treat as **personal data**:
 
-## Scaling
+- Define lawful basis and retention with legal / DPO  
+- Avoid logging full profiles without retention limits  
+- Complete DPIA before connecting to production CRM or billing  
 
-Gradio is single-process oriented. For many concurrent agents:
+---
 
-- Run multiple replicas behind a load balancer with sticky sessions, or
-- Replace Gradio with a thin API (FastAPI) + separate front end, reusing `ProfilerEngine`.
+## 5. Observability
 
-## Brand compliance
+| Signal | Suggested implementation |
+|--------|--------------------------|
+| Liveness | TCP or HTTP probe on Gradio port |
+| Latency | Log duration of profile and offer operations; alert on p95 |
+| LLM failures | Count `RuntimeError` from `llm.client`; track fallback rate |
+| Provider mode | Structured log field `source` on `ProfileResult` |
+| Trace correlation | Inject request ID at reverse proxy; pass in logs |
 
-Use official Telekom brand assets and Magenta guidelines for any customer-facing deployment. Prototype assets in `assets/` are for development only.
+---
 
-## Rollback
+## 6. Scaling and availability
 
-Pin `gradio`, `ollama`, and model versions in deployment manifests. Keep `OLLAMA_ENABLED=false` as a feature flag for instant fallback to rule-based mode.
+Gradio runs a single-process embedded server. For higher concurrency:
+
+| Option | Trade-off |
+|--------|-----------|
+| Multiple replicas + sticky sessions | Minimal code change; session tied to instance |
+| FastAPI (or similar) + `ProfilerEngine` | Headless API; separate front end |
+| Async job queue for LLM steps | Better for batch campaigns |
+
+Instant degradation path: set `OLLAMA_ENABLED=false` to rule-based providers without redeploying application logic.
+
+---
+
+## 7. Brand and compliance
+
+Use approved Deutsche Telekom brand assets and Magenta guidelines for any customer-facing surface. Assets under `telekom_profiler/assets/` are for internal development only.
+
+AI governance: align prompt templates and model selection with corporate model cards and approval workflows ([Integration](integration.md#prompt-and-catalogue-governance)).
+
+---
+
+## 8. Rollback and release management
+
+- Pin `gradio`, `ollama`, and model versions in deployment manifests.  
+- Tag container images with application version (`pyproject.toml`).  
+- Maintain feature flag `OLLAMA_ENABLED` for rapid fallback.  
+- Document rollback in the team’s standard change process.
+
+---
+
+## 9. Related documents
+
+- [Configuration](configuration.md) — environment variables  
+- [Ollama runbook](runbook-ollama.md) — LLM service operations  
+- [Integration](integration.md) — BSS and CRM connection patterns  
+- [Architecture](architecture.md) — component boundaries  

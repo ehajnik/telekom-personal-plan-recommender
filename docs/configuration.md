@@ -1,40 +1,53 @@
-# Configuration
+# Configuration reference
 
-## Environment variables
+Central reference for runtime settings, UI parameters, and packaged assets. Environment variables are loaded at import time from `.env` in the repository root via `python-dotenv` (`config/ollama_settings.py`).
 
-Loaded from `.env` at project root via `python-dotenv` (`config/ollama_settings.py`).
+---
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `OLLAMA_HOST` | `http://localhost:11434` | Ollama API base URL (no trailing slash) |
-| `OLLAMA_MODEL` | `llama3.2` | Model tag; must exist locally (`ollama pull`) |
-| `OLLAMA_ENABLED` | `true` | `false` forces rule-based profile and offer |
-| `OLLAMA_TIMEOUT` | `120` | Client timeout in seconds |
-| `OLLAMA_NUM_PREDICT` | `1024` | Max tokens per completion |
-| `OLLAMA_FALLBACK_ON_ERROR` | `true` | Use rule-based providers if Ollama fails |
-| `LOG_LEVEL` | `INFO` | Python log level (`DEBUG`, `WARNING`, …) |
+## 1. Environment variables
 
-See also [Ollama runbook](runbook-ollama.md).
-
-Copy `.env.example` to `.env` and adjust for your workstation.
+Copy the template and adjust for your workstation or deployment namespace:
 
 ```bash
 cp .env.example .env
 ```
 
-### Disabling Ollama (CI / offline)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OLLAMA_HOST` | `http://localhost:11434` | Ollama API base URL (no trailing slash) |
+| `OLLAMA_MODEL` | `llama3.2` | Model tag; must exist on the host (`ollama pull`) |
+| `OLLAMA_ENABLED` | `true` | When `false`, selects rule-based profile and offer providers |
+| `OLLAMA_TIMEOUT` | `120` | HTTP client timeout (seconds) |
+| `OLLAMA_NUM_PREDICT` | `1024` | Maximum completion tokens per request |
+| `OLLAMA_FALLBACK_ON_ERROR` | `true` | On LLM failure, delegate to rule-based providers |
+| `LOG_LEVEL` | `INFO` | Root log level (`DEBUG`, `WARNING`, `ERROR`, …) |
+
+Operational detail and troubleshooting: [Ollama runbook](runbook-ollama.md).
+
+### 1.1 CI and offline development
 
 ```env
 OLLAMA_ENABLED=false
 ```
 
-No Ollama process required; all logic uses `RuleBasedProfileProvider` and `RuleBasedOfferProvider`.
+No Ollama process is required. The UI displays **Inference: rule-based**. This is the recommended default for automated pipelines.
 
-## Slider and preset configuration
+### 1.2 Strict LLM mode (debugging)
 
-Defined in `telekom_profiler/config/sliders.py`.
+```env
+OLLAMA_ENABLED=true
+OLLAMA_FALLBACK_ON_ERROR=false
+```
 
-### Usage sliders
+Failures surface in the UI instead of silently falling back. Use only when validating LLM integration.
+
+---
+
+## 2. Slider and preset configuration
+
+Defined in `telekom_profiler/config/sliders.py`. Changes to maxima propagate to archetype normalisation via `usage_slider_maxima()`.
+
+### 2.1 Usage sliders
 
 | Key | Label | Min | Max | Default |
 |-----|-------|-----|-----|---------|
@@ -43,38 +56,53 @@ Defined in `telekom_profiler/config/sliders.py`.
 | `sms_count` | SMS count | 0 | 500 | 50 |
 | `roaming_days` | Roaming days / month | 0 | 30 | 2 |
 
-### Trend sliders
+### 2.2 Trend sliders
 
 | Key | Label | Min | Max | Default |
 |-----|-------|-----|-----|---------|
 | `data_trend` | Data trend | −50 | 50 | 5 |
 | `voice_trend` | Voice trend | −50 | 50 | 0 |
 
-Changing maxima here automatically updates archetype normalization (`usage_slider_maxima()`).
+Trends influence overlay flags and narrative context; they are not archetype clustering inputs unless a downstream model defines otherwise (see [Domain model](domain-model.md)).
 
-### UI messages
+### 2.3 UI messages and guards
 
 | Constant | Purpose |
 |----------|---------|
-| `MSG_RUN_PROFILE` | Profile panel placeholder |
-| `MSG_GENERATE_OFFER` | Offer panel placeholder |
-| `MSG_AFTER_PROFILE` | Offer hint after profile run |
-| `MSG_RUN_PROFILE_FIRST` | Error when offer clicked too early |
-| `PLACEHOLDER_PREFIX` | `_` — marks non-results; offer step blocked |
+| `MSG_RUN_PROFILE` | Initial profile panel placeholder |
+| `MSG_GENERATE_OFFER` | Initial offer panel placeholder |
+| `MSG_AFTER_PROFILE` | Hint after successful profile run |
+| `MSG_RUN_PROFILE_FIRST` | Error when offer is requested without profile |
+| `PLACEHOLDER_PREFIX` | `_` — marks non-result content; offer step is blocked |
 
-### Adding a profile template
+### 2.4 Profile templates (presets)
+
+`PROFILES` maps template names to partial slider overrides. Keys must be a subset of `SLIDER_KEYS`. The `— Custom —` entry applies no override.
 
 ```python
-PROFILES["My Persona"] = {
-    "data_gb": 40,
-    "voice_min": 600,
-    # only keys you want to override
+PROFILES["Workshop — Streamer"] = {
+    "data_gb": 120,
+    "voice_min": 300,
+    # omit keys that should retain current slider values
 }
 ```
 
-Keys must be a subset of `SLIDER_KEYS`.
+For production, consider loading presets from configuration management (YAML/JSON) rather than hard-coding in source.
 
-## Gradio launch options
+---
+
+## 3. Business thresholds
+
+Centralised in `telekom_profiler/config/thresholds.py`:
+
+- Overlay activation (data growth, voice decline, roaming-heavy, budget-sensitive)
+- Offer catalogue selection biases
+
+Modify thresholds in one place to keep rule-based profiling, scoring overlays, and offers aligned. Document changes in `CHANGELOG.md`.
+
+---
+
+## 4. Gradio launch parameters
 
 Configured in `telekom_profiler/ui/demo.py` → `main()`:
 
@@ -82,7 +110,7 @@ Configured in `telekom_profiler/ui/demo.py` → `main()`:
 create_demo().launch(theme=DT_THEME, css=DT_CSS)
 ```
 
-For shared demos, consider:
+For shared or hosted demos (non-production):
 
 ```python
 demo.launch(
@@ -90,17 +118,35 @@ demo.launch(
     css=DT_CSS,
     server_name="0.0.0.0",
     server_port=7860,
-    auth=("demo", "<secret>"),  # replace with SSO in production
+    auth=("demo", "<secret>"),  # replace with corporate SSO in production
 )
 ```
 
-## Package data files
+Production hosting requirements: [Deployment](deployment.md).
 
-Bundled via `pyproject.toml` `[tool.setuptools.package-data]`:
+---
 
-- `prompts/templates/*.md`
-- `data/*.md`
-- `ui/theme/*.css`
-- `assets/*`
+## 5. Packaged assets
 
-Paths resolved through `telekom_profiler.paths`.
+Declared in `pyproject.toml` under `[tool.setuptools.package-data]`:
+
+| Pattern | Content |
+|---------|---------|
+| `prompts/templates/*.md` | LLM prompt templates |
+| `data/*.md` | Archetype and tariff reference |
+| `ui/theme/*.css` | Telekom theme overrides |
+| `assets/*` | Brand assets (e.g. logo SVG) |
+
+Runtime resolution uses `telekom_profiler.paths` (`PACKAGE_ROOT`, `DATA_DIR`, `PROMPT_TEMPLATES_DIR`, `THEME_DIR`, `ASSETS_DIR`).
+
+---
+
+## 6. Configuration ownership (recommended)
+
+| Area | Suggested owner | Change frequency |
+|------|-----------------|------------------|
+| `.env` / secrets | Platform engineering | Per environment |
+| Sliders and presets | Product / campaign | Per workshop or segment refresh |
+| Thresholds | Segmentation / pricing | Per policy change |
+| Prompt templates | AI governance / data science | Per model policy |
+| Reference markdown | Product management | Per catalogue or archetype update |
