@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Final
+from typing import Final, Mapping
+
+from telekom_profiler.config.sliders import USAGE_SLIDERS
 
 ARCHETYPE_NAMES: Final[tuple[str, ...]] = (
     "Streamer",
@@ -27,16 +29,14 @@ _USAGE_KEYS: Final[tuple[str, ...]] = (
     "roaming_days",
 )
 
-_SLIDER_MAX: Final[dict[str, float]] = {
-    "data_gb": 150.0,
-    "voice_min": 3000.0,
-    "sms_count": 500.0,
-    "roaming_days": 30.0,
-}
+def usage_slider_maxima() -> dict[str, float]:
+    """Upper bounds from UI slider config (single source of truth)."""
+    return {key: float(spec[2]) for key, spec in USAGE_SLIDERS.items()}
 
 
-def normalize_usage(data: dict[str, float]) -> tuple[float, float, float, float]:
-    return tuple(data[key] / _SLIDER_MAX[key] for key in _USAGE_KEYS)
+def normalize_usage(data: Mapping[str, float]) -> tuple[float, float, float, float]:
+    maxima = usage_slider_maxima()
+    return tuple(float(data[key]) / maxima[key] for key in _USAGE_KEYS)
 
 
 def _centroid_distance(
@@ -46,7 +46,7 @@ def _centroid_distance(
     return sum(abs(a - b) for a, b in zip(point, centroid, strict=True))
 
 
-def compute_archetype_distances(data: dict[str, float]) -> list[tuple[str, float]]:
+def compute_archetype_distances(data: Mapping[str, float]) -> list[tuple[str, float]]:
     point = normalize_usage(data)
     scored: list[tuple[str, float]] = []
     for name in ARCHETYPE_NAMES:
@@ -55,7 +55,7 @@ def compute_archetype_distances(data: dict[str, float]) -> list[tuple[str, float
     return sorted(scored, key=lambda item: item[1])
 
 
-def compute_overlays(data: dict[str, float]) -> list[str]:
+def compute_overlays(data: Mapping[str, float]) -> list[str]:
     overlays: list[str] = []
     if data.get("data_trend", 0) > 10:
         overlays.append("Data growth (rising data usage trend)")
