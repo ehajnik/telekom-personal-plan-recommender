@@ -1,6 +1,11 @@
 """Slider definitions, profile presets, and UI placeholder messages."""
 
+from __future__ import annotations
+
+import json
 from typing import Final
+
+from telekom_profiler.paths import ARTIFACTS_DIR
 
 CUSTOM_PROFILE: Final[str] = "— Custom —"
 PLACEHOLDER_PREFIX: Final[str] = "_"
@@ -71,3 +76,16 @@ PROFILES: Final[dict[str, ProfilePreset]] = {
         "voice_trend": -8,
     },
 }
+
+
+def profile_template_choices() -> list[str]:
+    """Dropdown choices: custom plus ML profile labels when artifacts exist."""
+    path = ARTIFACTS_DIR / "profile_characteristics.json"
+    if path.is_file():
+        try:
+            chars = json.loads(path.read_text(encoding="utf-8"))
+            labels = sorted(chars.keys())
+            return [CUSTOM_PROFILE, *labels]
+        except (json.JSONDecodeError, OSError):
+            pass
+    return [CUSTOM_PROFILE, *[k for k in PROFILES if k != CUSTOM_PROFILE]]

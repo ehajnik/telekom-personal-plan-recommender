@@ -13,6 +13,7 @@ from telekom_profiler.config.sliders import (
     USAGE_SLIDERS,
     ProfilePreset,
     SliderSpec,
+    profile_template_choices,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "USAGE_SLIDERS",
     "ProfilePreset",
     "SliderSpec",
+    "profile_template_choices",
 ]
