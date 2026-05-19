@@ -297,7 +297,7 @@ footer {
   color: var(--dt-muted) !important;
 }
 
-/* ── Profile template dropdown (Telekom accent) ─────────────────────────── */
+/* ── Profile template dropdown (single panel border, no inner text box) ─── */
 
 .gradio-container .block.dt-template-dropdown {
   padding: 0.65rem 0.875rem !important;
@@ -312,37 +312,57 @@ footer {
   font-size: 0.8125rem !important;
   font-weight: 600 !important;
   color: var(--dt-text) !important;
-  margin-bottom: 0.4rem !important;
+  margin-bottom: 0.35rem !important;
+  border: none !important;
 }
 
 .gradio-container .block.dt-template-dropdown .wrap,
 .gradio-container .block.dt-template-dropdown .single-select,
-.gradio-container .block.dt-template-dropdown .multiselect {
-  background: var(--dt-surface) !important;
-  border: 1px solid var(--dt-border) !important;
-  border-radius: 6px !important;
+.gradio-container .block.dt-template-dropdown .multiselect,
+.gradio-container .block.dt-template-dropdown .input-container,
+.gradio-container .block.dt-template-dropdown .secondary-wrap,
+.gradio-container .block.dt-template-dropdown fieldset {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
   box-shadow: none !important;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 .gradio-container .block.dt-template-dropdown .wrap:hover,
 .gradio-container .block.dt-template-dropdown .wrap:focus-within {
-  border-color: var(--dt-magenta) !important;
-  box-shadow: 0 0 0 1px var(--dt-magenta) !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .gradio-container .block.dt-template-dropdown input,
 .gradio-container .block.dt-template-dropdown select,
-.gradio-container .block.dt-template-dropdown textarea {
-  background: var(--dt-surface) !important;
+.gradio-container .block.dt-template-dropdown textarea,
+.gradio-container .block.dt-template-dropdown [role="combobox"] {
+  background: transparent !important;
   color: var(--dt-text) !important;
   border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
   font-size: 0.875rem !important;
+  padding: 0 !important;
+}
+
+.gradio-container .block.dt-template-dropdown input:focus,
+.gradio-container .block.dt-template-dropdown textarea:focus {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .gradio-container .block.dt-template-dropdown .icon-wrap,
 .gradio-container .block.dt-template-dropdown button {
   color: var(--dt-magenta) !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 .gradio-container .block.dt-template-dropdown [role="listbox"],
