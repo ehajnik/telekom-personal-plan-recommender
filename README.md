@@ -2,7 +2,9 @@
 
 **Telekom Mobile — usage-driven campaign intelligence (prototype UI)**
 
-Interactive prototype for sales and marketing teams to explore how **usage features** and **behavioural trends** shape a private-customer profile and a downstream **tariff recommendation**. The application is a Gradio front end with Deutsche Telekom Magenta branding (light/dark). Segmentation and offer logic are deliberately stubbed so backend services can be integrated without redesigning the UI.
+Interactive prototype for sales and marketing teams to explore how **usage features** and **behavioural trends** shape a private-customer profile and a downstream **tariff recommendation**. The application is a Gradio front end with Deutsche Telekom Magenta branding (light/dark). Segmentation and offer logic are pluggable via provider interfaces so BSS, CRM, and approved LLM gateways can be integrated without redesigning the UI.
+
+**Documentation:** [docs/](docs/README.md) — architecture, domain model, configuration, development, deployment, integration, and API reference.  
 
 ---
 
@@ -119,11 +121,14 @@ telekom-personal-plan-recommender/
 ├── app.py                      # Thin CLI entry (`python app.py`)
 ├── pyproject.toml              # Package metadata and console script
 ├── requirements.txt
+├── docs/                       # Architecture, API, deployment, integration
+├── scripts/sanity_check.py     # End-to-end smoke tests
+├── tests/                      # Unit tests
 ├── telekom_profiler/           # Application package
-│   ├── config/                 # Sliders, presets, UI messages
-│   ├── domain/                 # Archetypes, rule-based profile & offer
+│   ├── config/                 # Sliders, presets, Ollama settings
+│   ├── domain/                 # Models, archetypes, scoring, rules
+│   ├── services/               # ProfilerEngine, providers, public API
 │   ├── llm/                    # Ollama client
-│   ├── services/               # LLM + fallback orchestration
 │   ├── prompts/
 │   │   ├── builder.py          # Fill LLM prompt templates
 │   │   └── templates/          # run_profile.md, run_offer.md
@@ -138,8 +143,9 @@ telekom-personal-plan-recommender/
 | Layer | Module | Responsibility |
 |-------|--------|----------------|
 | UI | `telekom_profiler.ui.demo` | `create_demo()`, Gradio wiring |
-| Config | `telekom_profiler.config` | Sliders, `PROFILES`, placeholder copy |
-| Domain | `telekom_profiler.domain` | Archetype scoring, profile & offer reports |
+| Services | `telekom_profiler.services` | `ProfilerEngine`, providers, `profile_customer()` |
+| Domain | `telekom_profiler.domain` | `CustomerUsage`, archetypes, rule-based reports |
+| Config | `telekom_profiler.config` | Sliders, `PROFILES`, Ollama env |
 | Prompts | `telekom_profiler.prompts` | `build_profile_prompt`, `build_offer_prompt` |
 | Theme | `telekom_profiler.ui.theme` | `DT_THEME`, `DT_CSS` |
 
@@ -147,34 +153,17 @@ telekom-personal-plan-recommender/
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  subgraph presentation [Presentation layer]
-    UI[ui.demo]
-  end
+See **[docs/architecture.md](docs/architecture.md)** for the full diagram, layer responsibilities, and extension points.
 
-  subgraph branding [Brand layer]
-    Theme[ui.theme.DT_THEME]
-    CSS[app.css]
-  end
+Summary:
 
-  subgraph domain [Domain and prompts]
-    Builder[prompts.builder]
-    Profile[domain.profiling]
-    Offer[domain.offers]
-  end
+- **`ProfilerEngine`** selects Ollama or rule-based **providers** (`ProfileProvider`, `OfferProvider`).
+- **Scoring** (`build_scoring_result`) always runs in code; LLM output is narrative only.
+- **Typed models:** `CustomerUsage`, `ProfileResult` — use `profile_customer_structured()` for integrations.
 
-  UI --> Theme
-  UI --> CSS
-  UI -->|run_profile| Profile
-  UI -->|generate_offer| Offer
-  Builder --> Profile
-  Builder --> Offer
-```
+**Current UI coupling:** `generate_offer` reads **markdown** from `profile_out`. For production, use `gr.State` with `ProfileResult` ([integration guide](docs/integration.md)).
 
-**Current coupling:** `generate_offer` reads **markdown** from `profile_out`. For production, prefer `gr.State` or a typed DTO (segment ID, cluster label, feature vector) so you are not parsing UI output.
-
-**Placeholder detection:** strings shown before a successful run start with `_` (`PLACEHOLDER_PREFIX`). Real profile output must not use that prefix or the offer step will refuse to run.
+**Placeholder detection:** strings before a successful run start with `_` (`PLACEHOLDER_PREFIX`).
 
 ---
 
@@ -196,7 +185,7 @@ Results sections use Gradio markdown: `## Results`, `### Profile`, `### Offer`. 
 
 ## Branding
 
-Defined in `styles/dt_theme.py` and refined in `styles/app.css`.
+Defined in `telekom_profiler/ui/theme/dt_theme.py` and `telekom_profiler/ui/theme/app.css`.
 
 | Token | Light | Dark |
 |-------|-------|------|
@@ -228,23 +217,22 @@ To add a template, extend `PROFILES` with a `dict[str, int]` keyed by `USAGE_SLI
 
 ## Integration guide
 
-Recommended order when moving beyond the prototype:
+See **[docs/integration.md](docs/integration.md)** for CRM/BSS wiring, custom providers, and `ProfileResult` + `gr.State` migration.
 
-1. **`render_profile_report()`** — Replace with an LLM call using `prompts.build_profile_prompt(data)`, or your segmentation API.
-2. **`render_offer_report()`** — Replace with `prompts.build_offer_prompt(profile)` + catalog from `telekom_profiler/data/tariffs_private.md` (swap for live PCM/BSS).
-3. **State** — Introduce `gr.State` for a typed `ProfileResult` instead of passing markdown between steps.
-4. **Templates** — Load presets from YAML/JSON or CMDB; keep keys aligned with `config.sliders`.
-5. **Dependencies** — Add packages to `requirements.txt` with explicit lower bounds; avoid unchecked `pip freeze` unless you pin a full lockfile intentionally.
-
-Example launch options for shared environments:
+Quick example — custom engine in a script or API:
 
 ```python
-demo.launch(
-    theme=DT_THEME,
-    css=DT_CSS,
-    server_name="0.0.0.0",  # only behind corporate reverse proxy / VPN
-    auth=("user", "pass"),  # replace with SSO in production
+from telekom_profiler.domain import CustomerUsage
+from telekom_profiler.services import ProfilerEngine
+from telekom_profiler.services.providers import RuleBasedProfileProvider, RuleBasedOfferProvider
+
+engine = ProfilerEngine(
+    profile_provider=RuleBasedProfileProvider(),
+    offer_provider=RuleBasedOfferProvider(),
 )
+usage = CustomerUsage.from_mapping({...})
+profile = engine.profile(usage)
+offer_md = engine.recommend(profile, usage)
 ```
 
 ---
@@ -265,8 +253,10 @@ Do not run `sudo pip`. The `.venv` directory is git-ignored.
 ## Maintenance
 
 - **Entry points:** `python app.py`, `python -m telekom_profiler`, or `telekom-profiler` after `pip install -e .`.
-- **Dependency policy:** single declared dependency `gradio` (6.14.x); upgrade minor versions after smoke-testing the UI.
-- **Sanity checks:** `python scripts/sanity_check.py` or `python -m unittest discover -s tests`
+- **Dependencies:** `gradio`, `ollama`, `python-dotenv` — see `requirements.txt`.
+- **Tests:** `python -m unittest discover -s tests -v`
+- **Sanity checks:** `python scripts/sanity_check.py`
+- **API reference:** [docs/api-reference.md](docs/api-reference.md)
 
 ---
 
