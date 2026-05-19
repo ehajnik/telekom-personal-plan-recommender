@@ -74,39 +74,75 @@ footer {
   font-size: 0.8rem !important;
 }
 
-/* ── Toolbar (template + actions) ───────────────────────────────────────── */
+/* ── Info + template rows (stacked, full width) ───────────────────────────── */
 
-.gradio-container .gr-row.dt-toolbar {
+.gradio-container .gr-row.dt-info-row,
+.gradio-container .gr-row.dt-template-row {
   display: flex !important;
-  flex-wrap: wrap !important;
-  align-items: flex-end !important;
-  gap: 0.5rem 0.75rem !important;
+  flex-direction: column !important;
   width: 100% !important;
-  margin: 0.25rem 0 0.35rem !important;
+  margin: 0 !important;
+  gap: 0 !important;
 }
 
-.gradio-container .gr-row.dt-toolbar > .gr-column,
-.gradio-container .gr-row.dt-toolbar > .block,
-.gradio-container .gr-row.dt-toolbar > button {
-  flex: 0 1 auto !important;
+.gradio-container .gr-row.dt-info-row > .gr-column,
+.gradio-container .gr-row.dt-info-row > .block,
+.gradio-container .gr-row.dt-template-row > .gr-column,
+.gradio-container .gr-row.dt-template-row > .block {
+  flex: 1 1 100% !important;
+  width: 100% !important;
+  max-width: 100% !important;
   min-width: 0 !important;
 }
 
 .gradio-container .block.dt-inference-mode {
-  flex: 1 1 12rem !important;
-  margin: 0 !important;
-  padding: 0 !important;
+  margin: 0 0 0.2rem !important;
+  padding: 0.35rem 0.65rem !important;
+  border: 1px solid #e5e5e5 !important;
+  border-radius: 6px !important;
+  background: #fafafa !important;
+  box-sizing: border-box !important;
+}
+
+.dark .gradio-container .block.dt-inference-mode {
+  border-color: #404040 !important;
+  background: #262626 !important;
 }
 
 .gradio-container .block.dt-inference-mode .md,
 .gradio-container .block.dt-inference-mode .prose {
   margin: 0 !important;
   font-size: 0.78rem !important;
-  line-height: 1.25 !important;
+  line-height: 1.3 !important;
 }
 
-.gradio-container .gr-row.dt-toolbar button {
-  min-width: 7.5rem !important;
+.gradio-container .gr-row.dt-template-row {
+  margin: 0 0 0.35rem !important;
+}
+
+/* ── Action buttons (below usage / trends) ────────────────────────────────── */
+
+.gradio-container .gr-row.dt-btn-row {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  width: 100% !important;
+  margin: 0.35rem 0 0.25rem !important;
+}
+
+.gradio-container .gr-row.dt-btn-row > .gr-column,
+.gradio-container .gr-row.dt-btn-row > .block,
+.gradio-container .gr-row.dt-btn-row > button {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+}
+
+.gradio-container .gr-row.dt-btn-row button {
+  min-width: 8rem !important;
   height: 2.25rem !important;
   margin: 0 !important;
 }

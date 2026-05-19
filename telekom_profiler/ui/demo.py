@@ -137,16 +137,15 @@ def create_demo() -> gr.Blocks:
                 container=False,
             )
 
-        with gr.Row(elem_classes=["dt-toolbar"]):
+        with gr.Row(elem_classes=["dt-info-row"]):
             gr.Markdown(inference_mode_label(), elem_classes=["dt-inference-mode"])
+
+        with gr.Row(elem_classes=["dt-template-row"]):
             profile_pick = gr.Dropdown(
                 choices=template_choices,
                 value=CUSTOM_PROFILE,
                 label="Profile template",
-                scale=2,
             )
-            profile_btn = gr.Button("Profile", variant="primary", scale=0, min_width=120)
-            offer_btn = gr.Button("Generate offer", variant="secondary", scale=0, min_width=120)
 
         with gr.Row(elem_classes=["dt-sliders-row"]):
             with gr.Column(elem_classes=["dt-feature-col"]):
@@ -161,6 +160,10 @@ def create_demo() -> gr.Blocks:
                 trend_inputs = [_make_slider(TREND_SLIDERS[k]) for k in TREND_SLIDERS]
 
         all_inputs = usage_inputs + trend_inputs
+
+        with gr.Row(elem_classes=["dt-btn-row"]):
+            profile_btn = gr.Button("Profile", variant="primary")
+            offer_btn = gr.Button("Generate offer", variant="secondary")
 
         scoring_out = gr.Markdown(
             format_scoring_summary(None),
