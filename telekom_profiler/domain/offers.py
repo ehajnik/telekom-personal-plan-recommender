@@ -19,14 +19,25 @@ from telekom_profiler.config.thresholds import (
 )
 from telekom_profiler.domain.models import ScoringResult
 
-_TARIFF_XL = ("MagentaMobil XL", "€69.95", "Unlimited DE data; fits heavy streaming.")
-_TARIFF_L = ("MagentaMobil L", "€59.95", "50 GB matches sustained high data use.")
-_TARIFF_M = ("MagentaMobil M", "€49.95", "Balanced data and flat voice.")
-_TARIFF_S = ("MagentaMobil S", "€39.95", "Entry postpaid for light-medium use.")
+_ML_LIGHT = "Light / occasional user"
+_ML_STREAMING = "Streaming & data-heavy"
+_ML_VOICE = "Voice-centric"
+_ML_ROAMING = "Roaming / travel-heavy"
+_ML_UNDER = "Underutilized / overspending"
+
+_TARIFF_XL = ("MagentaMobil XL (MM-XL-001)", "€69.95", "Unlimited DE data; fits heavy streaming.")
+_TARIFF_L = ("MagentaMobil L (MM-L-001)", "€59.95", "50 GB matches sustained high data use.")
+_TARIFF_M = ("MagentaMobil M (MM-M-001)", "€49.95", "Balanced data and flat voice.")
+_TARIFF_S = ("MagentaMobil S (MM-S-001)", "€39.95", "Entry postpaid for light-medium use.")
 _TARIFF_PREPAID = (
-    "MagentaMobil Prepaid M",
+    "Prepaid M (MP-M-001)",
     "€14.95",
     "Low usage suits flexible prepaid.",
+)
+_TARIFF_FAMILY = (
+    "MagentaMobil Family L (FAM-002)",
+    "€79.95",
+    "Multi-line household with shared data pool.",
 )
 
 
@@ -36,6 +47,19 @@ def _select_tariff(
 ) -> tuple[str, str, str]:
     """Pick base tariff from usage thresholds, biased by primary archetype when known."""
     primary = scoring.primary_name if scoring else None
+
+    if primary == _ML_LIGHT or (
+        primary == ARCHETYPE_ESSENTIAL and data["data_gb"] < OFFER_DATA_M_GB
+    ):
+        return _TARIFF_PREPAID if data["data_gb"] < OFFER_DATA_PREPAID_MAX_GB else _TARIFF_S
+    if primary == _ML_STREAMING or primary == ARCHETYPE_STREAMER:
+        return _TARIFF_XL if data["data_gb"] >= OFFER_DATA_L_GB else _TARIFF_L
+    if primary == _ML_VOICE or primary == ARCHETYPE_CHATTERBOX:
+        return _TARIFF_M
+    if primary == _ML_ROAMING or primary == ARCHETYPE_ROAMER:
+        return _TARIFF_L
+    if primary == _ML_UNDER:
+        return _TARIFF_PREPAID if data["data_gb"] < OFFER_DATA_M_GB else _TARIFF_S
 
     if primary == ARCHETYPE_ESSENTIAL and data["data_gb"] < OFFER_DATA_M_GB:
         return _TARIFF_PREPAID
@@ -76,10 +100,14 @@ def render_offer_report(
     if scoring and scoring.primary_name == ARCHETYPE_ROAMER:
         roaming_threshold = max(4.0, OFFER_ROAMING_ADDON_DAYS - 2)
 
-    if data["roaming_days"] >= roaming_threshold:
+    primary_name = scoring.primary_name if scoring else None
+    if data["roaming_days"] >= roaming_threshold or primary_name in (
+        _ML_ROAMING,
+        ARCHETYPE_ROAMER,
+    ):
         addons.append(
             (
-                "EU Roaming Plus",
+                "EU Roaming Plus (ADD-EU-001)",
                 "€5.95",
                 f"{data['roaming_days']:.0f} roaming days/month — extra EU data pool.",
             )

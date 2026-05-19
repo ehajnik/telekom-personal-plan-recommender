@@ -114,3 +114,55 @@ voice trend **{data["voice_trend"]:+.0f}** (trajectory only).
 ### 7. Upsell & retention signals
 {chr(10).join(f"- {u}" for u in upsells[:5])}
 """
+
+
+_ML_PROFILE_CONTEXT: dict[str, str] = {
+    "Light / occasional user": "Low-intensity mobile user; prepaid or entry postpaid fit.",
+    "Streaming & data-heavy": "High data and session intensity; unlimited or large buckets.",
+    "Voice-centric": "Voice-first; moderate data; flat domestic voice important.",
+    "Roaming / travel-heavy": "Frequent international travel; roaming packs essential.",
+    "Underutilized / overspending": "Paying for capacity beyond actual use; downgrade opportunity.",
+}
+
+
+def render_ml_profile_report(
+    primary_label: str,
+    metrics: dict[str, float],
+    overlays: tuple[str, ...] | list[str],
+) -> str:
+    """Profile markdown with concrete 12-month metrics (ML path)."""
+    overlay_text = (
+        "\n".join(f"- {o}" for o in overlays)
+        if overlays
+        else "*No overlays active — clear dominant profile.*"
+    )
+    ctx = _ML_PROFILE_CONTEXT.get(primary_label, "Consumer mobile subscriber.")
+    return f"""### 1. Primary usage profile
+**{primary_label}** (K-Means segmentation on 12-month baseline features).
+
+### 2. Overlay characteristics
+{overlay_text}
+
+### 3. Measured usage (12-month averages)
+| Metric | Value |
+|--------|-------|
+| Data | **{metrics.get("avg_monthly_data_gb", 0):.1f} GB** / month |
+| Voice | **{metrics.get("avg_monthly_voice_min", 0):.0f} min** / month |
+| SMS | **{metrics.get("avg_monthly_sms", 0):.0f}** / month |
+| Roaming days | **{metrics.get("avg_roaming_days", 0):.1f}** |
+| Countries visited | **{metrics.get("countries_visited", 0):.1f}** |
+| Active line ratio | **{metrics.get("active_line_ratio", 0):.2f}** |
+| Idle line share | **{metrics.get("pct_idle_lines", 0):.0%}** |
+| Session intensity | **{metrics.get("session_intensity", 0):.0f}** |
+
+### 4. Customer context
+- {ctx}
+- Segmentation based on baseline behaviour; trends shown as overlays only.
+
+### 5. Pain points & risks
+- Plan–usage mismatch if current tier diverges from metrics above.
+- Review roaming packs if travel-heavy overlay is active.
+
+### 6. Upsell & retention signals
+- Align catalog SKU to primary profile and active overlays (see offer step).
+"""

@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 from telekom_profiler.config.ollama_settings import fallback_on_error, llm_enabled
+from telekom_profiler.config.profiler_settings import effective_profiler_mode
 from telekom_profiler.domain.models import CustomerUsage, ProfileResult
 from telekom_profiler.domain.offers import render_offer_report
 from telekom_profiler.domain.profiling import render_profile_report
 from telekom_profiler.domain.scoring import build_scoring_result
 from telekom_profiler.llm.client import chat_completion
-from telekom_profiler.prompts.builder import build_offer_prompt, build_profile_prompt
+from telekom_profiler.prompts.builder import (
+    build_offer_prompt,
+    build_profile_prompt,
+    format_distance_table,
+)
 from telekom_profiler.services.fallback import FallbackOfferProvider, FallbackProfileProvider
+from telekom_profiler.services.ml_profile_provider import MlProfileProvider
 from telekom_profiler.services.protocols import OfferProvider, ProfileProvider
 
 
@@ -36,7 +42,10 @@ class OllamaProfileProvider:
 
     def profile(self, usage: CustomerUsage) -> ProfileResult:
         scoring = build_scoring_result(usage)
-        markdown = chat_completion(build_profile_prompt(usage.as_dict()))
+        metrics_block = format_distance_table(scoring) if scoring.all_distances else ""
+        markdown = chat_completion(
+            build_profile_prompt(usage.as_dict(), metrics_block=metrics_block)
+        )
         return ProfileResult(
             markdown=markdown,
             usage=usage,
@@ -64,17 +73,24 @@ class OllamaOfferProvider:
     source = "ollama"
 
     def recommend(self, profile: ProfileResult, usage: CustomerUsage) -> str:
-        return chat_completion(build_offer_prompt(profile.markdown))
+        return chat_completion(build_offer_prompt(profile.markdown, scoring=profile.scoring))
+
+
+def _base_profile_provider() -> ProfileProvider:
+    """Rule-based or ML segmentation (no LLM)."""
+    if effective_profiler_mode() == "ml":
+        return MlProfileProvider()
+    return RuleBasedProfileProvider()
 
 
 def default_profile_provider() -> ProfileProvider:
-    """Factory: Ollama (optionally wrapped) when enabled, otherwise rule-based."""
-    rules = RuleBasedProfileProvider()
+    """Factory: ML or rules base; Ollama wraps when enabled."""
+    base = _base_profile_provider()
     if not llm_enabled():
-        return rules
+        return base
     ollama = OllamaProfileProvider()
     if fallback_on_error():
-        return FallbackProfileProvider(ollama, rules)
+        return FallbackProfileProvider(ollama, base)
     return ollama
 
 

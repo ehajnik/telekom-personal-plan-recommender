@@ -142,6 +142,10 @@ class ProfileResult:
                     if self.scoring.secondary
                     else None
                 ),
+                "all_distances": [
+                    {"name": s.name, "distance": s.distance}
+                    for s in self.scoring.all_distances
+                ],
                 "confidence": self.scoring.confidence,
                 "overlays": list(self.scoring.overlays),
             }
@@ -172,9 +176,16 @@ class ProfileResult:
                     raw_scoring["secondary"]["name"],
                     float(raw_scoring["secondary"]["distance"]),
                 )
+            all_raw = raw_scoring.get("all_distances") or []
+            all_distances = tuple(
+                ArchetypeScore(str(item["name"]), float(item["distance"]))
+                for item in all_raw
+                if item
+            )
             scoring = ScoringResult(
                 primary=primary,
                 secondary=secondary,
+                all_distances=all_distances or (primary,),
                 overlays=tuple(raw_scoring.get("overlays") or []),
                 confidence=raw_scoring.get("confidence", "Medium"),
             )

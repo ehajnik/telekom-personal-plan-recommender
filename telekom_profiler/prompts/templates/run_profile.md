@@ -22,6 +22,16 @@ Distance to each of the 5 core **consumer usage archetypes** (lower = closer mat
 {centroid_distances}
 ```
 
+### Distance table (all profiles)
+
+| Profile | Distance |
+|---------|----------|
+{distance_table}
+
+### Extended metrics
+
+{metrics_block}
+
 ---
 
 ## Input: Overlay signals

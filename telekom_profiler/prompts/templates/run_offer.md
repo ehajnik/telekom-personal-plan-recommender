@@ -12,6 +12,10 @@ Profile produced by the usage analytics step:
 {customer_profile}
 ```
 
+**Primary profile (scoring):** {primary_profile}
+
+**Active overlays:** {overlay_signals}
+
 ---
 
 ## Input: Available consumer tariffs and options
@@ -29,7 +33,7 @@ Current **private** portfolio (indicative; use only what appears here):
 Produce a **personalised plan recommendation** in **Markdown**, structured as follows.
 
 ### 1. Recommended main tariff
-Name the single best-fitting **consumer** base plan from the catalog. Justify in 2–3 sentences using specific profile signals (data volume, voice, roaming days, trends).
+Name the single best-fitting **consumer** base plan from the catalog. Cite the **SKU** from the catalog table. Justify in 2–3 sentences using specific profile signals (data volume, voice, roaming days, trends).
 
 ### 2. Recommended add-ons and options
 List up to 3 add-ons (e.g. extra data, EU/all-world roaming pack, MultiSIM, streaming partner option, insurance). For each:

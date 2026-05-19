@@ -46,27 +46,63 @@ def format_overlay_signals(overlays: list[str]) -> str:
     return "\n".join(f"- {flag}" for flag in overlays)
 
 
-def build_profile_prompt(data: dict[str, float]) -> str:
-    distances = compute_archetype_distances(data)
-    scoring = build_scoring_result(CustomerUsage.from_mapping(data))
+def format_distance_table(scoring: object) -> str:
+    """All cluster distances from ``ScoringResult``."""
+    from telekom_profiler.domain.models import ScoringResult
+
+    if not isinstance(scoring, ScoringResult) or not scoring.all_distances:
+        return "N/A"
+    return "\n".join(
+        f"| {s.name} | {s.distance:.3f} |" for s in scoring.all_distances
+    )
+
+
+def build_profile_prompt(
+    data: dict[str, float],
+    *,
+    metrics_block: str = "",
+) -> str:
+    usage = CustomerUsage.from_mapping(data)
+    scoring = build_scoring_result(usage)
+    distances = [(s.name, s.distance) for s in scoring.all_distances] or list(
+        compute_archetype_distances(data)
+    )
+    overlays = list(scoring.overlays) if scoring.overlays else compute_overlays(data)
+    chars_path = DATA_DIR / "consumer_archetypes.md"
+    if not chars_path.is_file():
+        chars_path = DATA_DIR / "plans_and_options.md"
     return _fill_template(
         _read_text(str(PROMPT_TEMPLATES_DIR / "run_profile.md")),
         {
             "slider_features": format_slider_features(data),
             "centroid_distances": format_centroid_distances(distances),
-            "overlay_signals": format_overlay_signals(compute_overlays(data)),
-            "profile_characteristics": _read_text(str(DATA_DIR / "consumer_archetypes.md")),
+            "distance_table": format_distance_table(scoring),
+            "overlay_signals": format_overlay_signals(overlays),
+            "profile_characteristics": _read_text(str(chars_path)),
             "required_primary": scoring.primary_name,
             "required_confidence": scoring.confidence,
+            "metrics_block": metrics_block or "_No extended metrics._",
         },
     )
 
 
-def build_offer_prompt(customer_profile: str) -> str:
+def build_offer_prompt(
+    customer_profile: str,
+    *,
+    scoring: object | None = None,
+) -> str:
+    catalog = DATA_DIR / "plans_and_options.md"
+    if not catalog.is_file():
+        catalog = DATA_DIR / "tariffs_private.md"
+    overlay_line = ""
+    if scoring is not None and hasattr(scoring, "overlays"):
+        overlay_line = format_overlay_signals(list(scoring.overlays))
     return _fill_template(
         _read_text(str(PROMPT_TEMPLATES_DIR / "run_offer.md")),
         {
             "customer_profile": customer_profile,
-            "tariffs_and_options": _read_text(str(DATA_DIR / "tariffs_private.md")),
+            "tariffs_and_options": _read_text(str(catalog)),
+            "overlay_signals": overlay_line or "None",
+            "primary_profile": getattr(scoring, "primary_name", "Unknown"),
         },
     )
