@@ -2,23 +2,29 @@
 
 :root {
   --dt-magenta: #e20074;
+  --dt-magenta-soft: #fdf0f7;
   --dt-radius: 10px;
   --dt-gap: 0.875rem;
   --dt-pad: 1rem;
   --dt-pad-lg: 1.25rem;
   --dt-shell-max: 68rem;
-  --dt-border: #e5e5e5;
+  --dt-border: #e0e0e3;
   --dt-surface: #ffffff;
-  --dt-page: #f3f3f5;
+  --dt-inset: #f7f7f8;
+  --dt-page: #f0f0f2;
+  --dt-text: #191919;
   --dt-muted: #737373;
-  --dt-shadow: 0 1px 2px rgba(25, 25, 25, 0.06), 0 4px 12px rgba(25, 25, 25, 0.04);
+  --dt-shadow: 0 1px 2px rgba(25, 25, 25, 0.05), 0 2px 8px rgba(25, 25, 25, 0.04);
 }
 
 .dark {
+  --dt-magenta-soft: #3d1529;
   --dt-border: #404040;
   --dt-surface: #262626;
+  --dt-inset: #2e2e2e;
   --dt-page: #191919;
-  --dt-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+  --dt-text: #e8e8e8;
+  --dt-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* ── Page canvas ──────────────────────────────────────────────────────────── */
@@ -203,13 +209,80 @@ footer {
   background: transparent !important;
 }
 
+/* ── Sliders (uniform inset track on white cards) ─────────────────────────── */
+
 .gradio-container .dt-feature-col label {
   font-size: 0.8125rem !important;
-  color: var(--body-text-color) !important;
+  font-weight: 500 !important;
+  color: var(--dt-text) !important;
+}
+
+.gradio-container .dt-feature-col .block {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 0 0.35rem !important;
+}
+
+.gradio-container .dt-feature-col .block[class*="slider"],
+.gradio-container .dt-feature-col .slider-block,
+.gradio-container .dt-feature-col div:has(> input[type="range"]) {
+  background: var(--dt-inset) !important;
+  border: 1px solid var(--dt-border) !important;
+  border-radius: 8px !important;
+  padding: 0.55rem 0.75rem !important;
+  box-sizing: border-box !important;
 }
 
 .gradio-container .dt-feature-col input[type="range"] {
-  margin-top: 0.15rem !important;
+  width: 100% !important;
+  margin: 0 !important;
+  accent-color: var(--dt-magenta) !important;
+  background: transparent !important;
+  height: 0.35rem !important;
+}
+
+.gradio-container .dt-feature-col input[type="range"]::-webkit-slider-runnable-track {
+  height: 0.35rem !important;
+  border-radius: 999px !important;
+  background: var(--dt-border) !important;
+}
+
+.gradio-container .dt-feature-col input[type="range"]::-webkit-slider-thumb {
+  margin-top: -0.35rem !important;
+  background: var(--dt-magenta) !important;
+  border: 2px solid var(--dt-surface) !important;
+  box-shadow: 0 0 0 1px var(--dt-border) !important;
+}
+
+.gradio-container .dt-feature-col input[type="range"]::-moz-range-track {
+  height: 0.35rem !important;
+  border-radius: 999px !important;
+  background: var(--dt-border) !important;
+}
+
+.gradio-container .dt-feature-col input[type="range"]::-moz-range-thumb {
+  background: var(--dt-magenta) !important;
+  border: 2px solid var(--dt-surface) !important;
+}
+
+.gradio-container .dt-feature-col .tab-like-container,
+.gradio-container .dt-feature-col [data-testid="number-input"],
+.gradio-container .dt-feature-col input[type="number"] {
+  background: var(--dt-inset) !important;
+  border-color: var(--dt-border) !important;
+  color: var(--dt-text) !important;
+}
+
+/* Gradio 6: slider value row above track */
+.gradio-container .dt-feature-col .wrap.inner-wrap,
+.gradio-container .dt-feature-col .head,
+.gradio-container .dt-feature-col .tab-like-container {
+  background: transparent !important;
+}
+
+.gradio-container .dt-shell input[type="range"] {
+  accent-color: var(--dt-magenta) !important;
 }
 
 /* ── Inference strip ──────────────────────────────────────────────────────── */
@@ -230,7 +303,7 @@ footer {
   margin: 0 !important;
   font-size: 0.8125rem !important;
   line-height: 1.45 !important;
-  color: var(--body-text-color-subdued, var(--dt-muted)) !important;
+  color: var(--dt-muted) !important;
 }
 
 /* ── Template dropdown ───────────────────────────────────────────────────── */
@@ -247,6 +320,17 @@ footer {
 .gradio-container .gr-row.dt-template-row label {
   font-weight: 600 !important;
   font-size: 0.8125rem !important;
+  color: var(--dt-text) !important;
+}
+
+.gradio-container .gr-row.dt-template-row input,
+.gradio-container .gr-row.dt-template-row select,
+.gradio-container .gr-row.dt-template-row textarea,
+.gradio-container .gr-row.dt-template-row .wrap,
+.gradio-container .gr-row.dt-template-row .single-select {
+  background: var(--dt-inset) !important;
+  border-color: var(--dt-border) !important;
+  color: var(--dt-text) !important;
 }
 
 /* ── Results heading ─────────────────────────────────────────────────────── */
@@ -285,6 +369,24 @@ footer {
   margin: 0 !important;
   font-size: 0.8125rem !important;
   line-height: 1.4 !important;
+  color: var(--dt-text) !important;
+}
+
+/* ── Buttons (match Telekom theme) ─────────────────────────────────────────── */
+
+.gradio-container .gr-row.dt-btn-row button.primary {
+  background: var(--dt-magenta) !important;
+  border-color: var(--dt-magenta) !important;
+}
+
+.gradio-container .gr-row.dt-btn-row button.secondary {
+  background: var(--dt-surface) !important;
+  border-color: var(--dt-magenta) !important;
+  color: var(--dt-magenta) !important;
+}
+
+.gradio-container .gr-row.dt-btn-row button.secondary:hover {
+  background: var(--dt-magenta-soft) !important;
 }
 
 /* ── Section titles inside cards ─────────────────────────────────────────── */
@@ -303,6 +405,7 @@ footer {
   font-size: 0.875rem !important;
   font-weight: 600 !important;
   line-height: 1.3 !important;
+  color: var(--dt-text) !important;
 }
 
 /* ── Result bodies ───────────────────────────────────────────────────────── */
@@ -318,12 +421,8 @@ footer {
   padding: 0 !important;
   border: 1px solid var(--dt-border) !important;
   border-radius: 8px !important;
-  background: var(--background-fill-secondary, #f5f5f5) !important;
+  background: var(--dt-inset) !important;
   box-sizing: border-box !important;
-}
-
-.dark .gradio-container .block.dt-result-body {
-  background: #1f1f1f !important;
 }
 
 .gradio-container .block.dt-result-body > .gap {
