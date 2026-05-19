@@ -13,10 +13,19 @@
 /* Uniform content width for all main rows */
 .gradio-container .main,
 .gradio-container .wrap,
-.gradio-container .gr-row {
+.gradio-container .contain,
+.gradio-container .gr-row,
+.gradio-container [class*="dt-header-row"] {
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
+}
+
+.gradio-container .main,
+.gradio-container .contain {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
 }
 
 footer {
@@ -168,12 +177,38 @@ footer {
   width: 100% !important;
   margin: 1rem 0 !important;
   display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 1rem !important;
 }
 
-.gradio-container .gr-row.dt-action-bar > .gr-column {
-  flex: 0 1 auto !important;
-  max-width: 22rem !important;
+.gradio-container .gr-row.dt-action-bar > .gr-column,
+.gradio-container .block.dt-inference-mode {
+  flex: 1 1 auto !important;
+  max-width: 100% !important;
   width: auto !important;
+  min-width: 0 !important;
+}
+
+.gradio-container .block.dt-scoring-summary {
+  width: 100% !important;
+  margin: 0 0 0.75rem !important;
+  padding: 0.65rem 1rem !important;
+  border: 1px solid #e5e5e5 !important;
+  border-radius: 6px !important;
+  background: #fafafa !important;
+  box-sizing: border-box !important;
+}
+
+.dark .gradio-container .block.dt-scoring-summary {
+  border-color: #404040 !important;
+  background: #262626 !important;
+}
+
+.gradio-container .block.dt-scoring-summary .md,
+.gradio-container .block.dt-scoring-summary .prose {
+  margin: 0 !important;
+  font-size: 0.85rem !important;
 }
 
 /* ── Section titles (h3) ──────────────────────────────────────────────────── */

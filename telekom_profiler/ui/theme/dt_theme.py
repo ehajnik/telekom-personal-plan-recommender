@@ -1,6 +1,5 @@
 """Deutsche Telekom Magenta Gradio theme (light + dark)."""
 
-from pathlib import Path
 
 import gradio as gr
 
