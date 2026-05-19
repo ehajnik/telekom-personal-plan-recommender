@@ -1,7 +1,6 @@
 """Tests for domain models and scoring."""
 
 import unittest
-
 from unittest.mock import patch
 
 from telekom_profiler.domain import CustomerUsage, build_scoring_result
@@ -23,6 +22,30 @@ class ModelTests(unittest.TestCase):
     def test_customer_usage_round_trip(self) -> None:
         usage = CustomerUsage.from_mapping(HEAVY_DATA)
         self.assertEqual(usage.as_dict(), {k: float(v) for k, v in HEAVY_DATA.items()})
+
+    def test_customer_usage_clamp(self) -> None:
+        usage = CustomerUsage.from_mapping(
+            {**HEAVY_DATA, "data_gb": 999, "data_trend": 100},
+            clamp=True,
+        )
+        self.assertEqual(usage.data_gb, 150.0)
+        self.assertEqual(usage.data_trend, 50.0)
+
+    def test_profile_result_state_round_trip(self) -> None:
+        usage = CustomerUsage.from_mapping(HEAVY_DATA)
+        scoring = build_scoring_result(usage)
+        from telekom_profiler.domain.models import ProfileResult
+
+        original = ProfileResult(
+            markdown="### test",
+            usage=usage,
+            scoring=scoring,
+            source="test",
+        )
+        restored = ProfileResult.from_state_dict(original.to_state_dict())
+        assert restored is not None
+        self.assertEqual(restored.scoring.primary_name, "Streamer")
+        self.assertEqual(restored.markdown, "### test")
 
     def test_scoring_primary_streamer(self) -> None:
         usage = CustomerUsage.from_mapping(HEAVY_DATA)

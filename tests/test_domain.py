@@ -3,6 +3,8 @@
 import unittest
 
 from telekom_profiler.domain import (
+    CustomerUsage,
+    build_scoring_result,
     compute_archetype_distances,
     render_offer_report,
     render_profile_report,
@@ -35,6 +37,9 @@ class DomainTests(unittest.TestCase):
         prompt = build_profile_prompt(data)
         self.assertIn("data_gb: 30 GB", prompt)
         self.assertNotIn("{slider_features}", prompt)
+        self.assertNotIn("{required_primary}", prompt)
+        primary = build_scoring_result(CustomerUsage.from_mapping(data)).primary_name
+        self.assertIn(primary, prompt)
 
 
 if __name__ == "__main__":

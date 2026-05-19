@@ -14,6 +14,12 @@ dependencies = [
   "python-dotenv>=1.0.0,<2",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.8.0",
+  "mypy>=1.13.0",
+]
+
 [project.scripts]
 telekom-profiler = "telekom_profiler:main"
 
@@ -28,3 +34,20 @@ telekom_profiler = [
   "ui/theme/*.css",
   "assets/*",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"telekom_profiler/domain/profiling.py" = ["E501"]
+"telekom_profiler/domain/offers.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+packages = ["telekom_profiler"]
+ignore_missing_imports = true
+warn_return_any = false

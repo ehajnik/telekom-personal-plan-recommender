@@ -36,7 +36,9 @@ class AnalysisServiceTests(unittest.TestCase):
 
     @patch("telekom_profiler.services.providers.llm_enabled", return_value=False)
     def test_offer_falls_back_without_api_key(self, _mock: object) -> None:
-        profile = profile_customer(HEAVY_DATA)
+        from telekom_profiler.services.analysis import profile_customer_structured
+
+        profile = profile_customer_structured(HEAVY_DATA)
         offer = recommend_offer(profile, HEAVY_DATA)
         self.assertIn("MagentaMobil", offer)
 

@@ -55,7 +55,6 @@ def check_imports() -> None:
     import telekom_profiler  # noqa: F401
     from telekom_profiler import create_demo, main  # noqa: F401
     from telekom_profiler.config.ollama_settings import llm_enabled
-    from telekom_profiler.services import profile_customer, recommend_offer
 
     assert callable(main)
     assert isinstance(llm_enabled(), bool)
@@ -73,7 +72,13 @@ def check_prompts() -> None:
         "voice_trend": 0.0,
     }
     profile_prompt = build_profile_prompt(data)
-    for token in ("{slider_features}", "{centroid_distances}", "{overlay_signals}"):
+    for token in (
+        "{slider_features}",
+        "{centroid_distances}",
+        "{overlay_signals}",
+        "{required_primary}",
+        "{required_confidence}",
+    ):
         if token in profile_prompt:
             raise ValueError(f"Unfilled placeholder {token} in profile prompt")
 
@@ -86,9 +91,10 @@ def check_prompts() -> None:
 
 
 def check_typed_models() -> None:
+    from unittest.mock import patch
+
     from telekom_profiler.domain import CustomerUsage, build_scoring_result
     from telekom_profiler.services.analysis import profile_customer_structured
-    from unittest.mock import patch
 
     data = {
         "data_gb": 95.0,
