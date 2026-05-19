@@ -72,7 +72,7 @@ Keep `build_scoring_result()` for consistent archetype metadata in analytics.
 |----------|--------------|
 | `render_profile_report` | Segmentation API response formatter |
 | `render_offer_report` | PCM recommendation engine |
-| `data/tariffs_private.md` | Product catalogue sync |
+| `telekom_profiler/data/tariffs_private.md` | Product catalogue sync |
 
 ## UI state: stop passing markdown
 

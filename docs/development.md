@@ -100,7 +100,7 @@ Placeholders use `{name}` syntax; filled in `prompts/builder.py`. After edits, r
 
 1. Update `ARCHETYPE_CENTROIDS` in `domain/archetypes.py`.
 2. Align `PROFILES` presets in `config/sliders.py`.
-3. Update `data/consumer_archetypes.md` narrative.
+3. Update `telekom_profiler/data/consumer_archetypes.md` narrative.
 4. Extend tests in `tests/test_domain.py`.
 
 ## Debugging Ollama

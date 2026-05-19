@@ -94,8 +94,8 @@ LLM generators: `build_profile_prompt()` + `build_offer_prompt()` → Ollama.
 
 | File | Used by |
 |------|---------|
-| `data/consumer_archetypes.md` | Profile prompt — archetype descriptions |
-| `data/tariffs_private.md` | Offer prompt — prototype tariff catalogue |
+| `telekom_profiler/data/consumer_archetypes.md` | Profile prompt — archetype descriptions |
+| `telekom_profiler/data/tariffs_private.md` | Offer prompt — prototype tariff catalogue |
 
 Replace these files (or load from API) for production catalogue alignment.
 

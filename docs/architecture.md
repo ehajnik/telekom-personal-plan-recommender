@@ -77,7 +77,7 @@ flowchart TB
 |-----------|-----------|---------|
 | New LLM backend | Implement `ProfileProvider` / `OfferProvider` | Azure OpenAI, internal gateway |
 | Segmentation API | Replace `RuleBasedProfileProvider.profile()` | Call cluster service, map to markdown |
-| Live catalogue | Replace tariff markdown in `data/tariffs_private.md` | PCM API client in `OllamaOfferProvider` |
+| Live catalogue | Replace tariff markdown in `telekom_profiler/data/tariffs_private.md` | PCM API client in `OllamaOfferProvider` |
 | Typed UI state | Use `ProfileResult` + `gr.State` | Stop passing markdown between steps |
 | Presets from CMDB | Load `PROFILES` from YAML/JSON | `config/presets_loader.py` (future) |
 | Custom engine per tenant | `ProfilerEngine(custom_providers)` | Multi-brand deployments |
