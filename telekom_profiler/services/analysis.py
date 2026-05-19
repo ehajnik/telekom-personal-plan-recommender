@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Mapping
+from collections.abc import Mapping
 
 from telekom_profiler.domain.models import CustomerUsage, ProfileResult
 from telekom_profiler.services.engine import ProfilerEngine, get_engine
@@ -20,17 +20,18 @@ def profile_customer(data: Mapping[str, float], *, engine: ProfilerEngine | None
 
 
 def recommend_offer(
-    profile_text: str,
-    data: Mapping[str, float],
+    profile: ProfileResult | str,
+    data: Mapping[str, float] | CustomerUsage,
     *,
     engine: ProfilerEngine | None = None,
 ) -> str:
     """
     Build an offer recommendation markdown string.
 
-    ``profile_text`` must be real profile output (not a UI placeholder).
+    Accepts ``ProfileResult`` or profile markdown (legacy). Placeholder profiles
+    must be rejected by the caller.
     """
-    return (engine or get_engine()).recommend(profile_text, data)
+    return (engine or get_engine()).recommend(profile, data)
 
 
 def profile_customer_structured(

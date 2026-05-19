@@ -49,7 +49,7 @@ Typical signatures for the 5 private-customer archetypes:
 Generate a **private customer profile report** with the following sections.
 
 ### 1. Primary archetype
-Name the best-matching archetype (lowest proximity score). Assign confidence **High / Medium / Low** based on separation from the second-closest archetype (High if the gap is clear; Low if the top two are nearly tied).
+The primary archetype **must** be **{required_primary}** (deterministic scoring from proximity). Assign confidence **{required_confidence}** unless the feature snapshot strongly contradicts the distances—in that case explain briefly and still name **{required_primary}** as primary.
 
 ### 2. Overlay characteristics
 If any overlays are active (e.g. data growth, roaming-heavy, voice decline), explain what they mean for this subscriber. If none are active, state: *No overlays active — clear dominant archetype.*

@@ -5,7 +5,7 @@ from telekom_profiler.services.analysis import (
     profile_customer_structured,
     recommend_offer,
 )
-from telekom_profiler.services.engine import ProfilerEngine, get_engine
+from telekom_profiler.services.engine import ProfilerEngine, get_engine, reset_engine
 from telekom_profiler.services.protocols import OfferProvider, ProfileProvider
 
 __all__ = [
@@ -13,6 +13,7 @@ __all__ = [
     "ProfilerEngine",
     "ProfileProvider",
     "get_engine",
+    "reset_engine",
     "profile_customer",
     "profile_customer_structured",
     "recommend_offer",

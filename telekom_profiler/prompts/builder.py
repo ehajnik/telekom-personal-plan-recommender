@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+from pathlib import Path
+
 from telekom_profiler.domain.archetypes import compute_archetype_distances, compute_overlays
+from telekom_profiler.domain.models import CustomerUsage
+from telekom_profiler.domain.scoring import build_scoring_result
 from telekom_profiler.paths import DATA_DIR, PROMPT_TEMPLATES_DIR
 
 
-def _read_text(path) -> str:
-    return path.read_text(encoding="utf-8")
+@lru_cache(maxsize=16)
+def _read_text(path_str: str) -> str:
+    return Path(path_str).read_text(encoding="utf-8")
 
 
 def _fill_template(template: str, mapping: dict[str, str]) -> str:
@@ -42,22 +48,25 @@ def format_overlay_signals(overlays: list[str]) -> str:
 
 def build_profile_prompt(data: dict[str, float]) -> str:
     distances = compute_archetype_distances(data)
+    scoring = build_scoring_result(CustomerUsage.from_mapping(data))
     return _fill_template(
-        _read_text(PROMPT_TEMPLATES_DIR / "run_profile.md"),
+        _read_text(str(PROMPT_TEMPLATES_DIR / "run_profile.md")),
         {
             "slider_features": format_slider_features(data),
             "centroid_distances": format_centroid_distances(distances),
             "overlay_signals": format_overlay_signals(compute_overlays(data)),
-            "profile_characteristics": _read_text(DATA_DIR / "consumer_archetypes.md"),
+            "profile_characteristics": _read_text(str(DATA_DIR / "consumer_archetypes.md")),
+            "required_primary": scoring.primary_name,
+            "required_confidence": scoring.confidence,
         },
     )
 
 
 def build_offer_prompt(customer_profile: str) -> str:
     return _fill_template(
-        _read_text(PROMPT_TEMPLATES_DIR / "run_offer.md"),
+        _read_text(str(PROMPT_TEMPLATES_DIR / "run_offer.md")),
         {
             "customer_profile": customer_profile,
-            "tariffs_and_options": _read_text(DATA_DIR / "tariffs_private.md"),
+            "tariffs_and_options": _read_text(str(DATA_DIR / "tariffs_private.md")),
         },
     )

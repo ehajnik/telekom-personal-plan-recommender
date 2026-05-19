@@ -14,13 +14,23 @@ load_dotenv(_PROJECT_ROOT / ".env")
 OLLAMA_HOST: Final[str] = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
 OLLAMA_MODEL: Final[str] = os.getenv("OLLAMA_MODEL", "llama3.2")
 
-# Set OLLAMA_ENABLED=false to use rule-based fallback without calling Ollama.
 OLLAMA_ENABLED: Final[bool] = os.getenv("OLLAMA_ENABLED", "true").lower() in (
     "1",
     "true",
     "yes",
 )
 
+OLLAMA_TIMEOUT: Final[float] = float(os.getenv("OLLAMA_TIMEOUT", "120"))
+OLLAMA_NUM_PREDICT: Final[int] = int(os.getenv("OLLAMA_NUM_PREDICT", "1024"))
+
+OLLAMA_FALLBACK_ON_ERROR: Final[bool] = os.getenv(
+    "OLLAMA_FALLBACK_ON_ERROR", "true"
+).lower() in ("1", "true", "yes")
+
 
 def llm_enabled() -> bool:
     return OLLAMA_ENABLED
+
+
+def fallback_on_error() -> bool:
+    return OLLAMA_FALLBACK_ON_ERROR

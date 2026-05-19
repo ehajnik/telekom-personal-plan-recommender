@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from telekom_profiler.config.ollama_settings import llm_enabled
+from telekom_profiler.config.ollama_settings import fallback_on_error, llm_enabled
 from telekom_profiler.domain.models import CustomerUsage, ProfileResult
 from telekom_profiler.domain.offers import render_offer_report
 from telekom_profiler.domain.profiling import render_profile_report
 from telekom_profiler.domain.scoring import build_scoring_result
 from telekom_profiler.llm.client import chat_completion
 from telekom_profiler.prompts.builder import build_offer_prompt, build_profile_prompt
+from telekom_profiler.services.fallback import FallbackOfferProvider, FallbackProfileProvider
+from telekom_profiler.services.protocols import OfferProvider, ProfileProvider
 
 
 class RuleBasedProfileProvider:
@@ -49,7 +51,11 @@ class RuleBasedOfferProvider:
     source = "rule_based"
 
     def recommend(self, profile: ProfileResult, usage: CustomerUsage) -> str:
-        return render_offer_report(profile.markdown, usage.as_dict())
+        return render_offer_report(
+            profile.markdown,
+            usage.as_dict(),
+            scoring=profile.scoring,
+        )
 
 
 class OllamaOfferProvider:
@@ -61,15 +67,23 @@ class OllamaOfferProvider:
         return chat_completion(build_offer_prompt(profile.markdown))
 
 
-def default_profile_provider() -> RuleBasedProfileProvider | OllamaProfileProvider:
-    """Factory: Ollama when enabled, otherwise rule-based."""
-    if llm_enabled():
-        return OllamaProfileProvider()
-    return RuleBasedProfileProvider()
+def default_profile_provider() -> ProfileProvider:
+    """Factory: Ollama (optionally wrapped) when enabled, otherwise rule-based."""
+    rules = RuleBasedProfileProvider()
+    if not llm_enabled():
+        return rules
+    ollama = OllamaProfileProvider()
+    if fallback_on_error():
+        return FallbackProfileProvider(ollama, rules)
+    return ollama
 
 
-def default_offer_provider() -> RuleBasedOfferProvider | OllamaOfferProvider:
-    """Factory: Ollama when enabled, otherwise rule-based."""
-    if llm_enabled():
-        return OllamaOfferProvider()
-    return RuleBasedOfferProvider()
+def default_offer_provider() -> OfferProvider:
+    """Factory: Ollama (optionally wrapped) when enabled, otherwise rule-based."""
+    rules = RuleBasedOfferProvider()
+    if not llm_enabled():
+        return rules
+    ollama = OllamaOfferProvider()
+    if fallback_on_error():
+        return FallbackOfferProvider(ollama, rules)
+    return ollama

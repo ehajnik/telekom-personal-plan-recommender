@@ -8,7 +8,7 @@ or production backends.
 
 from __future__ import annotations
 
-from typing import Mapping
+from collections.abc import Mapping
 
 from telekom_profiler.domain.models import CustomerUsage, ProfileResult
 from telekom_profiler.services.protocols import OfferProvider, ProfileProvider
@@ -70,3 +70,9 @@ def get_engine() -> ProfilerEngine:
     if _default_engine is None:
         _default_engine = ProfilerEngine()
     return _default_engine
+
+
+def reset_engine() -> None:
+    """Clear the singleton so providers are rebuilt (tests, env changes)."""
+    global _default_engine
+    _default_engine = None
