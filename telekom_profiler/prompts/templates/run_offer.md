@@ -60,4 +60,6 @@ Coverage limits, **EU fair-use** on unlimited tiers, **Roaming-Ländergruppen** 
 
 ---
 
+**Language:** Write the entire report in **English** (product names and SKUs may stay as in the catalog; prices may use “brutto” where shown).
+
 Respond only with the offer report in Markdown. Do not invent products or prices not in the catalog. Do not include enterprise or IoT recommendations.

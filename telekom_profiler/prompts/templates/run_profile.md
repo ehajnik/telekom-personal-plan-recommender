@@ -83,4 +83,6 @@ List 3–5 observable signals and the **consumer** product direction each sugges
 
 ---
 
+**Language:** Write the entire report in **English** (product names may stay as in the catalog).
+
 Respond only with the profile report in Markdown. No preamble or closing text outside the report.

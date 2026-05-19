@@ -28,47 +28,47 @@ _ML_UNDER = "Underutilized / overspending"
 _TARIFF_XL = (
     "MagentaMobil XL (MM-XL-001)",
     "€84.95",
-    "Unbegrenzt DE; für sehr hohes Datenvolumen und Streaming.",
+    "Unlimited data in Germany; suited to very high usage and streaming.",
 )
 _TARIFF_L = (
     "MagentaMobil L (MM-L-001)",
     "€59.95",
-    "100 GB; inkl. 5 GB Roaming LG 2/3 und unbegrenzte Sprache EU/CH/GB/TR.",
+    "100 GB; includes 5 GB roaming (LG 2/3) and unlimited voice to EU/CH/GB/TR.",
 )
 _TARIFF_M = (
     "MagentaMobil M (MM-M-001)",
     "€49.95",
-    "50 GB; ausgewogen für Daten und Flat Voice DE.",
+    "50 GB; balanced data and flat domestic voice.",
 )
 _TARIFF_S = (
     "MagentaMobil S (MM-S-001)",
     "€39.95",
-    "30 GB; Einstieg Postpaid mit Flat Voice/SMS DE.",
+    "30 GB; entry postpaid with flat domestic voice/SMS.",
 )
 _TARIFF_XS = (
     "MagentaMobil XS (MM-XS-001)",
     "€29.95",
-    "20 GB; günstigster MagentaMobil Postpaid.",
+    "20 GB; lowest MagentaMobil postpaid tier.",
 )
 _TARIFF_PREPAID_S = (
     "MagentaMobil Prepaid S (MP-PP-S-001)",
-    "€4.95 / 4 Wochen",
-    "1 GB; für sehr geringe Nutzung ohne Bindung.",
+    "€4.95 / 4 weeks",
+    "1 GB; very light usage without contract binding.",
 )
 _TARIFF_PREPAID_M = (
     "MagentaMobil Prepaid M (MP-PP-M-001)",
-    "€9.95 / 4 Wochen",
-    "13 GB; flexibel, Datenmitnahme, HotSpot Flat.",
+    "€9.95 / 4 weeks",
+    "13 GB; flexible prepaid with data rollover and HotSpot Flat.",
 )
 _TARIFF_PREPAID_L = (
     "MagentaMobil Prepaid L (MP-PP-L-001)",
-    "€14.95 / 4 Wochen",
-    "25 GB; Alternative zu Postpaid bei moderater Nutzung.",
+    "€14.95 / 4 weeks",
+    "25 GB; prepaid alternative for moderate usage.",
 )
 _TARIFF_PLUS = (
     "MagentaMobil PlusKarte (MM-PLUS-001)",
     "€19.95",
-    "Zweitvertrag mit Datenpool wie Hauptvertrag (bis 5×).",
+    "Second line sharing the main contract data pool (up to 5×).",
 )
 
 
@@ -132,7 +132,7 @@ def render_offer_report(
     tariff = _select_tariff(data, scoring)
     primary_note = ""
     if scoring:
-        primary_note = f" Primary archetype: **{scoring.primary_name}**."
+        primary_note = f" Primary profile: **{scoring.primary_name}**."
 
     addons: list[tuple[str, str, str]] = []
     roaming_threshold = OFFER_ROAMING_ADDON_DAYS
@@ -147,24 +147,24 @@ def render_offer_report(
         addons.append(
             (
                 "Travel & Surf 4-WeekPass (ADD-TS-4W-001)",
-                "ab €49.95",
-                f"{data['roaming_days']:.0f} Roaming-Tage/Monat — Daten LG 2/3 (pass.telekom.de).",
+                "from €49.95",
+                f"{data['roaming_days']:.0f} roaming days/month — data in roaming LG 2/3 (pass.telekom.de).",
             )
         )
         if data["roaming_days"] >= 12:
             addons.append(
                 (
                     "Travel Mobil Basic (ADD-TMB-001)",
-                    "€14.95 / Buchung",
-                    "Sprach-/SMS-/Datenpaket für längere Nicht-EU-Aufenthalte.",
+                    "€14.95 / booking",
+                    "Voice/SMS/data bundle for longer non-EU stays.",
                 )
             )
     if data["data_gb"] >= OFFER_DATA_BOOST_GB and tariff[0] != _TARIFF_XL[0]:
         addons.append(
             (
                 "Travel & Surf WeekPass (ADD-TS-WEEK-001)",
-                "ab €15.95",
-                "Kurzfristiger Datenpuffer bei Spitzenlast außerhalb EU.",
+                "from €15.95",
+                "Short-term data buffer for peaks outside the EU allowance.",
             )
         )
     if data["data_gb"] >= OFFER_MULTISIM_DATA_GB and "PlusKarte" not in tariff[0]:
@@ -172,27 +172,27 @@ def render_offer_report(
             (
                 "MagentaMobil PlusKarte (MM-PLUS-001)",
                 "€19.95",
-                "Zweites Gerät mit gleichem Datenvolumen wie Hauptvertrag.",
+                "Second device on the same data allowance as the main contract.",
             )
         )
 
     is_prepaid = "Prepaid" in tariff[0]
     channel = (
-        "**Prepaid (MagentaMobil Prepaid)** — Abrechnung alle 4 Wochen, keine "
-        "Mindestlaufzeit; ideal bei schwankender Nutzung."
+        "**Prepaid (MagentaMobil Prepaid)** — billed every 4 weeks, no minimum term; "
+        "good for variable usage."
         if is_prepaid
-        else "**Postpaid (MagentaMobil)** — planbare monatliche Rechnung; "
-        "typisch 24 Monate Bindung (oder **Flex** ohne Bindung, nur ohne Handy)."
+        else "**Postpaid (MagentaMobil)** — predictable monthly bill; typically 24-month "
+        "term (or **Flex** with no minimum term, SIM-only)."
     )
 
     addon_rows = "\n".join(
         f"| {name} | {price} | {note} |" for name, price, note in addons
-    ) or "| — | — | Keine Zusatzoption zwingend erforderlich |"
+    ) or "| — | — | No add-ons required at this usage level |"
 
     addon_bullets = (
         "\n".join(f"- **{a[0]}** ({a[1]}): {a[2]}" for a in addons)
         if addons
-        else "- Keine Pflicht-Optionen; Nutzung zum Vertragsende prüfen."
+        else "- No essential add-ons; review usage at contract renewal."
     )
 
     return f"""### 1. Recommended main tariff
@@ -203,26 +203,26 @@ def render_offer_report(
 
 ### 3. Contract and channel notes
 {channel}
-- **MeinMagenta App** / Shop: Tarifwechsel und Travel-&-Surf-Buchung.
-- **MagentaMobil Young** (18–27): prüfen, wenn Kunde berechtigt — günstigerer Grundpreis, mehr GB.
-- **MagentaEINS**: Kombi-Rabatt mit MagentaZuhause in CRM prüfen.
+- **MeinMagenta app** / shop: tariff changes and Travel & Surf booking.
+- **MagentaMobil Young** (18–27): check eligibility for lower price and extra data.
+- **MagentaEINS**: bundle discount with MagentaZuhause when eligible in CRM.
 
 ### 4. Indicative pricing
 | Product | Monthly price (brutto) | Notes |
 |---------|------------------------|-------|
-| {tariff[0]} | {tariff[1]} | Haupttarif |
+| {tariff[0]} | {tariff[1]} | Main tariff |
 {addon_rows}
 
-*Katalog basiert auf Telekom-Preislisten (siehe `plans_and_options.md`). Vor Angebot in BSS/PCM verifizieren.*
+*Catalog based on Telekom price lists (`plans_and_options.md`). Verify in BSS/PCM before quoting.*
 
 ### 5. Important caveats
-- **EU-Roaming:** Fair-Use bei unbegrenzten Tarifen; Young XL hat 200 GB EU-Sonderkontingent.
-- Nach Verbrauch des Inklusiv-Datenvolumens: **Drosselung 64/16 kbit/s** (Postpaid/Prepaid).
-- **Travel & Surf:** Preise/Volumen landesspezifisch — pass.telekom.de vor Reise buchen.
-- Schweiz/GB: Roaming LG 1, aber angemessene Nutzung bei Sprache/SMS beachten.
+- **EU roaming:** fair-use applies on unlimited tiers; Young XL includes a 200 GB EU allowance.
+- After included data is used: **throttling to 64/16 kbit/s** (postpaid/prepaid).
+- **Travel & Surf:** prices and volumes vary by country — book at pass.telekom.de before travel.
+- Switzerland/GB: roaming LG 1 with fair-use limits on voice/SMS.
 
 ### 6. Next steps for the agent
-- Aktuellen Vertrag und Restlaufzeit in CRM prüfen (Bindung, Hardware-Raten).
-- Bei Roaming ≥ {OFFER_ROAMING_ADDON_DAYS:.0f} Tagen: Reiseziele (EU/LG 2/3) klären und T&S-Pass empfehlen.
-- Tarifwechsel oder PlusKarte über MeinMagenta anbieten, wenn berechtigt.
+- Check current contract and remaining term in CRM (binding, device instalments).
+- If roaming ≥ {OFFER_ROAMING_ADDON_DAYS:.0f} days: confirm destinations (EU vs LG 2/3) and recommend a T&S pass.
+- Offer tariff change or PlusKarte via MeinMagenta when eligible.
 """
