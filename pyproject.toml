@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "telekom-personal-plan-recommender"
+version = "0.1.0"
+description = "Telekom Private Customer Profiler — B2C usage-driven plan recommendations"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "gradio>=6.14.0,<7",
+  "ollama>=0.4.0,<1",
+  "python-dotenv>=1.0.0,<2",
+]
+
+[project.scripts]
+telekom-profiler = "telekom_profiler:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["telekom_profiler*"]
+
+[tool.setuptools.package-data]
+telekom_profiler = [
+  "prompts/templates/*.md",
+  "data/*.md",
+  "ui/theme/*.css",
+  "assets/*",
+]
