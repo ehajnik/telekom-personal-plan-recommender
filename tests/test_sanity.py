@@ -38,7 +38,7 @@ class SanityTests(unittest.TestCase):
         offer = build_offer_prompt("profile text")
         self.assertNotIn("{tariffs_and_options}", offer)
 
-    @patch("telekom_profiler.services.analysis.llm_enabled", return_value=False)
+    @patch("telekom_profiler.services.providers.llm_enabled", return_value=False)
     def test_end_to_end_fallback(self, _mock: object) -> None:
         profile = profile_customer(SAMPLE)
         offer = recommend_offer(profile, SAMPLE)

@@ -85,6 +85,30 @@ def check_prompts() -> None:
         raise ValueError("Customer profile not injected into offer prompt")
 
 
+def check_typed_models() -> None:
+    from telekom_profiler.domain import CustomerUsage, build_scoring_result
+    from telekom_profiler.services.analysis import profile_customer_structured
+    from unittest.mock import patch
+
+    data = {
+        "data_gb": 95.0,
+        "voice_min": 200.0,
+        "sms_count": 30.0,
+        "roaming_days": 8.0,
+        "data_trend": 15.0,
+        "voice_trend": -5.0,
+    }
+    usage = CustomerUsage.from_mapping(data)
+    scoring = build_scoring_result(usage)
+    if scoring.primary_name != "Streamer":
+        raise AssertionError(f"Expected Streamer, got {scoring.primary_name}")
+
+    with patch("telekom_profiler.services.providers.llm_enabled", return_value=False):
+        result = profile_customer_structured(data)
+    if result.scoring is None or result.is_placeholder:
+        raise AssertionError("Structured profile should include scoring and real markdown")
+
+
 def check_domain_pipeline() -> None:
     from telekom_profiler.domain import (
         compute_archetype_distances,
@@ -124,7 +148,7 @@ def check_services_fallback() -> None:
         "data_trend": -5.0,
         "voice_trend": 10.0,
     }
-    with patch("telekom_profiler.services.analysis.llm_enabled", return_value=False):
+    with patch("telekom_profiler.services.providers.llm_enabled", return_value=False):
         profile = profile_customer(data)
         offer = recommend_offer(profile, data)
     if "Chatterbox" not in profile:
@@ -163,6 +187,7 @@ def main() -> int:
         ("Package data files", check_package_files),
         ("Imports & public API", check_imports),
         ("Prompt template fill", check_prompts),
+        ("Typed domain models", check_typed_models),
         ("Domain pipeline", check_domain_pipeline),
         ("Services (LLM fallback)", check_services_fallback),
         ("Theme & CSS", check_theme_css),
