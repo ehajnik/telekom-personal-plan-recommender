@@ -22,7 +22,7 @@ Interactive prototype for sales and marketing teams to explore how **usage featu
 
 ## User workflow
 
-1. **Profile template** — Optional preset (`Heavy data user`, `Chatterbox`) loads representative slider values. `— Custom —` leaves sliders unchanged.
+1. **Profile template** — Optional archetype preset (`Streamer`, `Chatterbox`, `Essential`, `Roamer`, `Messenger`) loads representative slider values. `— Custom —` leaves sliders unchanged.
 2. **Usage features** — Adjust monthly usage dimensions.
 3. **Trends** — Adjust trajectory indicators (see [Feature model](#feature-model)).
 4. **Run profile** — Produces a customer snapshot (markdown table + trend summary).
@@ -213,11 +213,14 @@ Production deployments must follow official **Deutsche Telekom brand guidelines*
 
 Configured in `PROFILES` (`telekom_profiler/config/sliders.py`). Each preset is a partial map of slider keys.
 
-| Template | Typical use case |
-|----------|------------------|
-| — Custom — | Analyst-defined scenario |
-| Heavy data user | High data, roaming, positive data trend |
-| Chatterbox | Voice-heavy, low data, positive voice trend |
+| Template | Usage (data / voice / SMS / roaming) | Trends (data / voice) |
+|----------|--------------------------------------|------------------------|
+| — Custom — | — | — |
+| Streamer | 100 GB / 150 min / 20 / 3 days | +12 / −5 |
+| Chatterbox | 12 GB / 2000 min / 80 / 2 days | −5 / +8 |
+| Essential | 8 GB / 200 min / 30 / 1 day | 0 / 0 |
+| Roamer | 35 GB / 400 min / 25 / 15 days | +5 / 0 |
+| Messenger | 25 GB / 100 min / 200 / 1 day | +3 / −8 |
 
 To add a template, extend `PROFILES` with a `dict[str, int]` keyed by `USAGE_SLIDERS` and `TREND_SLIDERS` keys.
 
