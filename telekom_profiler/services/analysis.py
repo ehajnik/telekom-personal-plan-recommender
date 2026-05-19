@@ -1,21 +1,49 @@
-"""Orchestrate Ollama prompts with rule-based fallback when Ollama is disabled."""
+"""Public service API — thin wrappers over ``ProfilerEngine``."""
 
 from __future__ import annotations
 
-from telekom_profiler.config.ollama_settings import llm_enabled
-from telekom_profiler.domain.offers import render_offer_report
-from telekom_profiler.domain.profiling import render_profile_report
-from telekom_profiler.llm.client import chat_completion
-from telekom_profiler.prompts.builder import build_offer_prompt, build_profile_prompt
+from typing import Mapping
+
+from telekom_profiler.domain.models import CustomerUsage, ProfileResult
+from telekom_profiler.services.engine import ProfilerEngine, get_engine
 
 
-def profile_customer(data: dict[str, float]) -> str:
-    if llm_enabled():
-        return chat_completion(build_profile_prompt(data))
-    return render_profile_report(data)
+def profile_customer(data: Mapping[str, float], *, engine: ProfilerEngine | None = None) -> str:
+    """
+    Build a customer profile markdown string.
+
+    Uses Ollama when ``OLLAMA_ENABLED`` is true; otherwise rule-based rendering.
+    For structured output (scoring metadata), use ``engine.profile()`` instead.
+    """
+    result = (engine or get_engine()).profile(data)
+    return result.markdown
 
 
-def recommend_offer(profile_text: str, data: dict[str, float]) -> str:
-    if llm_enabled():
-        return chat_completion(build_offer_prompt(profile_text))
-    return render_offer_report(profile_text, data)
+def recommend_offer(
+    profile_text: str,
+    data: Mapping[str, float],
+    *,
+    engine: ProfilerEngine | None = None,
+) -> str:
+    """
+    Build an offer recommendation markdown string.
+
+    ``profile_text`` must be real profile output (not a UI placeholder).
+    """
+    return (engine or get_engine()).recommend(profile_text, data)
+
+
+def profile_customer_structured(
+    data: Mapping[str, float],
+    *,
+    engine: ProfilerEngine | None = None,
+) -> ProfileResult:
+    """Return a typed ``ProfileResult`` (preferred for new integrations)."""
+    return (engine or get_engine()).profile(data)
+
+
+__all__ = [
+    "profile_customer",
+    "profile_customer_structured",
+    "recommend_offer",
+]

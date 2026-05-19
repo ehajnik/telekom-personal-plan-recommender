@@ -5,6 +5,9 @@ Run::
 
     python app.py
     python -m telekom_profiler
+
+Documentation: ``docs/`` in the repository root. Public service API:
+``telekom_profiler.services.profile_customer``, ``ProfilerEngine``.
 """
 
 from telekom_profiler.ui.demo import create_demo, main
