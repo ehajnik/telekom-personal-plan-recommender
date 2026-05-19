@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Final, cast
-
 from collections.abc import Mapping
+from typing import Final, cast
 
 from telekom_profiler.config.sliders import USAGE_SLIDERS
 from telekom_profiler.config.thresholds import (

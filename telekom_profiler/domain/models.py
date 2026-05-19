@@ -8,8 +8,9 @@ unstructured dicts or markdown strings when wiring new code.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Mapping
+from typing import Any
 
 from telekom_profiler.config.sliders import SLIDER_KEYS, TREND_SLIDERS, USAGE_SLIDERS
 
