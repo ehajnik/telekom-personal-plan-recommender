@@ -11,6 +11,7 @@
 
 .gradio-container .column.dt-feature-col {
   gap: 1rem !important;
+  margin-bottom: 1rem !important;
 }
 
 .dt-btn-row {

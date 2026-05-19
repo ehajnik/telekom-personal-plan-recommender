@@ -165,7 +165,6 @@ def create_demo() -> gr.Blocks:
         with gr.Row(elem_classes=["dt-btn-row"]):
             with gr.Column(elem_classes=["dt-feature-col"]):
                 run_btn = gr.Button("Run profile", variant="primary")
-            with gr.Column(elem_classes=["dt-feature-col"]):
                 offer_btn = gr.Button("Generate offer", variant="secondary")
 
         gr.Markdown("## Results")
