@@ -11,6 +11,7 @@ Documentation: ``docs/`` in the repository root. Public service API:
 """
 
 from telekom_profiler._version import __version__
+
 __all__ = ["__version__", "create_demo", "main"]
 
 
