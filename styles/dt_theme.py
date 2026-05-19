@@ -1,0 +1,112 @@
+"""
+Deutsche Telekom Magenta brand theme for Gradio (light + dark).
+
+Exports:
+    DT_THEME — Gradio ``Theme`` with Telekom palette (light + dark tokens).
+    DT_CSS   — Contents of ``styles/app.css`` for component-level overrides.
+
+Usage::
+
+    from styles.dt_theme import DT_CSS, DT_THEME
+
+    demo.launch(theme=DT_THEME, css=DT_CSS)
+"""
+
+from pathlib import Path
+
+import gradio as gr
+
+# Telekom palette
+MAGENTA = "#E20074"
+MAGENTA_HOVER = "#C0005F"
+MAGENTA_LIGHT = "#F48BBF"
+DARK = "#191919"
+DARK_SURFACE = "#262626"
+DARK_BORDER = "#404040"
+WHITE = "#FFFFFF"
+LIGHT_GRAY = "#F5F5F5"
+TEXT = "#191919"
+TEXT_MUTED = "#737373"
+BORDER = "#E5E5E5"
+
+DT_MAGENTA = gr.themes.Color(
+    c50="#fce4f2",
+    c100="#f9b8dc",
+    c200="#f48bbf",
+    c300="#ef5ea3",
+    c400="#eb3d91",
+    c500="#e20074",
+    c600="#c90068",
+    c700="#b00059",
+    c800="#97004b",
+    c900="#7e003d",
+    c950="#650030",
+)
+
+DT_CSS = (Path(__file__).parent / "app.css").read_text(encoding="utf-8")
+
+DT_THEME = (
+    gr.themes.Base(
+        primary_hue=DT_MAGENTA,
+        neutral_hue=gr.themes.colors.gray,
+        font=(
+            gr.themes.GoogleFont("Helvetica Neue"),
+            "Arial",
+            "sans-serif",
+        ),
+    )
+    .set(
+        # ── Light mode (Telekom white UI) ────────────────────────────────────
+        body_background_fill=WHITE,
+        body_text_color=TEXT,
+        body_text_color_subdued=TEXT_MUTED,
+        background_fill_primary=WHITE,
+        background_fill_secondary=LIGHT_GRAY,
+        block_background_fill=WHITE,
+        block_border_color=BORDER,
+        border_color_primary=BORDER,
+        input_background_fill=WHITE,
+        input_border_color=BORDER,
+        color_accent=MAGENTA,
+        link_text_color=MAGENTA,
+        slider_color=MAGENTA,
+        button_primary_background_fill=MAGENTA,
+        button_primary_background_fill_hover=MAGENTA_HOVER,
+        button_primary_border_color=MAGENTA,
+        button_primary_border_color_hover=MAGENTA_HOVER,
+        button_primary_text_color=WHITE,
+        button_secondary_background_fill=WHITE,
+        button_secondary_background_fill_hover="#FDF0F7",
+        button_secondary_border_color=MAGENTA,
+        button_secondary_border_color_hover=MAGENTA,
+        button_secondary_text_color=MAGENTA,
+        table_border_color=BORDER,
+        table_even_background_fill=WHITE,
+        table_odd_background_fill=LIGHT_GRAY,
+        # ── Dark mode (Telekom dark + magenta accents) ─────────────────────
+        body_background_fill_dark=DARK,
+        body_text_color_dark=LIGHT_GRAY,
+        body_text_color_subdued_dark=TEXT_MUTED,
+        background_fill_primary_dark=DARK,
+        background_fill_secondary_dark=DARK_SURFACE,
+        block_background_fill_dark=DARK_SURFACE,
+        block_border_color_dark=DARK_BORDER,
+        border_color_primary_dark=DARK_BORDER,
+        input_background_fill_dark="#333333",
+        input_border_color_dark=DARK_BORDER,
+        link_text_color_dark=MAGENTA_LIGHT,
+        slider_color_dark=MAGENTA,
+        button_primary_background_fill_dark=MAGENTA,
+        button_primary_background_fill_hover_dark=MAGENTA_HOVER,
+        button_primary_text_color_dark=WHITE,
+        button_secondary_background_fill_dark=DARK_SURFACE,
+        button_secondary_background_fill_hover_dark="#3D1529",
+        button_secondary_border_color_dark=MAGENTA,
+        button_secondary_text_color_dark=MAGENTA_LIGHT,
+        table_border_color_dark=DARK_BORDER,
+        table_even_background_fill_dark=DARK_SURFACE,
+        table_odd_background_fill_dark=DARK,
+    )
+)
+
+__all__ = ["DT_CSS", "DT_THEME"]

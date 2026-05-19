@@ -1,0 +1,151 @@
+/* Telekom brand overrides — works with Gradio light/dark toggle (.dark on <body>) */
+
+/* ── Layout ───────────────────────────────────────────────────────────────── */
+
+.gradio-container {
+  font-family: "TeleNeo Office", Helvetica, Arial, sans-serif !important;
+  max-width: 72rem !important;
+  margin: 0 auto !important;
+  padding: 0.75rem 1.25rem 2rem !important;
+}
+
+.gradio-container .column.dt-feature-col {
+  gap: 1rem !important;
+}
+
+.dt-btn-row {
+  gap: 1.25rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+footer {
+  display: none !important;
+}
+
+/* ── Header (magenta bar + logo) ─────────────────────────────────────────── */
+
+.gradio-container .dt-header-row {
+  width: 100% !important;
+  margin-bottom: 0 !important;
+}
+
+.gradio-container .dt-header-row > .column,
+.gradio-container .dt-header-row > .block,
+.gradio-container .dt-header-row > * {
+  flex: 1 1 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.gradio-container .dt-header-block {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 1 100% !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.gradio-container .dt-header-block > div:not(#dt-header),
+.gradio-container .dt-header-block .html-component {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+
+#dt-header {
+  width: 100%;
+  box-sizing: border-box;
+  background: #e20074;
+  padding: 16px 24px !important;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+#dt-header .dt-logo {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+#dt-header .dt-text h1 {
+  color: #ffffff !important;
+  margin: 0 !important;
+  font-size: 1.35rem !important;
+  font-weight: 700 !important;
+  border: none !important;
+}
+
+#dt-header .dt-text p {
+  color: rgba(255, 255, 255, 0.9) !important;
+  margin: 4px 0 0 !important;
+  font-size: 0.85rem !important;
+}
+
+/* ── Profile template row ─────────────────────────────────────────────────── */
+
+.dt-action-bar {
+  align-items: flex-end !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  margin-bottom: 1rem !important;
+  margin-top: 1rem !important;
+}
+
+/* ── Section subtitles (h3 + helper text under sliders) ───────────────────── */
+
+.gradio-container-6-14-0 .prose h3,
+.gradio-container .gradio-container-6-14-0 .prose h3,
+.block.dt-subtitle .md h3,
+.block.dt-subtitle .prose h3,
+.block.dt-subtitle h3 {
+  color: var(--body-text-color) !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  margin: 0 !important;
+}
+
+.block.dt-subtitle .md p,
+.block.dt-subtitle .prose p {
+  margin: 0.2rem 0 0 !important;
+  font-size: 0.8rem !important;
+  line-height: 1.35 !important;
+}
+
+.block.dt-subtitle {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.block.dt-subtitle .md,
+.block.dt-subtitle .prose {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* ── Results headings & body text ─────────────────────────────────────────── */
+
+.gradio-container .prose h2 {
+  color: #e20074 !important;
+  font-size: 1.1rem !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid #e20074 !important;
+  padding-bottom: 4px !important;
+  margin-top: 20px !important;
+}
+
+.gradio-container .prose strong {
+  color: #e20074 !important;
+}
+
+.dark .gradio-container .prose p,
+.dark .gradio-container .prose li,
+.dark .gradio-container .md p {
+  color: var(--body-text-color) !important;
+}
