@@ -21,27 +21,81 @@ from telekom_profiler.ml.schema import (
 )
 
 
-def _row(
+def _audit_row(
     check: str,
     *,
     category: str,
     formula: str,
     status: str,
+    unit_note: str = "",
+    reverse_check: str = "",
+    bound_expected: str = "",
+    verdict: str = "",
     max_abs_error: float | None = None,
     n_failures: int | None = None,
     n_total: int | None = None,
+    sample_subscriber: str = "",
+    sample_inputs: str = "",
+    sample_computed: str = "",
+    sample_saved: str = "",
+    sample_reverse: str = "",
     details: str = "",
 ) -> dict[str, object]:
+    if not verdict:
+        verdict = "VALID" if status == "PASS" else "ERROR"
     return {
         "category": category,
         "check": check,
         "formula": formula,
+        "unit_note": unit_note,
+        "reverse_check": reverse_check,
+        "bound_expected": bound_expected,
         "status": status,
+        "verdict": verdict,
         "max_abs_error": max_abs_error,
         "n_failures": n_failures,
         "n_total": n_total,
+        "sample_subscriber": sample_subscriber,
+        "sample_inputs": sample_inputs,
+        "sample_computed": sample_computed,
+        "sample_saved": sample_saved,
+        "sample_reverse": sample_reverse,
         "details": details,
     }
+
+
+def _fmt_num(value: float) -> str:
+    if abs(value) >= 1000 or (0 < abs(value) < 0.001):
+        return f"{value:.6g}"
+    return f"{value:.4f}"
+
+
+def _sample_triplet(
+    features: pd.DataFrame,
+    sid: str,
+    *,
+    inputs: str,
+    computed: float,
+    saved_col: str,
+    reverse: str,
+) -> dict[str, str]:
+    saved = float(features.loc[features[SUBSCRIBER_ID_COL] == sid, saved_col].iloc[0])
+    return {
+        "sample_subscriber": sid,
+        "sample_inputs": inputs,
+        "sample_computed": _fmt_num(computed),
+        "sample_saved": _fmt_num(saved),
+        "sample_reverse": reverse,
+    }
+
+
+def _bounds_note(series: pd.Series, lo: float | None = None, hi: float | None = None) -> str:
+    parts = [f"observed [{series.min():.4g}, {series.max():.4g}]"]
+    if lo is not None or hi is not None:
+        lo_s = f"{lo}" if lo is not None else "—"
+        hi_s = f"{hi}" if hi is not None else "—"
+        parts.append(f"expected [{lo_s}, {hi_s}]")
+    return "; ".join(parts)
 
 
 def build_input_sanity_rows(panel: pd.DataFrame) -> list[dict[str, object]]:
@@ -51,10 +105,13 @@ def build_input_sanity_rows(panel: pd.DataFrame) -> list[dict[str, object]]:
 
     extra_text_cols = [c for c in panel.columns if c not in {SUBSCRIBER_ID_COL, *numeric_cols}]
     rows.append(
-        _row(
+        _audit_row(
             "No non-numeric training feature columns",
             category="input_schema",
             formula="columns == {subscriber_id, month} ∪ RAW_NUMERIC_COLS",
+            unit_note="K-Means inputs must be numeric only",
+            reverse_check="N/A (schema)",
+            bound_expected="no seed_archetype / text labels",
             status="PASS" if not extra_text_cols else "FAIL",
             details="none" if not extra_text_cols else ", ".join(extra_text_cols),
         )
@@ -62,7 +119,7 @@ def build_input_sanity_rows(panel: pd.DataFrame) -> list[dict[str, object]]:
 
     missing_numeric = int(panel[numeric_cols].isna().sum().sum())
     rows.append(
-        _row(
+        _audit_row(
             "No nulls in numeric columns",
             category="input_schema",
             formula="∀ cell in numeric cols: not NaN",
@@ -74,7 +131,7 @@ def build_input_sanity_rows(panel: pd.DataFrame) -> list[dict[str, object]]:
 
     months_ok = bool(panel[MONTH_COL].between(1, 12).all())
     rows.append(
-        _row(
+        _audit_row(
             "Month index in [1, 12]",
             category="input_schema",
             formula="1 ≤ month ≤ 12",
@@ -88,7 +145,7 @@ def build_input_sanity_rows(panel: pd.DataFrame) -> list[dict[str, object]]:
     ]
     negatives = int((panel[non_negative_cols] < 0).sum().sum())
     rows.append(
-        _row(
+        _audit_row(
             "Non-negative usage values",
             category="input_ranges",
             formula="usage cols ≥ 0",
@@ -101,7 +158,7 @@ def build_input_sanity_rows(panel: pd.DataFrame) -> list[dict[str, object]]:
     ratio_cols = ["night_usage_ratio", "weekend_usage_ratio"]
     ratio_ok = bool(panel[ratio_cols].apply(lambda s: s.between(0, 1).all()).all())
     rows.append(
-        _row(
+        _audit_row(
             "Usage ratio columns in [0, 1]",
             category="input_ranges",
             formula="0 ≤ night/weekend ratio ≤ 1",
@@ -112,7 +169,7 @@ def build_input_sanity_rows(panel: pd.DataFrame) -> list[dict[str, object]]:
 
     active_le_total = bool((panel["lines_active"] <= panel["lines_total"]).all())
     rows.append(
-        _row(
+        _audit_row(
             "lines_active <= lines_total",
             category="input_ranges",
             formula="lines_active ≤ lines_total (per month)",
@@ -159,7 +216,7 @@ def build_math_backward_rows(
     months_per_sub = panel.groupby(SUBSCRIBER_ID_COL)[MONTH_COL].nunique()
     bad_month_counts = int((months_per_sub != 12).sum())
     rows.append(
-        _row(
+        _audit_row(
             "12 months per subscriber",
             category="aggregation",
             formula="count(month) per subscriber_id == 12",
@@ -179,7 +236,7 @@ def build_math_backward_rows(
     )
     if len(merged) != len(features):
         rows.append(
-            _row(
+            _audit_row(
                 "Subscriber id alignment (features rebuild)",
                 category="aggregation",
                 formula="saved features ⟷ rebuilt features (inner join)",
@@ -212,7 +269,7 @@ def build_math_backward_rows(
             detail_parts.append(bad[[SUBSCRIBER_ID_COL, "column", "saved", "rebuilt", "abs_error"]])
 
     rows.append(
-        _row(
+        _audit_row(
             "Feature matrix matches panel rebuild",
             category="aggregation",
             formula="build_subscriber_features(panel) == subscriber_features.csv",
@@ -237,15 +294,30 @@ def build_math_backward_rows(
     n_fail, max_err, _ = _compare_series(
         features["active_line_ratio"], expected_active_ratio, rtol=rtol, atol=atol
     )
+    sid = "SUB00002"
+    r2 = features.loc[features[SUBSCRIBER_ID_COL] == sid].iloc[0]
+    lt2, la2 = max(r2["lines_total_mean"], 1.0), max(r2["lines_active_mean"], 0.1)
+    comp_active = la2 / lt2
     rows.append(
-        _row(
+        _audit_row(
             "active_line_ratio = lines_active_mean / lines_total_mean",
             category="derived",
             formula="active_line_ratio = la / lt (lt≥1, la≥0.1)",
+            unit_note="Ratio 0–1 (not ×100 %)",
+            reverse_check="la = active_line_ratio × lt",
+            bound_expected=_bounds_note(features["active_line_ratio"], 0, 1),
             status="PASS" if n_fail == 0 else "FAIL",
             max_abs_error=max_err,
             n_failures=n_fail,
             n_total=len(features),
+            **_sample_triplet(
+                features,
+                sid,
+                inputs=f"lt={lt2:.4f}, la={la2:.4f}",
+                computed=comp_active,
+                saved_col="active_line_ratio",
+                reverse=f"la_back={comp_active * lt2:.4f}",
+            ),
         )
     )
 
@@ -253,14 +325,28 @@ def build_math_backward_rows(
     n_fail, max_err, _ = _compare_series(
         features["roaming_days_ratio"], expected_roam_ratio, rtol=rtol, atol=atol
     )
+    sid3 = "SUB00003"
+    r3 = features.loc[features[SUBSCRIBER_ID_COL] == sid3].iloc[0]
+    comp_roam = float(r3["roaming_days_mean"]) / 30.0
     rows.append(
-        _row(
+        _audit_row(
             "roaming_days_ratio = roaming_days_mean / 30",
             category="derived",
             formula="roaming_days_ratio = roam / 30",
+            unit_note="Days per 30-day month (not ×100 %)",
+            reverse_check="roam_days = roaming_days_ratio × 30",
+            bound_expected=_bounds_note(features["roaming_days_ratio"], 0, 1),
             status="PASS" if n_fail == 0 else "FAIL",
             max_abs_error=max_err,
             n_failures=n_fail,
+            **_sample_triplet(
+                features,
+                sid3,
+                inputs=f"roam={r3['roaming_days_mean']:.4f}",
+                computed=comp_roam,
+                saved_col="roaming_days_ratio",
+                reverse=f"roam_back={comp_roam * 30:.4f}",
+            ),
         )
     )
 
@@ -268,14 +354,26 @@ def build_math_backward_rows(
     n_fail, max_err, _ = _compare_series(
         features["roaming_intensity"], expected_roam_intensity, rtol=rtol, atol=atol
     )
+    comp_int = comp_roam * float(r3["countries_visited_mean"])
     rows.append(
-        _row(
+        _audit_row(
             "roaming_intensity = roaming_days_ratio × countries_visited_mean",
             category="derived",
-            formula="roaming_intensity = roaming_days_ratio * countries",
+            formula="roaming_intensity = roaming_days_ratio × countries",
+            unit_note="Composite score (unbounded)",
+            reverse_check="countries = intensity / roaming_days_ratio",
+            bound_expected=_bounds_note(features["roaming_intensity"]),
             status="PASS" if n_fail == 0 else "FAIL",
             max_abs_error=max_err,
             n_failures=n_fail,
+            **_sample_triplet(
+                features,
+                sid3,
+                inputs=f"ratio={comp_roam:.4f}, countries={r3['countries_visited_mean']:.4f}",
+                computed=comp_int,
+                saved_col="roaming_intensity",
+                reverse=f"countries_back={comp_int / comp_roam:.4f}" if comp_roam else "N/A",
+            ),
         )
     )
 
@@ -283,14 +381,26 @@ def build_math_backward_rows(
     n_fail, max_err, _ = _compare_series(
         features["pct_idle_lines"], expected_pct_idle, rtol=rtol, atol=atol
     )
+    comp_idle = float(np.clip((lt2 - la2) / lt2, 0.0, 1.0))
     rows.append(
-        _row(
+        _audit_row(
             "pct_idle_lines = (lines_total − lines_active) / lines_total",
             category="derived",
-            formula="pct_idle_lines = clip((lt-la)/lt, 0, 1)",
+            formula="pct_idle_lines = clip((lt−la)/lt, 0, 1)",
+            unit_note="Fraction 0–1 idle lines (display ×100 for %)",
+            reverse_check="(lt−la) = pct_idle × lt",
+            bound_expected=_bounds_note(features["pct_idle_lines"], 0, 1),
             status="PASS" if n_fail == 0 else "FAIL",
             max_abs_error=max_err,
             n_failures=n_fail,
+            **_sample_triplet(
+                features,
+                sid,
+                inputs=f"lt={lt2:.4f}, la={la2:.4f}",
+                computed=comp_idle,
+                saved_col="pct_idle_lines",
+                reverse=f"idle_lines_back={comp_idle * lt2:.4f} vs lt−la={lt2 - la2:.4f}",
+            ),
         )
     )
 
@@ -298,14 +408,26 @@ def build_math_backward_rows(
     n_fail, max_err, _ = _compare_series(
         features["session_intensity"], expected_session, rtol=rtol, atol=atol
     )
+    comp_sess = float(r2["avg_session_mb_mean"]) * float(r2["data_gb_mean"])
     rows.append(
-        _row(
+        _audit_row(
             "session_intensity = avg_session_mb_mean × data_gb_mean",
             category="derived",
-            formula="session_intensity = avg_session_mb_mean * data_gb_mean",
+            formula="session_intensity = avg_session_mb × data_gb",
+            unit_note="MB × GB composite (unbounded)",
+            reverse_check="avg_session_mb = intensity / data_gb",
+            bound_expected=_bounds_note(features["session_intensity"]),
             status="PASS" if n_fail == 0 else "FAIL",
             max_abs_error=max_err,
             n_failures=n_fail,
+            **_sample_triplet(
+                features,
+                sid,
+                inputs=f"session_mb={r2['avg_session_mb_mean']:.2f}, data={r2['data_gb_mean']:.2f}",
+                computed=comp_sess,
+                saved_col="session_intensity",
+                reverse=f"session_mb_back={comp_sess / r2['data_gb_mean']:.2f}",
+            ),
         )
     )
 
@@ -313,16 +435,76 @@ def build_math_backward_rows(
     n_fail, max_err, _ = _compare_series(
         features["plan_usage_gap"], expected_plan_gap, rtol=rtol, atol=atol
     )
+    comp_gap = max(0.0, float(r2["plan_tier_mean"]) - float(r2["data_gb_mean"]) / 50.0)
     rows.append(
-        _row(
+        _audit_row(
             "plan_usage_gap = max(0, plan_tier_mean − data_gb_mean/50)",
             category="derived",
-            formula="plan_usage_gap = clip(plan - data/50, min=0)",
+            formula="plan_usage_gap = max(0, plan − data/50)",
+            unit_note="Tier minus usage index (≥0)",
+            reverse_check="plan = gap + data/50 when gap>0",
+            bound_expected=_bounds_note(features["plan_usage_gap"], 0, None),
             status="PASS" if n_fail == 0 else "FAIL",
             max_abs_error=max_err,
             n_failures=n_fail,
+            **_sample_triplet(
+                features,
+                sid,
+                inputs=f"plan={r2['plan_tier_mean']:.4f}, data={r2['data_gb_mean']:.2f}",
+                computed=comp_gap,
+                saved_col="plan_usage_gap",
+                reverse=f"plan_back={comp_gap + r2['data_gb_mean'] / 50:.4f}",
+            ),
         )
     )
+
+    active = features["active_line_ratio"]
+    for name, formula, unit, reverse, expected_series in [
+        (
+            "data_per_active_line = data_gb_mean / active_line_ratio",
+            "data / active_line_ratio",
+            "GB per active line",
+            "data = data_per_active_line × active_line_ratio",
+            features["data_gb_mean"] / active,
+        ),
+        (
+            "sms_per_gb = sms_count_mean / max(data_gb_mean, 0.5)",
+            "sms / max(data, 0.5)",
+            "SMS per GB",
+            "sms = sms_per_gb × data",
+            features["sms_count_mean"] / features["data_gb_mean"].clip(lower=0.5),
+        ),
+        (
+            "voice_per_active_day = voice_min_mean / active_days_mean",
+            "voice / active_days",
+            "min per active day",
+            "voice = voice_per_active_day × active_days",
+            features["voice_min_mean"] / features["active_days_mean"].clip(lower=1.0),
+        ),
+        (
+            "data_per_active_day = data_gb_mean / active_days_mean",
+            "data / active_days",
+            "GB per active day",
+            "data = data_per_active_day × active_days",
+            features["data_gb_mean"] / features["active_days_mean"].clip(lower=1.0),
+        ),
+    ]:
+        col = name.split(" = ")[0]
+        n_fail, max_err, _ = _compare_series(features[col], expected_series, rtol=rtol, atol=atol)
+        rows.append(
+            _audit_row(
+                name,
+                category="derived",
+                formula=formula,
+                unit_note=unit,
+                reverse_check=reverse,
+                bound_expected=_bounds_note(features[col]),
+                status="PASS" if n_fail == 0 else "FAIL",
+                max_abs_error=max_err,
+                n_failures=n_fail,
+                n_total=len(features),
+            )
+        )
 
     # K-Means / scaler backward checks
     kmeans = joblib.load(artifacts_dir / "kmeans.pkl")
@@ -371,7 +553,7 @@ def build_math_backward_rows(
 
     n = len(subscriber_ids)
     rows.append(
-        _row(
+        _audit_row(
             "cluster_idx = argmin_euclidean(scaled features, centroids)",
             category="clustering",
             formula="cluster_idx = argmin ||x_scaled - centroid_k||₂",
@@ -381,7 +563,7 @@ def build_math_backward_rows(
         )
     )
     rows.append(
-        _row(
+        _audit_row(
             "primary_distance matches recomputed min distance",
             category="clustering",
             formula="primary_distance = min_k ||x_scaled - centroid_k||₂",
@@ -392,7 +574,7 @@ def build_math_backward_rows(
         )
     )
     rows.append(
-        _row(
+        _audit_row(
             "dist_* columns match all centroid distances",
             category="clustering",
             formula="dist_label_k = ||x_scaled - centroid_k||₂",
@@ -403,7 +585,7 @@ def build_math_backward_rows(
         )
     )
     rows.append(
-        _row(
+        _audit_row(
             "cluster_label = label_map[cluster_idx]",
             category="clustering",
             formula="cluster_label = label_map[cluster_idx]",
@@ -417,7 +599,7 @@ def build_math_backward_rows(
     sil_saved = float(summary["silhouette"])
     sil_ok = bool(np.isclose(sil_recomputed, sil_saved, rtol=1e-4, atol=1e-4))
     rows.append(
-        _row(
+        _audit_row(
             "Silhouette score matches recomputation",
             category="clustering",
             formula="silhouette(x_scaled, kmeans.labels) == training summary",
@@ -444,14 +626,33 @@ def build_math_backward_rows(
                 expected = "Low"
         if r["confidence"] != expected:
             conf_fail += 1
+    conf_dist = cluster_map["confidence"].value_counts()
+    conf_verdict = "VALID" if conf_fail == 0 else "ERROR"
+    conf_details = f"High={conf_dist.get('High', 0)}, Medium={conf_dist.get('Medium', 0)}, Low={conf_dist.get('Low', 0)}"
+    if conf_fail == 0 and len(conf_dist) == 1 and conf_dist.index[0] == "High":
+        conf_verdict = "WARNING"
+        conf_details += "; all subscribers High — labels not discriminative on this dataset"
+    r1 = cm.loc["SUB00001"]
+    p1, s1 = float(r1["primary_distance"]), float(r1["secondary_distance"])
+    ratio1 = p1 / s1 if s1 > 1e-9 else 0.0
     rows.append(
-        _row(
+        _audit_row(
             "confidence label from primary/secondary distance ratio",
             category="clustering",
-            formula="High if ratio<0.75; Medium if <0.9; else Low",
+            formula="ratio = primary_dist / secondary_dist; High if <0.75, Medium if <0.9",
+            unit_note="Distance ratio (not ×100 %)",
+            reverse_check="secondary_dist = primary_dist / ratio",
+            bound_expected="ratio typically 0–1 on separated clusters",
             status="PASS" if conf_fail == 0 else "FAIL",
+            verdict=conf_verdict,
             n_failures=conf_fail,
             n_total=len(cluster_map),
+            sample_subscriber="SUB00001",
+            sample_inputs=f"p={p1:.4f}, s={s1:.4f}",
+            sample_computed=_fmt_num(ratio1),
+            sample_saved=str(r1["confidence"]),
+            sample_reverse=f"s_back={p1 / ratio1:.4f}" if ratio1 else "N/A",
+            details=conf_details,
         )
     )
 
@@ -461,6 +662,108 @@ def build_math_backward_rows(
         detail_df = detail_df.sort_values("abs_error", ascending=False).head(100)
 
     return rows, detail_df
+
+
+_AUDIT_COLUMN_ORDER = [
+    "category",
+    "check",
+    "formula",
+    "unit_note",
+    "reverse_check",
+    "bound_expected",
+    "status",
+    "verdict",
+    "max_abs_error",
+    "n_failures",
+    "n_total",
+    "sample_subscriber",
+    "sample_inputs",
+    "sample_computed",
+    "sample_saved",
+    "sample_reverse",
+    "details",
+]
+
+
+def _order_audit_df(df: pd.DataFrame) -> pd.DataFrame:
+    cols = [c for c in _AUDIT_COLUMN_ORDER if c in df.columns]
+    extra = [c for c in df.columns if c not in cols]
+    return df[cols + extra]
+
+
+def _format_excel_workbook(path: Path) -> None:
+    from openpyxl import load_workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = load_workbook(path)
+    header_fill = PatternFill("solid", fgColor="E20074")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    pass_fill = PatternFill("solid", fgColor="C6EFCE")
+    fail_fill = PatternFill("solid", fgColor="FFC7CE")
+    warn_fill = PatternFill("solid", fgColor="FFEB9C")
+    valid_fill = PatternFill("solid", fgColor="D9EAD3")
+    thin = Side(style="thin", color="CCCCCC")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    wrap = Alignment(wrap_text=True, vertical="top")
+
+    styled_sheets = {"sanity_input", "sanity_math", "sanity_math_detail", "overview"}
+
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        if ws.max_row < 1:
+            continue
+
+        for cell in ws[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.border = border
+
+        headers = {cell.value: cell.column for cell in ws[1] if cell.value}
+        status_col = headers.get("status")
+        verdict_col = headers.get("verdict")
+
+        for row_idx in range(2, ws.max_row + 1):
+            for col_idx in range(1, ws.max_column + 1):
+                cell = ws.cell(row=row_idx, column=col_idx)
+                cell.alignment = wrap
+                cell.border = border
+            if status_col and sheet_name in styled_sheets:
+                st = ws.cell(row=row_idx, column=status_col).value
+                fill = pass_fill if st == "PASS" else fail_fill if st == "FAIL" else None
+                if fill:
+                    for col_idx in range(1, ws.max_column + 1):
+                        ws.cell(row=row_idx, column=col_idx).fill = fill
+            if verdict_col and sheet_name == "sanity_math":
+                vd = ws.cell(row=row_idx, column=verdict_col).value
+                vfill = (
+                    valid_fill
+                    if vd == "VALID"
+                    else warn_fill
+                    if vd == "WARNING"
+                    else fail_fill
+                    if vd == "ERROR"
+                    else None
+                )
+                if vfill:
+                    ws.cell(row=row_idx, column=verdict_col).fill = vfill
+
+        for col_idx in range(1, ws.max_column + 1):
+            letter = get_column_letter(col_idx)
+            header = ws.cell(row=1, column=col_idx).value
+            max_len = len(str(header or ""))
+            for row_idx in range(2, min(ws.max_row, 80) + 1):
+                val = ws.cell(row=row_idx, column=col_idx).value
+                if val is not None:
+                    max_len = max(max_len, min(len(str(val)), 48))
+            ws.column_dimensions[letter].width = max(10, min(max_len + 2, 42))
+
+        ws.freeze_panes = "A2"
+        if sheet_name == "sanity_math":
+            ws.auto_filter.ref = ws.dimensions
+
+    wb.save(path)
 
 
 def write_training_excel_report(
@@ -483,11 +786,11 @@ def write_training_excel_report(
     features = pd.read_csv(artifacts_dir / "subscriber_features.csv")
     cluster_map = pd.read_csv(artifacts_dir / "subscriber_cluster_map.csv")
 
-    input_sanity = pd.DataFrame(build_input_sanity_rows(panel))
+    input_sanity = _order_audit_df(pd.DataFrame(build_input_sanity_rows(panel)))
     math_rows, math_detail = build_math_backward_rows(
         panel, features, cluster_map, artifacts_dir, summary
     )
-    math_sanity = pd.DataFrame(math_rows)
+    math_sanity = _order_audit_df(pd.DataFrame(math_rows))
 
     overview_df = pd.DataFrame(
         [
@@ -519,3 +822,5 @@ def write_training_excel_report(
         cluster_counts.to_excel(writer, sheet_name="cluster_counts", index=False)
         confidence_counts.to_excel(writer, sheet_name="confidence_counts", index=False)
         numeric_summary.to_excel(writer, sheet_name="feature_summary", index=False)
+
+    _format_excel_workbook(out_xlsx)

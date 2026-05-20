@@ -13,7 +13,7 @@ Version bumps are driven by [Commitizen](https://commitizen-tools.github.io/comm
 ### Added
 
 - `requirements-ml.txt` and `requirements-dev.txt` for explicit ML and dev dependency installs (includes `openpyxl`)
-- Excel `sanity_math` sheet: backward verification of feature rebuild, derived formulas, K-Means distances, silhouette, and confidence labels
+- Excel `sanity_math` sheet: backward verification with unit notes, reverse checks, bounds, sample exemplars, VALID/WARNING/ERROR verdicts, and Telekom-styled formatting
 
 ### Changed
 
