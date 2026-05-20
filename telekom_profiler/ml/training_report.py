@@ -9,7 +9,7 @@ from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.metrics import silhouette_score
+from sklearn.metrics import calinski_harabasz_score, silhouette_score, silhouette_samples
 
 from telekom_profiler.ml.features import build_subscriber_features, feature_matrix, load_usage_panel
 from telekom_profiler.ml.schema import (
@@ -666,6 +666,339 @@ def build_math_backward_rows(
     return rows, detail_df
 
 
+def _ols_slope(values: np.ndarray) -> float:
+    """OLS slope over monthly points (x = 0..n-1); matches features._ols_slope."""
+    n = len(values)
+    if n < 2:
+        return 0.0
+    y = np.asarray(values, dtype=float)
+    if np.std(y) < 1e-9:
+        return 0.0
+    x = np.arange(n, dtype=float)
+    return float(np.polyfit(x, y, 1)[0])
+
+
+def build_statistical_validation(
+    panel: pd.DataFrame,
+    features: pd.DataFrame,
+    cluster_map: pd.DataFrame,
+    artifacts_dir: Path,
+    summary: dict[str, object],
+    *,
+    rtol: float = 1e-5,
+    atol: float = 1e-4,
+) -> dict[str, pd.DataFrame]:
+    """
+    Statistician-grade validation: independent recomputation, distributional checks,
+    clustering quality metrics, and stakeholder summary.
+    """
+    rows: list[dict[str, object]] = []
+    n_subscribers = int(panel[SUBSCRIBER_ID_COL].nunique())
+    n_rows = len(panel)
+    expected_rows = n_subscribers * 12
+
+    rows.append(
+        _audit_row(
+            "Panel row count = subscribers × 12 months",
+            category="descriptive",
+            formula="n_rows = n_subscribers × 12",
+            unit_note="Count integrity",
+            reverse_check="n_subscribers = n_rows / 12",
+            bound_expected=f"expected {expected_rows} rows",
+            status="PASS" if n_rows == expected_rows else "FAIL",
+            max_abs_error=float(abs(n_rows - expected_rows)),
+            details=f"observed {n_rows}, expected {expected_rows}",
+        )
+    )
+
+    mean_fail = 0
+    mean_max_err = 0.0
+    for col in RAW_NUMERIC_COLS:
+        recomputed = panel.groupby(SUBSCRIBER_ID_COL)[col].mean()
+        saved = features.set_index(SUBSCRIBER_ID_COL)[f"{col}_mean"]
+        aligned = recomputed.reindex(saved.index)
+        err = (aligned - saved).abs()
+        n_bad = int((err > atol).sum())
+        mean_fail += n_bad
+        mean_max_err = max(mean_max_err, float(err.max()) if len(err) else 0.0)
+    rows.append(
+        _audit_row(
+            "Monthly means match subscriber feature means (all raw columns)",
+            category="descriptive",
+            formula="∀ col: mean_12m(col) = col_mean in subscriber_features",
+            unit_note="Aggregation identity",
+            reverse_check="monthly panel → groupby mean → compare to CSV",
+            bound_expected=f"max error < {atol}",
+            status="PASS" if mean_fail == 0 else "FAIL",
+            max_abs_error=mean_max_err,
+            n_failures=mean_fail,
+            n_total=n_subscribers * len(RAW_NUMERIC_COLS),
+            details=f"checked {len(RAW_NUMERIC_COLS)} usage columns",
+        )
+    )
+
+    trend_fail = 0
+    trend_max_err = 0.0
+    trend_audit: list[dict[str, object]] = []
+    for sid, grp in panel.groupby(SUBSCRIBER_ID_COL):
+        for trend_col, raw_col in (
+            ("data_trend", "data_gb"),
+            ("voice_trend", "voice_min"),
+            ("roaming_trend", "roaming_days"),
+            ("lines_trend", "lines_active"),
+        ):
+            beta = _ols_slope(grp.sort_values(MONTH_COL)[raw_col].values)
+            saved = float(features.loc[features[SUBSCRIBER_ID_COL] == sid, trend_col].iloc[0])
+            err = abs(beta - saved)
+            if err > atol:
+                trend_fail += 1
+            trend_max_err = max(trend_max_err, err)
+            if sid in ("SUB00001", "SUB00002", "SUB00003"):
+                trend_audit.append(
+                    {
+                        "subscriber_id": sid,
+                        "trend_column": trend_col,
+                        "raw_monthly_column": raw_col,
+                        "ols_slope_recomputed": beta,
+                        "saved_in_features": saved,
+                        "abs_error": err,
+                        "months_used": len(grp),
+                    }
+                )
+    rows.append(
+        _audit_row(
+            "OLS trend slopes match 12-month usage trajectories",
+            category="time_series",
+            formula="β = OLS_slope(month_index, monthly_usage); x = 0..11",
+            unit_note="Linear trend GB/month, min/month, etc.",
+            reverse_check="re-fit polyfit on panel vs subscriber_features trend cols",
+            bound_expected=f"max |Δβ| < {atol}",
+            status="PASS" if trend_fail == 0 else "FAIL",
+            max_abs_error=trend_max_err,
+            n_failures=trend_fail,
+            n_total=n_subscribers * 4,
+            details="4 trends × subscribers",
+        )
+    )
+
+    kmeans = joblib.load(artifacts_dir / "kmeans.pkl")
+    scaler = joblib.load(artifacts_dir / "scaler.pkl")
+    cluster_features = tuple(
+        json.loads((artifacts_dir / "cluster_features.json").read_text(encoding="utf-8"))
+    )
+    x, subscriber_ids = feature_matrix(features, columns=cluster_features)
+    x_scaled = scaler.transform(x)
+    labels = kmeans.predict(x_scaled)
+
+    expected_scaled = (x - scaler.mean_) / scaler.scale_
+    scale_err = float(np.max(np.abs(x_scaled - expected_scaled)))
+    rows.append(
+        _audit_row(
+            "StandardScaler transform matches (x − μ) / σ",
+            category="standardization",
+            formula="x_scaled = (x − mean_) / scale_",
+            unit_note="Z-score per CLUSTER_FEATURES",
+            reverse_check="invert: x = x_scaled × σ + μ",
+            bound_expected=f"max |Δ| < {atol}",
+            status="PASS" if scale_err < atol else "FAIL",
+            max_abs_error=scale_err,
+            n_failures=int(scale_err >= atol),
+            n_total=1,
+        )
+    )
+
+    if hasattr(scaler, "scale_") and np.any(scaler.scale_ <= 0):
+        rows.append(
+            _audit_row(
+                "Scaler feature scales strictly positive",
+                category="standardization",
+                formula="∀j: scale_[j] > 0",
+                status="FAIL",
+                details="non-positive scale causes division issues",
+            )
+        )
+    else:
+        rows.append(
+            _audit_row(
+                "Scaler feature scales strictly positive",
+                category="standardization",
+                formula="∀j: scale_[j] > 0",
+                status="PASS",
+            )
+        )
+
+    nan_inf = int(np.isnan(x).sum() + np.isinf(x).sum())
+    rows.append(
+        _audit_row(
+            "Feature matrix finite (no NaN / Inf)",
+            category="multivariate",
+            formula="∀ feature cells: isfinite(x)",
+            status="PASS" if nan_inf == 0 else "FAIL",
+            n_failures=nan_inf,
+            details=f"non-finite cells={nan_inf}",
+        )
+    )
+
+    z = (x - x.mean(axis=0)) / np.clip(x.std(axis=0), 1e-9, None)
+    outlier_mask = np.abs(z) > 3.5
+    n_outlier_subs = int(outlier_mask.any(axis=1).sum())
+    outlier_verdict = "VALID" if n_outlier_subs < n_subscribers * 0.05 else "WARNING"
+    rows.append(
+        _audit_row(
+            "Multivariate outliers (|z| > 3.5 on cluster features)",
+            category="multivariate",
+            formula="z_j = (x_j − μ_j) / σ_j; flag if any |z_j| > 3.5",
+            unit_note="Exploratory rule; not automatic exclusion",
+            bound_expected="< 5% subscribers flagged",
+            status="PASS",
+            verdict=outlier_verdict,
+            n_failures=n_outlier_subs,
+            n_total=n_subscribers,
+            details=f"{n_outlier_subs} subscribers ({100*n_outlier_subs/n_subscribers:.1f}%)",
+        )
+    )
+
+    corr = float(np.corrcoef(features["data_gb_mean"], features["session_intensity"])[0, 1])
+    corr_ok = corr > 0.3
+    rows.append(
+        _audit_row(
+            "Pearson r(data_gb_mean, session_intensity) > 0.3",
+            category="multivariate",
+            formula="r = corr(data_gb, avg_session_mb × data_gb)",
+            unit_note="Sanity of derived intensity",
+            bound_expected="positive moderate correlation on synthetic data",
+            status="PASS" if corr_ok else "FAIL",
+            max_abs_error=None,
+            details=f"r = {corr:.4f}",
+        )
+    )
+
+    sil = float(summary["silhouette"])
+    sil_ok = sil >= 0.5
+    sil_verdict = "VALID" if sil_ok else "ERROR"
+    rows.append(
+        _audit_row(
+            "Global silhouette ≥ 0.5 (cluster separation)",
+            category="clustering",
+            formula="silhouette = (b − a) / max(a, b) per point, averaged",
+            unit_note="sklearn.metrics.silhouette_score on scaled features",
+            bound_expected="≥ 0.5 PoC threshold",
+            status="PASS" if sil_ok else "FAIL",
+            verdict=sil_verdict,
+            details=f"silhouette = {sil:.4f}",
+        )
+    )
+
+    ch = float(calinski_harabasz_score(x_scaled, labels))
+    rows.append(
+        _audit_row(
+            "Calinski–Harabasz index (between / within dispersion)",
+            category="clustering",
+            formula="CH = tr(B_k)/(k−1) / tr(W_k)/(n−k)",
+            unit_note="Higher = better separated clusters",
+            status="PASS",
+            details=f"CH = {ch:.2f} (compare across training runs)",
+        )
+    )
+
+    sizes = pd.Series(labels).value_counts().sort_index()
+    min_pct = 100.0 * sizes.min() / n_subscribers
+    balance_ok = min_pct >= 5.0
+    balance_verdict = "VALID" if balance_ok else "WARNING"
+    rows.append(
+        _audit_row(
+            "Cluster size balance (min cluster ≥ 5% of subscribers)",
+            category="clustering",
+            formula="min_k |C_k| / n ≥ 0.05",
+            bound_expected="no tiny empty-like segments",
+            status="PASS" if balance_ok else "FAIL",
+            verdict=balance_verdict,
+            details=f"min cluster {sizes.min()} ({min_pct:.1f}%); sizes={sizes.to_dict()}",
+        )
+    )
+
+    mono_fail = int((cluster_map["primary_distance"] >= cluster_map["secondary_distance"]).sum())
+    rows.append(
+        _audit_row(
+            "Primary distance < secondary distance (all subscribers)",
+            category="assignment",
+            formula="d₁ = min_k ||x−c_k||; d₂ = second smallest",
+            status="PASS" if mono_fail == 0 else "FAIL",
+            n_failures=mono_fail,
+            n_total=len(cluster_map),
+        )
+    )
+
+    scaler_audit: list[dict[str, object]] = []
+    for sid in ("SUB00001", "SUB00002", "SUB00003"):
+        i = subscriber_ids.index(sid)
+        for j, feat in enumerate(cluster_features[:6]):
+            raw_v = float(x[i, j])
+            mu = float(scaler.mean_[j])
+            sig = float(scaler.scale_[j])
+            scaled_v = float(x_scaled[i, j])
+            expected = (raw_v - mu) / sig
+            scaler_audit.append(
+                {
+                    "subscriber_id": sid,
+                    "feature": feat,
+                    "raw_value": raw_v,
+                    "scaler_mean": mu,
+                    "scaler_scale": sig,
+                    "scaled_saved": scaled_v,
+                    "scaled_recomputed": expected,
+                    "abs_error": abs(scaled_v - expected),
+                }
+            )
+
+    sil_samples = silhouette_samples(x_scaled, labels)
+    cluster_quality = []
+    label_map = {int(k): v for k, v in json.loads((artifacts_dir / "label_map.json").read_text()).items()}
+    for idx in sorted(sizes.index):
+        mask = labels == idx
+        cluster_quality.append(
+            {
+                "cluster_idx": int(idx),
+                "cluster_label": label_map.get(int(idx), str(idx)),
+                "n_subscribers": int(mask.sum()),
+                "pct_of_total": round(100.0 * mask.sum() / n_subscribers, 2),
+                "mean_silhouette": float(sil_samples[mask].mean()),
+                "mean_primary_distance": float(cluster_map.loc[cluster_map["cluster_idx"] == idx, "primary_distance"].mean()),
+            }
+        )
+
+    stat_df = _order_audit_df(pd.DataFrame(rows))
+
+    n_valid = int((stat_df["verdict"] == "VALID").sum())
+    n_warn = int((stat_df["verdict"] == "WARNING").sum())
+    n_err = int((stat_df["verdict"] == "ERROR").sum())
+    n_pass = int((stat_df["status"] == "PASS").sum())
+    n_fail = int((stat_df["status"] == "FAIL").sum())
+
+    summary_lines = [
+        ("Purpose", "Independent statistical validation of the K-Means training pipeline for reviewers and stakeholders.", "INFO", "INFO"),
+        ("Dataset", f"{n_subscribers} subscribers, {n_rows} monthly rows, {len(cluster_features)} clustering features.", "INFO", "INFO"),
+        ("Method", "Backward recomputation (means, OLS trends, scaler, distances) plus multivariate and cluster-quality metrics.", "INFO", "INFO"),
+        ("Silhouette", f"{sil:.4f} — {'adequate separation (≥0.5)' if sil_ok else 'below PoC threshold 0.5'}", "PASS" if sil_ok else "FAIL", sil_verdict),
+        ("Checks passed", f"{n_pass} of {len(stat_df)} checks with status PASS", "PASS" if n_fail == 0 else "FAIL", "VALID" if n_fail == 0 else "ERROR"),
+        ("Expert verdicts", f"VALID={n_valid}, WARNING={n_warn}, ERROR={n_err}", "PASS" if n_err == 0 else "FAIL", "VALID" if n_err == 0 else "ERROR"),
+        ("Color legend", "Green = statistically consistent; Yellow = passes math but limited usefulness; Red = failed / must fix", "INFO", "INFO"),
+        ("Sheets", "statistical_validation (this audit), sanity_math (formula checks), ols_trend_audit, scaler_audit, cluster_quality", "INFO", "INFO"),
+    ]
+    validation_summary = pd.DataFrame(
+        summary_lines,
+        columns=["topic", "message", "status", "verdict"],
+    )
+
+    return {
+        "validation_summary": validation_summary,
+        "statistical_validation": stat_df,
+        "ols_trend_audit": pd.DataFrame(trend_audit),
+        "scaler_audit": pd.DataFrame(scaler_audit),
+        "cluster_quality": pd.DataFrame(cluster_quality),
+    }
+
+
 _AUDIT_COLUMN_ORDER = [
     "category",
     "check",
@@ -723,7 +1056,15 @@ def _format_excel_workbook(path: Path) -> None:
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
     wrap = Alignment(wrap_text=True, vertical="top")
 
-    styled_sheets = {"sanity_input", "sanity_math", "sanity_math_detail"}
+    styled_sheets = {
+        "validation_summary",
+        "statistical_validation",
+        "sanity_input",
+        "sanity_math",
+        "sanity_math_detail",
+        "ols_trend_audit",
+        "scaler_audit",
+    }
 
     for sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
@@ -763,6 +1104,18 @@ def _format_excel_workbook(path: Path) -> None:
                     c = ws.cell(row=row_idx, column=verdict_col)
                     c.font = label_font
 
+            abs_err_col = headers.get("abs_error")
+            if abs_err_col and sheet_name in {"ols_trend_audit", "scaler_audit"}:
+                err_val = ws.cell(row=row_idx, column=abs_err_col).value
+                if err_val is not None and isinstance(err_val, (int, float)):
+                    from openpyxl.styles import Font, PatternFill
+
+                    ok_fill = PatternFill("solid", fgColor="C6EFCE")
+                    bad_fill = PatternFill("solid", fgColor="FFC7CE")
+                    fill = ok_fill if float(err_val) < 1e-4 else bad_fill
+                    for col_idx in range(1, ws.max_column + 1):
+                        ws.cell(row=row_idx, column=col_idx).fill = fill
+
         for col_idx in range(1, ws.max_column + 1):
             letter = get_column_letter(col_idx)
             header = ws.cell(row=1, column=col_idx).value
@@ -774,7 +1127,7 @@ def _format_excel_workbook(path: Path) -> None:
             ws.column_dimensions[letter].width = max(10, min(max_len + 2, 42))
 
         ws.freeze_panes = "A2"
-        if sheet_name == "sanity_math":
+        if sheet_name in {"sanity_math", "statistical_validation"}:
             ws.auto_filter.ref = ws.dimensions
 
     wb.save(path)
@@ -805,6 +1158,9 @@ def write_training_excel_report(
         panel, features, cluster_map, artifacts_dir, summary
     )
     math_sanity = _order_audit_df(pd.DataFrame(math_rows))
+    stat_pack = build_statistical_validation(
+        panel, features, cluster_map, artifacts_dir, summary
+    )
 
     overview_df = pd.DataFrame(
         [
@@ -812,8 +1168,10 @@ def write_training_excel_report(
             {"metric": "n_rows_monthly_panel", "value": len(panel)},
             {"metric": "n_subscribers", "value": int(summary["n_subscribers"])},
             {"metric": "silhouette", "value": float(summary["silhouette"])},
-            {"metric": "math_checks_passed", "value": int((math_sanity["status"] == "PASS").sum())},
-            {"metric": "math_checks_failed", "value": int((math_sanity["status"] == "FAIL").sum())},
+            {"metric": "statistical_checks_passed", "value": int((stat_pack["statistical_validation"]["status"] == "PASS").sum())},
+            {"metric": "statistical_checks_failed", "value": int((stat_pack["statistical_validation"]["status"] == "FAIL").sum())},
+            {"metric": "formula_checks_passed", "value": int((math_sanity["status"] == "PASS").sum())},
+            {"metric": "formula_checks_failed", "value": int((math_sanity["status"] == "FAIL").sum())},
             {"metric": "clusters", "value": cluster_map["cluster_label"].nunique()},
             {"metric": "label_map", "value": json.dumps(summary.get("label_map", {}), ensure_ascii=True)},
         ]
@@ -828,11 +1186,16 @@ def write_training_excel_report(
 
     out_xlsx.parent.mkdir(parents=True, exist_ok=True)
     with pd.ExcelWriter(out_xlsx, engine="openpyxl") as writer:
-        overview_df.to_excel(writer, sheet_name="overview", index=False)
-        input_sanity.to_excel(writer, sheet_name="sanity_input", index=False)
+        stat_pack["validation_summary"].to_excel(writer, sheet_name="validation_summary", index=False)
+        stat_pack["statistical_validation"].to_excel(writer, sheet_name="statistical_validation", index=False)
         math_sanity.to_excel(writer, sheet_name="sanity_math", index=False)
+        input_sanity.to_excel(writer, sheet_name="sanity_input", index=False)
         if not math_detail.empty:
             math_detail.to_excel(writer, sheet_name="sanity_math_detail", index=False)
+        stat_pack["ols_trend_audit"].to_excel(writer, sheet_name="ols_trend_audit", index=False)
+        stat_pack["scaler_audit"].to_excel(writer, sheet_name="scaler_audit", index=False)
+        stat_pack["cluster_quality"].to_excel(writer, sheet_name="cluster_quality", index=False)
+        overview_df.to_excel(writer, sheet_name="overview", index=False)
         cluster_counts.to_excel(writer, sheet_name="cluster_counts", index=False)
         confidence_counts.to_excel(writer, sheet_name="confidence_counts", index=False)
         numeric_summary.to_excel(writer, sheet_name="feature_summary", index=False)
