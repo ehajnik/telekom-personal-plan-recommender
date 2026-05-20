@@ -30,7 +30,7 @@ def _audit_row(
     unit_note: str = "",
     reverse_check: str = "",
     bound_expected: str = "",
-    verdict: str = "",
+    result: str = "",
     max_abs_error: float | None = None,
     n_failures: int | None = None,
     n_total: int | None = None,
@@ -43,10 +43,10 @@ def _audit_row(
     what_this_check_does: str = "",
     proof_shown: str = "",
 ) -> dict[str, object]:
-    if not verdict:
-        verdict = "VALID" if status == "PASS" else "ERROR"
-    elif status == "FAIL" and verdict == "VALID":
-        verdict = "ERROR"
+    if not result:
+        result = "PASSED" if status == "PASS" else "INVALID"
+    elif status == "FAIL" and result == "PASSED":
+        result = "INVALID"
     return {
         "category": category,
         "check": check,
@@ -57,7 +57,7 @@ def _audit_row(
         "reverse_check": reverse_check,
         "bound_expected": bound_expected,
         "status": status,
-        "verdict": verdict,
+        "result": result,
         "max_abs_error": max_abs_error,
         "n_failures": n_failures,
         "n_total": n_total,
@@ -93,6 +93,249 @@ def _sample_triplet(
         "sample_saved": _fmt_num(saved),
         "sample_reverse": reverse,
     }
+
+
+_EXEMPLAR_SUBSCRIBERS: tuple[str, ...] = ("SUB00001", "SUB00002", "SUB00003")
+
+_RESULT_LINE_COLS = [
+    "check_group",
+    "method",
+    "subscriber_id",
+    "step",
+    "field",
+    "computed",
+    "expected",
+    "abs_error",
+    "result",
+]
+
+
+def _line_result(
+    computed: float,
+    expected: float,
+    *,
+    atol: float = 1e-4,
+    warn: bool = False,
+) -> str:
+    if warn:
+        return "WARNING"
+    if abs(computed - expected) <= atol:
+        return "PASSED"
+    return "INVALID"
+
+
+def _append_result_line(
+    rows: list[dict[str, object]],
+    *,
+    check_group: str,
+    method: str,
+    subscriber_id: str,
+    step: object,
+    field: str,
+    computed: float,
+    expected: float,
+    atol: float = 1e-4,
+    warn: bool = False,
+) -> None:
+    rows.append(
+        {
+            "check_group": check_group,
+            "method": method,
+            "subscriber_id": subscriber_id,
+            "step": step,
+            "field": field,
+            "computed": computed,
+            "expected": expected,
+            "abs_error": abs(computed - expected),
+            "result": _line_result(computed, expected, atol=atol, warn=warn),
+        }
+    )
+
+
+def build_check_result_lines(
+    panel: pd.DataFrame,
+    features: pd.DataFrame,
+    cluster_map: pd.DataFrame,
+    artifacts_dir: Path,
+    summary: dict[str, object],
+    *,
+    atol: float = 1e-4,
+) -> pd.DataFrame:
+    """One row per measured step (e.g. 12 monthly rows) with PASSED / WARNING / INVALID."""
+    rows: list[dict[str, object]] = []
+
+    for sid in _EXEMPLAR_SUBSCRIBERS:
+        sub = panel[panel[SUBSCRIBER_ID_COL] == sid].sort_values(MONTH_COL)
+        for month in range(1, 13):
+            n_rows = int((sub[MONTH_COL] == month).sum())
+            _append_result_line(
+                rows,
+                check_group="monthly_panel",
+                method="COUNT(*) WHERE subscriber_id AND month",
+                subscriber_id=sid,
+                step=month,
+                field="monthly_row_count",
+                computed=float(n_rows),
+                expected=1.0,
+                atol=0.0,
+            )
+
+    for sid in ("SUB00002",):
+        sub = panel[panel[SUBSCRIBER_ID_COL] == sid].sort_values(MONTH_COL)
+        for col in RAW_NUMERIC_COLS:
+            monthly_vals: list[float] = []
+            for month in range(1, 13):
+                v = float(sub.loc[sub[MONTH_COL] == month, col].iloc[0])
+                monthly_vals.append(v)
+                _append_result_line(
+                    rows,
+                    check_group="monthly_values",
+                    method="READ panel CSV cell value",
+                    subscriber_id=sid,
+                    step=month,
+                    field=col,
+                    computed=v,
+                    expected=v,
+                    atol=0.0,
+                )
+            mean_c = float(np.mean(monthly_vals))
+            mean_s = float(features.loc[features[SUBSCRIBER_ID_COL] == sid, f"{col}_mean"].iloc[0])
+            _append_result_line(
+                rows,
+                check_group="monthly_mean",
+                method="mean(month_1..month_12) vs subscriber_features column",
+                subscriber_id=sid,
+                step="mean",
+                field=f"{col}_mean",
+                computed=mean_c,
+                expected=mean_s,
+                atol=atol,
+            )
+
+    for sid in _EXEMPLAR_SUBSCRIBERS:
+        sub = panel[panel[SUBSCRIBER_ID_COL] == sid].sort_values(MONTH_COL)
+        for trend_col, raw_col in (
+            ("data_trend", "data_gb"),
+            ("voice_trend", "voice_min"),
+            ("roaming_trend", "roaming_days"),
+            ("lines_trend", "lines_active"),
+        ):
+            for month in range(1, 13):
+                yv = float(sub.loc[sub[MONTH_COL] == month, raw_col].iloc[0])
+                _append_result_line(
+                    rows,
+                    check_group="ols_input",
+                    method="monthly value used as OLS y (x = month_index 0..11)",
+                    subscriber_id=sid,
+                    step=month,
+                    field=f"{raw_col}[month={month}]",
+                    computed=yv,
+                    expected=yv,
+                    atol=0.0,
+                )
+            y = sub.sort_values(MONTH_COL)[raw_col].astype(float).values
+            beta = _ols_slope(y)
+            saved = float(features.loc[features[SUBSCRIBER_ID_COL] == sid, trend_col].iloc[0])
+            _append_result_line(
+                rows,
+                check_group="ols_slope",
+                method="numpy.polyfit(x=arange(12), y=monthly_series, deg=1)[0]",
+                subscriber_id=sid,
+                step="slope",
+                field=trend_col,
+                computed=beta,
+                expected=saved,
+                atol=atol,
+            )
+
+    kmeans = joblib.load(artifacts_dir / "kmeans.pkl")
+    scaler = joblib.load(artifacts_dir / "scaler.pkl")
+    cluster_features = tuple(
+        json.loads((artifacts_dir / "cluster_features.json").read_text(encoding="utf-8"))
+    )
+    x, subscriber_ids = feature_matrix(features, columns=cluster_features)
+    x_scaled = scaler.transform(x)
+    labels = kmeans.predict(x_scaled)
+
+    for sid in _EXEMPLAR_SUBSCRIBERS:
+        i = subscriber_ids.index(sid)
+        for j, feat in enumerate(cluster_features):
+            raw_v = float(x[i, j])
+            mu = float(scaler.mean_[j])
+            sig = float(scaler.scale_[j])
+            scaled_saved = float(x_scaled[i, j])
+            scaled_expected = (raw_v - mu) / sig
+            _append_result_line(
+                rows,
+                check_group="standard_scaler",
+                method="(raw − scaler.mean_) / scaler.scale_",
+                subscriber_id=sid,
+                step=j + 1,
+                field=feat,
+                computed=scaled_expected,
+                expected=scaled_saved,
+                atol=atol,
+            )
+
+    sid = "SUB00002"
+    cm = cluster_map.set_index(SUBSCRIBER_ID_COL)
+    p_dist = float(cm.loc[sid, "primary_distance"])
+    s_dist = float(cm.loc[sid, "secondary_distance"])
+    i = subscriber_ids.index(sid)
+    centroids = kmeans.cluster_centers_
+    point = x_scaled[i : i + 1]
+    dists = np.linalg.norm(centroids - point, axis=1)
+    p_re = float(dists.min())
+    _append_result_line(
+        rows,
+        check_group="cluster_distance",
+        method="min_k ||x_scaled − centroid_k||_2",
+        subscriber_id=sid,
+        step="primary",
+        field="primary_distance",
+        computed=p_re,
+        expected=p_dist,
+        atol=atol,
+    )
+
+    sil = float(summary["silhouette"])
+    sil_re = float(silhouette_score(x_scaled, labels))
+    _append_result_line(
+        rows,
+        check_group="cluster_quality",
+        method="sklearn.metrics.silhouette_score(X_scaled, labels)",
+        subscriber_id="(all)",
+        step="global",
+        field="silhouette",
+        computed=sil_re,
+        expected=sil,
+        atol=1e-4,
+    )
+
+    ratio = p_dist / s_dist if s_dist > 1e-9 else 0.0
+    conf_saved = str(cm.loc[sid, "confidence"])
+    if ratio < 0.75:
+        conf_exp = "High"
+    elif ratio < 0.9:
+        conf_exp = "Medium"
+    else:
+        conf_exp = "Low"
+    conf_result = "PASSED" if conf_saved == conf_exp else "INVALID"
+    rows.append(
+        {
+            "check_group": "confidence_rule",
+            "method": "ratio=primary/secondary; label High if <0.75, Medium if <0.9",
+            "subscriber_id": sid,
+            "step": "label",
+            "field": "confidence",
+            "computed": ratio,
+            "expected": conf_exp,
+            "abs_error": 0.0 if conf_saved == conf_exp else 1.0,
+            "result": conf_result,
+        }
+    )
+
+    return pd.DataFrame(rows, columns=_RESULT_LINE_COLS)
 
 
 def _bounds_note(series: pd.Series, lo: float | None = None, hi: float | None = None) -> str:
@@ -633,10 +876,10 @@ def build_math_backward_rows(
         if r["confidence"] != expected:
             conf_fail += 1
     conf_dist = cluster_map["confidence"].value_counts()
-    conf_verdict = "VALID" if conf_fail == 0 else "ERROR"
+    conf_result = "PASSED" if conf_fail == 0 else "INVALID"
     conf_details = f"High={conf_dist.get('High', 0)}, Medium={conf_dist.get('Medium', 0)}, Low={conf_dist.get('Low', 0)}"
     if conf_fail == 0 and len(conf_dist) == 1 and conf_dist.index[0] == "High":
-        conf_verdict = "WARNING"
+        conf_result = "WARNING"
         conf_details += "; all subscribers High — labels not discriminative on this dataset"
     r1 = cm.loc["SUB00001"]
     p1, s1 = float(r1["primary_distance"]), float(r1["secondary_distance"])
@@ -650,7 +893,7 @@ def build_math_backward_rows(
             reverse_check="secondary_dist = primary_dist / ratio",
             bound_expected="ratio typically 0–1 on separated clusters",
             status="PASS" if conf_fail == 0 else "FAIL",
-            verdict=conf_verdict,
+            result=conf_result,
             n_failures=conf_fail,
             n_total=len(cluster_map),
             sample_subscriber="SUB00001",
@@ -794,10 +1037,7 @@ def build_statistical_validation(
                         "ols_slope_recomputed": beta,
                         "saved_in_features": saved,
                         "abs_error": err,
-                        "proof": (
-                            f"β_recomputed={beta:.6g} vs saved={saved:.6g} → "
-                            f"{'MATCH' if err < atol else 'MISMATCH'}"
-                        ),
+                        "result": _line_result(beta, saved, atol=atol),
                         "months_used": len(grp),
                     }
                 )
@@ -905,7 +1145,7 @@ def build_statistical_validation(
     z = (x - x.mean(axis=0)) / np.clip(x.std(axis=0), 1e-9, None)
     outlier_mask = np.abs(z) > 3.5
     n_outlier_subs = int(outlier_mask.any(axis=1).sum())
-    outlier_verdict = "VALID" if n_outlier_subs < n_subscribers * 0.05 else "WARNING"
+    outlier_result = "PASSED" if n_outlier_subs < n_subscribers * 0.05 else "WARNING"
     rows.append(
         _audit_row(
             "Multivariate outliers (|z| > 3.5 on cluster features)",
@@ -914,7 +1154,7 @@ def build_statistical_validation(
             unit_note="Exploratory rule; not automatic exclusion",
             bound_expected="< 5% subscribers flagged",
             status="PASS",
-            verdict=outlier_verdict,
+            result=outlier_result,
             n_failures=n_outlier_subs,
             n_total=n_subscribers,
             details=f"{n_outlier_subs} subscribers ({100*n_outlier_subs/n_subscribers:.1f}%)",
@@ -939,7 +1179,7 @@ def build_statistical_validation(
     sil = float(summary["silhouette"])
     sil_re = float(silhouette_score(x_scaled, labels))
     sil_ok = sil >= 0.5
-    sil_verdict = "VALID" if sil_ok else "ERROR"
+    sil_result = "PASSED" if sil_ok else "INVALID"
     rows.append(
         _audit_row(
             "Global silhouette ≥ 0.5 (cluster separation)",
@@ -956,7 +1196,7 @@ def build_statistical_validation(
             unit_note="sklearn.metrics.silhouette_score on scaled features",
             bound_expected="≥ 0.5 PoC threshold",
             status="PASS" if sil_ok else "FAIL",
-            verdict=sil_verdict,
+            result=sil_result,
             details=f"silhouette = {sil:.4f}",
         )
     )
@@ -976,7 +1216,7 @@ def build_statistical_validation(
     sizes = pd.Series(labels).value_counts().sort_index()
     min_pct = 100.0 * sizes.min() / n_subscribers
     balance_ok = min_pct >= 5.0
-    balance_verdict = "VALID" if balance_ok else "WARNING"
+    balance_result = "PASSED" if balance_ok else "WARNING"
     rows.append(
         _audit_row(
             "Cluster size balance (min cluster ≥ 5% of subscribers)",
@@ -984,7 +1224,7 @@ def build_statistical_validation(
             formula="min_k |C_k| / n ≥ 0.05",
             bound_expected="no tiny empty-like segments",
             status="PASS" if balance_ok else "FAIL",
-            verdict=balance_verdict,
+            result=balance_result,
             details=f"min cluster {sizes.min()} ({min_pct:.1f}%); sizes={sizes.to_dict()}",
         )
     )
@@ -1043,45 +1283,35 @@ def build_statistical_validation(
 
     stat_df = _order_audit_df(_enrich_audit_explanations(pd.DataFrame(rows)))
 
-    n_valid = int((stat_df["verdict"] == "VALID").sum())
-    n_warn = int((stat_df["verdict"] == "WARNING").sum())
-    n_err = int((stat_df["verdict"] == "ERROR").sum())
-    n_pass = int((stat_df["status"] == "PASS").sum())
-    n_fail = int((stat_df["status"] == "FAIL").sum())
-
-    summary_lines = [
-        ("Purpose", "Independent statistical validation of the K-Means training pipeline for reviewers and stakeholders.", "INFO", "INFO"),
-        ("Dataset", f"{n_subscribers} subscribers, {n_rows} monthly rows, {len(cluster_features)} clustering features.", "INFO", "INFO"),
-        ("Method", "Backward recomputation (means, OLS trends, scaler, distances) plus multivariate and cluster-quality metrics.", "INFO", "INFO"),
-        ("Silhouette", f"{sil:.4f} — {'adequate separation (≥0.5)' if sil_ok else 'below PoC threshold 0.5'}", "PASS" if sil_ok else "FAIL", sil_verdict),
-        ("Checks passed", f"{n_pass} of {len(stat_df)} checks with status PASS", "PASS" if n_fail == 0 else "FAIL", "VALID" if n_fail == 0 else "ERROR"),
-        ("Expert verdicts", f"VALID={n_valid}, WARNING={n_warn}, ERROR={n_err}", "PASS" if n_err == 0 else "FAIL", "VALID" if n_err == 0 else "ERROR"),
-        ("Color legend", "Green = statistically consistent; Yellow = passes math but limited usefulness; Red = failed / must fix", "INFO", "INFO"),
-        (
-            "Sheets",
-            "proof_examples = worked arithmetic; statistical_validation = what + proof columns; "
-            "ols_trend_audit / scaler_audit = line-by-line numbers",
-            "INFO",
-            "INFO",
-        ),
-        (
-            "How to verify",
-            "Read columns what_this_check_does (plain English) and proof_shown (actual numbers). "
-            "Green row = you can trust that step.",
-            "INFO",
-            "INFO",
-        ),
-    ]
-    validation_summary = pd.DataFrame(
-        summary_lines,
-        columns=["topic", "message", "status", "verdict"],
+    check_results = build_check_result_lines(
+        panel, features, cluster_map, artifacts_dir, summary, atol=atol
     )
 
-    proof_examples = build_proof_examples(panel, features, artifacts_dir, summary)
+    def _group_result(series: pd.Series) -> str:
+        if (series == "INVALID").any():
+            return "INVALID"
+        if (series == "WARNING").any():
+            return "WARNING"
+        return "PASSED"
+
+    summary_rows: list[dict[str, object]] = []
+    for check_group, grp in check_results.groupby("check_group"):
+        summary_rows.append(
+            {
+                "check_group": check_group,
+                "method": grp["method"].iloc[0],
+                "n_result_rows": len(grp),
+                "n_passed": int((grp["result"] == "PASSED").sum()),
+                "n_warning": int((grp["result"] == "WARNING").sum()),
+                "n_invalid": int((grp["result"] == "INVALID").sum()),
+                "result": _group_result(grp["result"]),
+            }
+        )
+    check_summary = pd.DataFrame(summary_rows)
 
     return {
-        "validation_summary": validation_summary,
-        "proof_examples": proof_examples,
+        "check_results": check_results,
+        "check_summary": check_summary,
         "statistical_validation": stat_df,
         "ols_trend_audit": pd.DataFrame(trend_audit),
         "scaler_audit": pd.DataFrame(scaler_audit),
@@ -1179,83 +1409,6 @@ def _enrich_audit_explanations(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def build_proof_examples(
-    panel: pd.DataFrame,
-    features: pd.DataFrame,
-    artifacts_dir: Path,
-    summary: dict[str, object],
-) -> pd.DataFrame:
-    """Worked examples with visible arithmetic for reviewers."""
-    sid = "SUB00002"
-    sub = panel[panel[SUBSCRIBER_ID_COL] == sid].sort_values(MONTH_COL)
-    r = features.loc[features[SUBSCRIBER_ID_COL] == sid].iloc[0]
-
-    data_vals = sub["data_gb"].tolist()
-    data_mean = float(np.mean(data_vals))
-    data_saved = float(r["data_gb_mean"])
-
-    scaler = joblib.load(artifacts_dir / "scaler.pkl")
-    cluster_features = tuple(
-        json.loads((artifacts_dir / "cluster_features.json").read_text(encoding="utf-8"))
-    )
-    feat_idx = cluster_features.index("data_gb_mean")
-    raw_v = float(r["data_gb_mean"])
-    scaled = (raw_v - scaler.mean_[feat_idx]) / scaler.scale_[feat_idx]
-
-    lt, la = max(r["lines_total_mean"], 1.0), max(r["lines_active_mean"], 0.1)
-    idle_frac = max(0.0, (lt - la) / lt)
-
-    sil = float(summary["silhouette"])
-    examples = [
-        {
-            "check_name": "1. Monthly mean (data_gb)",
-            "what_we_do": "Average 12 monthly data_gb values for one subscriber.",
-            "step_1": f"Months 1–12 GB: {', '.join(_fmt_num(v) for v in data_vals[:4])} … (12 values)",
-            "step_2": f"Sum = {sum(data_vals):.4f}, count = 12",
-            "step_3": f"Mean = sum/12 = {data_mean:.6f}",
-            "saved_in_file": f"data_gb_mean = {data_saved:.6f}",
-            "matches": "YES" if abs(data_mean - data_saved) < 1e-6 else "NO",
-        },
-        {
-            "check_name": "2. StandardScaler (data_gb_mean)",
-            "what_we_do": "Convert raw feature to z-score before K-Means.",
-            "step_1": f"raw data_gb_mean = {raw_v:.4f}",
-            "step_2": f"μ = {scaler.mean_[feat_idx]:.4f}, σ = {scaler.scale_[feat_idx]:.4f}",
-            "step_3": f"scaled = ({raw_v:.4f} − {scaler.mean_[feat_idx]:.4f}) / {scaler.scale_[feat_idx]:.4f} = {scaled:.6f}",
-            "saved_in_file": "Used inside kmeans.pkl predict path",
-            "matches": "YES (see scaler_audit sheet)",
-        },
-        {
-            "check_name": "3. pct_idle_lines",
-            "what_we_do": "Fraction of lines that are idle (not active).",
-            "step_1": f"lines_total_mean = {lt:.4f}, lines_active_mean = {la:.4f}",
-            "step_2": f"(total − active) / total = ({lt:.4f} − {la:.4f}) / {lt:.4f}",
-            "step_3": f"= {idle_frac:.6f} (×100 → {idle_frac * 100:.1f}% idle lines)",
-            "saved_in_file": f"pct_idle_lines = {r['pct_idle_lines']:.6f}",
-            "matches": "YES" if abs(idle_frac - r["pct_idle_lines"]) < 1e-6 else "NO",
-        },
-        {
-            "check_name": "4. OLS data_trend",
-            "what_we_do": "Slope of best-fit line through 12 monthly data_gb points.",
-            "step_1": f"x = month index 0..11, y = monthly data_gb",
-            "step_2": f"polyfit slope β = {_ols_slope(sub['data_gb'].values):.6f}",
-            "step_3": "Compared to every subscriber in features CSV",
-            "saved_in_file": f"data_trend = {r['data_trend']:.6f}",
-            "matches": "YES" if abs(_ols_slope(sub["data_gb"].values) - r["data_trend"]) < 1e-4 else "NO",
-        },
-        {
-            "check_name": "5. Cluster separation (silhouette)",
-            "what_we_do": "Score cluster quality after training; higher = clearer segments.",
-            "step_1": "Each subscriber: compare distance to own cluster vs nearest other cluster",
-            "step_2": "Average score across all subscribers",
-            "step_3": f"Recomputed silhouette = {sil:.4f}",
-            "saved_in_file": f"Training summary silhouette = {sil:.4f}",
-            "matches": "YES (threshold ≥ 0.5 for PoC)",
-        },
-    ]
-    return pd.DataFrame(examples)
-
-
 _AUDIT_COLUMN_ORDER = [
     "category",
     "check",
@@ -1266,7 +1419,7 @@ _AUDIT_COLUMN_ORDER = [
     "reverse_check",
     "bound_expected",
     "status",
-    "verdict",
+    "result",
     "max_abs_error",
     "n_failures",
     "n_total",
@@ -1285,20 +1438,20 @@ def _order_audit_df(df: pd.DataFrame) -> pd.DataFrame:
     return df[cols + extra]
 
 
-def _row_style(status: str | None, verdict: str | None) -> tuple[PatternFill | None, Font | None]:
-    """Row fill and bold font for status/verdict cells: green PASS/VALID, yellow WARNING, red FAIL/ERROR."""
+def _row_style(status: str | None, result: str | None) -> tuple[PatternFill | None, Font | None]:
+    """Row fill: green PASSED, yellow WARNING, red INVALID."""
     from openpyxl.styles import Font, PatternFill
 
     pass_fill = PatternFill("solid", fgColor="C6EFCE")
     fail_fill = PatternFill("solid", fgColor="FFC7CE")
     warn_fill = PatternFill("solid", fgColor="FFEB9C")
 
-    label = (verdict or "").strip().upper() or (status or "").strip().upper()
-    if label in ("VALID", "PASS"):
+    label = (result or "").strip().upper() or (status or "").strip().upper()
+    if label in ("PASSED", "PASS"):
         return pass_fill, Font(bold=True, color="006100")
     if label == "WARNING":
         return warn_fill, Font(bold=True, color="9C6500")
-    if label in ("ERROR", "FAIL"):
+    if label in ("INVALID", "FAIL", "ERROR"):
         return fail_fill, Font(bold=True, color="9C0006")
     return None, None
 
@@ -1316,8 +1469,8 @@ def _format_excel_workbook(path: Path) -> None:
     wrap = Alignment(wrap_text=True, vertical="top")
 
     styled_sheets = {
-        "validation_summary",
-        "proof_examples",
+        "check_results",
+        "check_summary",
         "statistical_validation",
         "sanity_input",
         "sanity_math",
@@ -1339,14 +1492,14 @@ def _format_excel_workbook(path: Path) -> None:
 
         headers = {cell.value: cell.column for cell in ws[1] if cell.value}
         status_col = headers.get("status")
-        verdict_col = headers.get("verdict")
+        result_col = headers.get("result") or headers.get("verdict")
 
         for row_idx in range(2, ws.max_row + 1):
             st = ws.cell(row=row_idx, column=status_col).value if status_col else None
-            vd = ws.cell(row=row_idx, column=verdict_col).value if verdict_col else None
+            res = ws.cell(row=row_idx, column=result_col).value if result_col else None
             row_fill, label_font = _row_style(
                 str(st) if st is not None else None,
-                str(vd) if vd is not None else None,
+                str(res) if res is not None else None,
             )
 
             for col_idx in range(1, ws.max_column + 1):
@@ -1360,18 +1513,9 @@ def _format_excel_workbook(path: Path) -> None:
                 if status_col:
                     c = ws.cell(row=row_idx, column=status_col)
                     c.font = label_font
-                if verdict_col:
-                    c = ws.cell(row=row_idx, column=verdict_col)
+                if result_col:
+                    c = ws.cell(row=row_idx, column=result_col)
                     c.font = label_font
-
-            match_col = headers.get("matches") or headers.get("proof")
-            if match_col and sheet_name == "proof_examples":
-                from openpyxl.styles import PatternFill
-
-                val = str(ws.cell(row=row_idx, column=match_col).value or "")
-                fill = PatternFill("solid", fgColor="C6EFCE" if val.upper().startswith("YES") else "FFC7CE")
-                for col_idx in range(1, ws.max_column + 1):
-                    ws.cell(row=row_idx, column=col_idx).fill = fill
 
             abs_err_col = headers.get("abs_error")
             if abs_err_col and sheet_name in {"ols_trend_audit", "scaler_audit"}:
@@ -1399,7 +1543,7 @@ def _format_excel_workbook(path: Path) -> None:
                 ws.column_dimensions[letter].width = max(10, min(max_len + 2, 42))
 
         ws.freeze_panes = "A2"
-        if sheet_name in {"sanity_math", "statistical_validation"}:
+        if sheet_name in {"check_results", "sanity_math", "statistical_validation"}:
             ws.auto_filter.ref = ws.dimensions
 
     wb.save(path)
@@ -1458,8 +1602,8 @@ def write_training_excel_report(
 
     out_xlsx.parent.mkdir(parents=True, exist_ok=True)
     with pd.ExcelWriter(out_xlsx, engine="openpyxl") as writer:
-        stat_pack["validation_summary"].to_excel(writer, sheet_name="validation_summary", index=False)
-        stat_pack["proof_examples"].to_excel(writer, sheet_name="proof_examples", index=False)
+        stat_pack["check_results"].to_excel(writer, sheet_name="check_results", index=False)
+        stat_pack["check_summary"].to_excel(writer, sheet_name="check_summary", index=False)
         stat_pack["statistical_validation"].to_excel(writer, sheet_name="statistical_validation", index=False)
         math_sanity.to_excel(writer, sheet_name="sanity_math", index=False)
         input_sanity.to_excel(writer, sheet_name="sanity_input", index=False)
