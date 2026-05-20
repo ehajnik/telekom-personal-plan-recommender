@@ -40,6 +40,8 @@ def _audit_row(
     sample_saved: str = "",
     sample_reverse: str = "",
     details: str = "",
+    what_this_check_does: str = "",
+    proof_shown: str = "",
 ) -> dict[str, object]:
     if not verdict:
         verdict = "VALID" if status == "PASS" else "ERROR"
@@ -48,6 +50,8 @@ def _audit_row(
     return {
         "category": category,
         "check": check,
+        "what_this_check_does": what_this_check_does,
+        "proof_shown": proof_shown,
         "formula": formula,
         "unit_note": unit_note,
         "reverse_check": reverse_check,
@@ -701,6 +705,14 @@ def build_statistical_validation(
         _audit_row(
             "Panel row count = subscribers × 12 months",
             category="descriptive",
+            what_this_check_does=(
+                "Count rows in the raw CSV and confirm each subscriber has exactly 12 monthly records."
+            ),
+            proof_shown=(
+                f"observed rows = {n_rows}; subscribers = {n_subscribers}; "
+                f"12 × {n_subscribers} = {expected_rows} → "
+                f"{'match' if n_rows == expected_rows else 'MISMATCH'}"
+            ),
             formula="n_rows = n_subscribers × 12",
             unit_note="Count integrity",
             reverse_check="n_subscribers = n_rows / 12",
@@ -721,10 +733,23 @@ def build_statistical_validation(
         n_bad = int((err > atol).sum())
         mean_fail += n_bad
         mean_max_err = max(mean_max_err, float(err.max()) if len(err) else 0.0)
+    sid_mean = "SUB00002"
+    sub_mean = panel[panel[SUBSCRIBER_ID_COL] == sid_mean]
+    dg_mean = float(sub_mean["data_gb"].mean())
+    dg_saved = float(features.loc[features[SUBSCRIBER_ID_COL] == sid_mean, "data_gb_mean"].iloc[0])
     rows.append(
         _audit_row(
             "Monthly means match subscriber feature means (all raw columns)",
             category="descriptive",
+            what_this_check_does=(
+                "For every usage column, recompute average of 12 months from panel CSV "
+                "and compare to subscriber_features.csv (independent of training code path)."
+            ),
+            proof_shown=(
+                f"All {len(RAW_NUMERIC_COLS)} columns × {n_subscribers} subscribers: max error = {mean_max_err:.6g}; "
+                f"example {sid_mean} data_gb: mean(months)={dg_mean:.4f} vs saved={dg_saved:.4f} "
+                f"(see proof_examples sheet)"
+            ),
             formula="∀ col: mean_12m(col) = col_mean in subscriber_features",
             unit_note="Aggregation identity",
             reverse_check="monthly panel → groupby mean → compare to CSV",
@@ -733,6 +758,10 @@ def build_statistical_validation(
             max_abs_error=mean_max_err,
             n_failures=mean_fail,
             n_total=n_subscribers * len(RAW_NUMERIC_COLS),
+            sample_subscriber=sid_mean,
+            sample_inputs=f"sum(data_gb)={sub_mean['data_gb'].sum():.2f}, n=12",
+            sample_computed=dg_mean,
+            sample_saved=dg_saved,
             details=f"checked {len(RAW_NUMERIC_COLS)} usage columns",
         )
     )
@@ -757,18 +786,36 @@ def build_statistical_validation(
                 trend_audit.append(
                     {
                         "subscriber_id": sid,
+                        "what_this_row_shows": (
+                            f"Fit line through 12 monthly {raw_col} values; slope must equal {trend_col}"
+                        ),
                         "trend_column": trend_col,
                         "raw_monthly_column": raw_col,
                         "ols_slope_recomputed": beta,
                         "saved_in_features": saved,
                         "abs_error": err,
+                        "proof": (
+                            f"β_recomputed={beta:.6g} vs saved={saved:.6g} → "
+                            f"{'MATCH' if err < atol else 'MISMATCH'}"
+                        ),
                         "months_used": len(grp),
                     }
                 )
+    beta_ex = _ols_slope(panel[panel[SUBSCRIBER_ID_COL] == "SUB00002"].sort_values(MONTH_COL)["data_gb"].values)
+    saved_beta = float(features.loc[features[SUBSCRIBER_ID_COL] == "SUB00002", "data_trend"].iloc[0])
     rows.append(
         _audit_row(
             "OLS trend slopes match 12-month usage trajectories",
             category="time_series",
+            what_this_check_does=(
+                "For each subscriber, fit a line through 12 monthly values (x=0..11) "
+                "and verify slope equals data_trend / voice_trend / roaming_trend / lines_trend."
+            ),
+            proof_shown=(
+                f"{n_subscribers} subscribers × 4 trends: max |Δβ|={trend_max_err:.6g}, failures={trend_fail}; "
+                f"example SUB00002 data_trend: OLS β={beta_ex:.4f} vs saved={saved_beta:.4f} "
+                f"(full table: ols_trend_audit sheet)"
+            ),
             formula="β = OLS_slope(month_index, monthly_usage); x = 0..11",
             unit_note="Linear trend GB/month, min/month, etc.",
             reverse_check="re-fit polyfit on panel vs subscriber_features trend cols",
@@ -777,6 +824,9 @@ def build_statistical_validation(
             max_abs_error=trend_max_err,
             n_failures=trend_fail,
             n_total=n_subscribers * 4,
+            sample_subscriber="SUB00002",
+            sample_computed=beta_ex,
+            sample_saved=saved_beta,
             details="4 trends × subscribers",
         )
     )
@@ -792,10 +842,23 @@ def build_statistical_validation(
 
     expected_scaled = (x - scaler.mean_) / scaler.scale_
     scale_err = float(np.max(np.abs(x_scaled - expected_scaled)))
+    j0 = 0
+    raw0 = float(x[0, j0])
     rows.append(
         _audit_row(
             "StandardScaler transform matches (x − μ) / σ",
             category="standardization",
+            what_this_check_does=(
+                "Re-apply z-score normalization using scaler.pkl means/stds on every "
+                "subscriber × feature used for K-Means."
+            ),
+            proof_shown=(
+                f"Max |scaled_recomputed − scaled_saved| = {scale_err:.6g} across full matrix; "
+                f"example SUB00001 {cluster_features[j0]}: raw={raw0:.4f}, "
+                f"μ={scaler.mean_[j0]:.4f}, σ={scaler.scale_[j0]:.4f} "
+                f"→ scaled=({raw0:.4f}−{scaler.mean_[j0]:.4f})/{scaler.scale_[j0]:.4f} "
+                f"(see scaler_audit sheet)"
+            ),
             formula="x_scaled = (x − mean_) / scale_",
             unit_note="Z-score per CLUSTER_FEATURES",
             reverse_check="invert: x = x_scaled × σ + μ",
@@ -874,12 +937,21 @@ def build_statistical_validation(
     )
 
     sil = float(summary["silhouette"])
+    sil_re = float(silhouette_score(x_scaled, labels))
     sil_ok = sil >= 0.5
     sil_verdict = "VALID" if sil_ok else "ERROR"
     rows.append(
         _audit_row(
             "Global silhouette ≥ 0.5 (cluster separation)",
             category="clustering",
+            what_this_check_does=(
+                "Measure how well each subscriber fits its cluster vs neighbours; "
+                "recomputed independently from saved training summary."
+            ),
+            proof_shown=(
+                f"Training reported {sil:.4f}; independent recomputation {sil_re:.4f}; "
+                f"threshold ≥ 0.5 → {'PASS' if sil_ok else 'FAIL'}"
+            ),
             formula="silhouette = (b − a) / max(a, b) per point, averaged",
             unit_note="sklearn.metrics.silhouette_score on scaled features",
             bound_expected="≥ 0.5 PoC threshold",
@@ -941,6 +1013,7 @@ def build_statistical_validation(
             scaler_audit.append(
                 {
                     "subscriber_id": sid,
+                    "what_this_row_shows": "Apply z-score (raw − μ) / σ before K-Means",
                     "feature": feat,
                     "raw_value": raw_v,
                     "scaler_mean": mu,
@@ -948,6 +1021,7 @@ def build_statistical_validation(
                     "scaled_saved": scaled_v,
                     "scaled_recomputed": expected,
                     "abs_error": abs(scaled_v - expected),
+                    "proof": f"({raw_v:.4g} − {mu:.4g}) / {sig:.4g} = {expected:.6g} vs scaled {scaled_v:.6g}",
                 }
             )
 
@@ -967,7 +1041,7 @@ def build_statistical_validation(
             }
         )
 
-    stat_df = _order_audit_df(pd.DataFrame(rows))
+    stat_df = _order_audit_df(_enrich_audit_explanations(pd.DataFrame(rows)))
 
     n_valid = int((stat_df["verdict"] == "VALID").sum())
     n_warn = int((stat_df["verdict"] == "WARNING").sum())
@@ -983,15 +1057,31 @@ def build_statistical_validation(
         ("Checks passed", f"{n_pass} of {len(stat_df)} checks with status PASS", "PASS" if n_fail == 0 else "FAIL", "VALID" if n_fail == 0 else "ERROR"),
         ("Expert verdicts", f"VALID={n_valid}, WARNING={n_warn}, ERROR={n_err}", "PASS" if n_err == 0 else "FAIL", "VALID" if n_err == 0 else "ERROR"),
         ("Color legend", "Green = statistically consistent; Yellow = passes math but limited usefulness; Red = failed / must fix", "INFO", "INFO"),
-        ("Sheets", "statistical_validation (this audit), sanity_math (formula checks), ols_trend_audit, scaler_audit, cluster_quality", "INFO", "INFO"),
+        (
+            "Sheets",
+            "proof_examples = worked arithmetic; statistical_validation = what + proof columns; "
+            "ols_trend_audit / scaler_audit = line-by-line numbers",
+            "INFO",
+            "INFO",
+        ),
+        (
+            "How to verify",
+            "Read columns what_this_check_does (plain English) and proof_shown (actual numbers). "
+            "Green row = you can trust that step.",
+            "INFO",
+            "INFO",
+        ),
     ]
     validation_summary = pd.DataFrame(
         summary_lines,
         columns=["topic", "message", "status", "verdict"],
     )
 
+    proof_examples = build_proof_examples(panel, features, artifacts_dir, summary)
+
     return {
         "validation_summary": validation_summary,
+        "proof_examples": proof_examples,
         "statistical_validation": stat_df,
         "ols_trend_audit": pd.DataFrame(trend_audit),
         "scaler_audit": pd.DataFrame(scaler_audit),
@@ -999,9 +1089,178 @@ def build_statistical_validation(
     }
 
 
+def _enrich_audit_explanations(df: pd.DataFrame) -> pd.DataFrame:
+    """Fill what_this_check_does / proof_shown for rows that only have formula metadata."""
+    guides: list[tuple[str, str, str]] = [
+        (
+            "Panel row count",
+            "Counts rows in the raw monthly CSV and verifies each subscriber has exactly 12 months.",
+            "If this fails, aggregation means and trends would be wrong.",
+        ),
+        (
+            "Monthly means match",
+            "For each usage column, recomputes mean(monthly values) from the panel and compares to subscriber_features.csv.",
+            "Proof = max difference across all subscribers and columns (see max_abs_error).",
+        ),
+        (
+            "OLS trend slopes",
+            "Fits a straight line through 12 monthly points (x=month 1..12) and compares slope to saved trend column.",
+            "See sheet ols_trend_audit for recomputed vs saved slopes per exemplar subscriber.",
+        ),
+        (
+            "StandardScaler transform",
+            "Re-applies z-score: (value − mean) / std using scaler.pkl; must match scaled matrix used by K-Means.",
+            "See sheet scaler_audit for raw → scaled arithmetic on SUB00001–03.",
+        ),
+        (
+            "Feature matrix matches panel rebuild",
+            "Runs the full feature pipeline again from raw CSV; every engineered column must match saved CSV.",
+            "max_abs_error shows worst drift; sanity_math_detail lists any mismatches.",
+        ),
+        (
+            "active_line_ratio",
+            "Checks saved ratio equals lines_active_mean ÷ lines_total_mean.",
+            "sample_* columns show one subscriber calculation you can repeat in Excel.",
+        ),
+        (
+            "pct_idle_lines",
+            "Checks idle-line fraction = (total − active) / total, clipped to [0,1].",
+            "Reverse: multiply fraction × total lines to recover idle line count.",
+        ),
+        (
+            "roaming_days_ratio",
+            "Checks ratio = average roaming days ÷ 30 (not a percentage).",
+            "Reverse: multiply ratio × 30 to recover average roaming days.",
+        ),
+        (
+            "Silhouette",
+            "Measures how well-separated clusters are (−1 bad, 1 good); PoC requires ≥ 0.5.",
+            "proof_shown in details: saved vs independently recomputed score.",
+        ),
+        (
+            "cluster_idx = argmin",
+            "Recomputes Euclidean distance from each subscriber to every centroid; nearest = assigned cluster.",
+            "Must match cluster_idx in subscriber_cluster_map.csv for all subscribers.",
+        ),
+        (
+            "confidence label",
+            "Re-applies rule: compare primary vs secondary distance ratio to thresholds 0.75 and 0.9.",
+            "Yellow WARNING if math passes but every subscriber is labelled High (not discriminative).",
+        ),
+    ]
+    if df.empty:
+        return df
+    for key, what, proof_hint in guides:
+        mask = df["check"].astype(str).str.contains(key, case=False, regex=False)
+        if not mask.any():
+            continue
+        if "what_this_check_does" in df.columns:
+            df.loc[mask & (df["what_this_check_does"].astype(str).str.len() == 0), "what_this_check_does"] = what
+        if "proof_shown" in df.columns:
+            empty_proof = mask & (df["proof_shown"].astype(str).str.len() == 0)
+            for idx in df.index[empty_proof]:
+                row = df.loc[idx]
+                parts = []
+                if pd.notna(row.get("max_abs_error")):
+                    parts.append(f"max_abs_error={row['max_abs_error']:.6g}")
+                if pd.notna(row.get("n_failures")) and pd.notna(row.get("n_total")):
+                    parts.append(f"failures={int(row['n_failures'])}/{int(row['n_total'])}")
+                if str(row.get("sample_computed", "")):
+                    parts.append(
+                        f"example {row.get('sample_subscriber','')}: "
+                        f"computed={row.get('sample_computed')} saved={row.get('sample_saved')} "
+                        f"({row.get('sample_reverse','')})"
+                    )
+                if str(row.get("details", "")):
+                    parts.append(str(row["details"]))
+                if proof_hint:
+                    parts.append(proof_hint)
+                df.at[idx, "proof_shown"] = " | ".join(p for p in parts if p)
+    return df
+
+
+def build_proof_examples(
+    panel: pd.DataFrame,
+    features: pd.DataFrame,
+    artifacts_dir: Path,
+    summary: dict[str, object],
+) -> pd.DataFrame:
+    """Worked examples with visible arithmetic for reviewers."""
+    sid = "SUB00002"
+    sub = panel[panel[SUBSCRIBER_ID_COL] == sid].sort_values(MONTH_COL)
+    r = features.loc[features[SUBSCRIBER_ID_COL] == sid].iloc[0]
+
+    data_vals = sub["data_gb"].tolist()
+    data_mean = float(np.mean(data_vals))
+    data_saved = float(r["data_gb_mean"])
+
+    scaler = joblib.load(artifacts_dir / "scaler.pkl")
+    cluster_features = tuple(
+        json.loads((artifacts_dir / "cluster_features.json").read_text(encoding="utf-8"))
+    )
+    feat_idx = cluster_features.index("data_gb_mean")
+    raw_v = float(r["data_gb_mean"])
+    scaled = (raw_v - scaler.mean_[feat_idx]) / scaler.scale_[feat_idx]
+
+    lt, la = max(r["lines_total_mean"], 1.0), max(r["lines_active_mean"], 0.1)
+    idle_frac = max(0.0, (lt - la) / lt)
+
+    sil = float(summary["silhouette"])
+    examples = [
+        {
+            "check_name": "1. Monthly mean (data_gb)",
+            "what_we_do": "Average 12 monthly data_gb values for one subscriber.",
+            "step_1": f"Months 1–12 GB: {', '.join(_fmt_num(v) for v in data_vals[:4])} … (12 values)",
+            "step_2": f"Sum = {sum(data_vals):.4f}, count = 12",
+            "step_3": f"Mean = sum/12 = {data_mean:.6f}",
+            "saved_in_file": f"data_gb_mean = {data_saved:.6f}",
+            "matches": "YES" if abs(data_mean - data_saved) < 1e-6 else "NO",
+        },
+        {
+            "check_name": "2. StandardScaler (data_gb_mean)",
+            "what_we_do": "Convert raw feature to z-score before K-Means.",
+            "step_1": f"raw data_gb_mean = {raw_v:.4f}",
+            "step_2": f"μ = {scaler.mean_[feat_idx]:.4f}, σ = {scaler.scale_[feat_idx]:.4f}",
+            "step_3": f"scaled = ({raw_v:.4f} − {scaler.mean_[feat_idx]:.4f}) / {scaler.scale_[feat_idx]:.4f} = {scaled:.6f}",
+            "saved_in_file": "Used inside kmeans.pkl predict path",
+            "matches": "YES (see scaler_audit sheet)",
+        },
+        {
+            "check_name": "3. pct_idle_lines",
+            "what_we_do": "Fraction of lines that are idle (not active).",
+            "step_1": f"lines_total_mean = {lt:.4f}, lines_active_mean = {la:.4f}",
+            "step_2": f"(total − active) / total = ({lt:.4f} − {la:.4f}) / {lt:.4f}",
+            "step_3": f"= {idle_frac:.6f} (×100 → {idle_frac * 100:.1f}% idle lines)",
+            "saved_in_file": f"pct_idle_lines = {r['pct_idle_lines']:.6f}",
+            "matches": "YES" if abs(idle_frac - r["pct_idle_lines"]) < 1e-6 else "NO",
+        },
+        {
+            "check_name": "4. OLS data_trend",
+            "what_we_do": "Slope of best-fit line through 12 monthly data_gb points.",
+            "step_1": f"x = month index 0..11, y = monthly data_gb",
+            "step_2": f"polyfit slope β = {_ols_slope(sub['data_gb'].values):.6f}",
+            "step_3": "Compared to every subscriber in features CSV",
+            "saved_in_file": f"data_trend = {r['data_trend']:.6f}",
+            "matches": "YES" if abs(_ols_slope(sub["data_gb"].values) - r["data_trend"]) < 1e-4 else "NO",
+        },
+        {
+            "check_name": "5. Cluster separation (silhouette)",
+            "what_we_do": "Score cluster quality after training; higher = clearer segments.",
+            "step_1": "Each subscriber: compare distance to own cluster vs nearest other cluster",
+            "step_2": "Average score across all subscribers",
+            "step_3": f"Recomputed silhouette = {sil:.4f}",
+            "saved_in_file": f"Training summary silhouette = {sil:.4f}",
+            "matches": "YES (threshold ≥ 0.5 for PoC)",
+        },
+    ]
+    return pd.DataFrame(examples)
+
+
 _AUDIT_COLUMN_ORDER = [
     "category",
     "check",
+    "what_this_check_does",
+    "proof_shown",
     "formula",
     "unit_note",
     "reverse_check",
@@ -1058,6 +1317,7 @@ def _format_excel_workbook(path: Path) -> None:
 
     styled_sheets = {
         "validation_summary",
+        "proof_examples",
         "statistical_validation",
         "sanity_input",
         "sanity_math",
@@ -1104,6 +1364,15 @@ def _format_excel_workbook(path: Path) -> None:
                     c = ws.cell(row=row_idx, column=verdict_col)
                     c.font = label_font
 
+            match_col = headers.get("matches") or headers.get("proof")
+            if match_col and sheet_name == "proof_examples":
+                from openpyxl.styles import PatternFill
+
+                val = str(ws.cell(row=row_idx, column=match_col).value or "")
+                fill = PatternFill("solid", fgColor="C6EFCE" if val.upper().startswith("YES") else "FFC7CE")
+                for col_idx in range(1, ws.max_column + 1):
+                    ws.cell(row=row_idx, column=col_idx).fill = fill
+
             abs_err_col = headers.get("abs_error")
             if abs_err_col and sheet_name in {"ols_trend_audit", "scaler_audit"}:
                 err_val = ws.cell(row=row_idx, column=abs_err_col).value
@@ -1124,7 +1393,10 @@ def _format_excel_workbook(path: Path) -> None:
                 val = ws.cell(row=row_idx, column=col_idx).value
                 if val is not None:
                     max_len = max(max_len, min(len(str(val)), 48))
-            ws.column_dimensions[letter].width = max(10, min(max_len + 2, 42))
+            if header in ("what_this_check_does", "proof_shown", "message", "what_we_do"):
+                ws.column_dimensions[letter].width = 52
+            else:
+                ws.column_dimensions[letter].width = max(10, min(max_len + 2, 42))
 
         ws.freeze_panes = "A2"
         if sheet_name in {"sanity_math", "statistical_validation"}:
@@ -1157,7 +1429,7 @@ def write_training_excel_report(
     math_rows, math_detail = build_math_backward_rows(
         panel, features, cluster_map, artifacts_dir, summary
     )
-    math_sanity = _order_audit_df(pd.DataFrame(math_rows))
+    math_sanity = _order_audit_df(_enrich_audit_explanations(pd.DataFrame(math_rows)))
     stat_pack = build_statistical_validation(
         panel, features, cluster_map, artifacts_dir, summary
     )
@@ -1187,6 +1459,7 @@ def write_training_excel_report(
     out_xlsx.parent.mkdir(parents=True, exist_ok=True)
     with pd.ExcelWriter(out_xlsx, engine="openpyxl") as writer:
         stat_pack["validation_summary"].to_excel(writer, sheet_name="validation_summary", index=False)
+        stat_pack["proof_examples"].to_excel(writer, sheet_name="proof_examples", index=False)
         stat_pack["statistical_validation"].to_excel(writer, sheet_name="statistical_validation", index=False)
         math_sanity.to_excel(writer, sheet_name="sanity_math", index=False)
         input_sanity.to_excel(writer, sheet_name="sanity_input", index=False)

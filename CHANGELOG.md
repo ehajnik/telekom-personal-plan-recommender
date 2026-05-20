@@ -13,7 +13,7 @@ Version bumps are driven by [Commitizen](https://commitizen-tools.github.io/comm
 ### Added
 
 - `requirements-ml.txt` and `requirements-dev.txt` for explicit ML and dev dependency installs (includes `openpyxl`)
-- Excel training report: `validation_summary` and `statistical_validation` sheets (OLS, scaler, silhouette, CH index, outliers); formula checks in `sanity_math`; exemplar tables `ols_trend_audit`, `scaler_audit`, `cluster_quality`
+- Excel training report: `what_this_check_does` and `proof_shown` columns on every audit row; `proof_examples` sheet with step-by-step arithmetic reviewers can repeat
 
 ### Changed
 
