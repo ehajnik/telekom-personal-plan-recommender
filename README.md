@@ -52,8 +52,9 @@ cd telekom-personal-plan-recommender
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-pip install -r requirements.txt
-pip install -e ".[dev,ml]"  # editable install + lint + ML stack
+pip install -r requirements.txt -r requirements-ml.txt
+pip install -e ".[dev]"      # optional: lint + commit tooling
+# Or in one step: pip install -e ".[dev,ml]"
 
 cp .env.example .env
 

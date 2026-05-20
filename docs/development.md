@@ -25,8 +25,8 @@ cd telekom-personal-plan-recommender
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-pip install -r requirements.txt
-pip install -e ".[dev,ml]"
+pip install -r requirements.txt -r requirements-ml.txt
+pip install -e ".[dev]"   # or: pip install -e ".[dev,ml]"
 
 cp .env.example .env
 # Optional LLM path (CPU-friendly defaults: llama3.2, 180s timeout, 512 tokens):

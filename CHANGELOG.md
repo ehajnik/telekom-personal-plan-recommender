@@ -10,6 +10,10 @@ Version bumps are driven by [Commitizen](https://commitizen-tools.github.io/comm
 
 ## [Unreleased]
 
+### Added
+
+- `requirements-ml.txt` and `requirements-dev.txt` for explicit ML and dev dependency installs (includes `openpyxl`)
+
 ### Changed
 
 - Ollama defaults tuned for CPU-only workstations: `OLLAMA_TIMEOUT=180`, `OLLAMA_NUM_PREDICT=512`; documented model guidance in configuration and runbook

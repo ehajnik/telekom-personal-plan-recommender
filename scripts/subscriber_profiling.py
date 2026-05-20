@@ -81,7 +81,19 @@ def _build_sanity_rows(panel: pd.DataFrame) -> list[dict[str, object]]:
     return rows
 
 
+def _require_openpyxl() -> None:
+    try:
+        import openpyxl  # noqa: F401
+    except ImportError as exc:
+        raise RuntimeError(
+            "openpyxl is required for Excel reports. Install ML dependencies:\n"
+            "  pip install -r requirements-ml.txt\n"
+            "  # or: pip install -e \".[ml]\""
+        ) from exc
+
+
 def _write_excel_report(input_csv: Path, artifacts_dir: Path, summary: dict[str, object], out_xlsx: Path) -> None:
+    _require_openpyxl()
     panel = pd.read_csv(input_csv)
     features = pd.read_csv(artifacts_dir / "subscriber_features.csv")
     cluster_map = pd.read_csv(artifacts_dir / "subscriber_cluster_map.csv")
@@ -135,6 +147,11 @@ def main() -> None:
         default=None,
         help="Excel report path (default: artifacts/training_report.xlsx)",
     )
+    parser.add_argument(
+        "--no-excel",
+        action="store_true",
+        help="Skip Excel report (e.g. when openpyxl is not installed)",
+    )
     args = parser.parse_args()
 
     input_csv = args.input
@@ -156,10 +173,18 @@ def main() -> None:
         min_silhouette=args.min_silhouette,
         random_state=args.seed,
     )
-    excel_report = args.excel_report or (args.artifacts / "training_report.xlsx")
-    _write_excel_report(input_csv, args.artifacts, summary, excel_report)
     print(f"Training complete. Silhouette={summary['silhouette']:.4f}, n={summary['n_subscribers']}")
     print(f"Artifacts → {args.artifacts}")
+    if args.no_excel:
+        print("Excel report skipped (--no-excel)")
+        return
+    excel_report = args.excel_report or (args.artifacts / "training_report.xlsx")
+    try:
+        _write_excel_report(input_csv, args.artifacts, summary, excel_report)
+    except RuntimeError as exc:
+        print(f"WARNING: {exc}", file=sys.stderr)
+        print("Training artifacts were saved; re-run after installing openpyxl.", file=sys.stderr)
+        sys.exit(1)
     print(f"Excel report → {excel_report}")
 
 

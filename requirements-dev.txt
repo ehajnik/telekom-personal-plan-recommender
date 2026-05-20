@@ -1,0 +1,6 @@
+# Lint, typing, release tooling (optional).
+# Install with: pip install -r requirements-dev.txt
+# Or: pip install -e ".[dev]"
+ruff>=0.8.0
+mypy>=1.13.0
+commitizen>=4.0.0,<5
