@@ -7,7 +7,8 @@
   --dt-gap: 1rem;
   --dt-pad: 1.125rem;
   --dt-slider-gap: 0.45rem;
-  --dt-shell-max: 68rem;
+  --dt-page-gutter: 1.25rem;
+  --dt-shell-max: calc(100vw - 2 * var(--dt-page-gutter));
   --dt-border: #d8d8dc;
   --dt-surface: #ffffff;
   --dt-page: #ebebed;
@@ -25,21 +26,26 @@
 
 /* ── Page ─────────────────────────────────────────────────────────────────── */
 
+.gradio-container,
+.gradio-container .app,
+.gradio-container > .main,
+.gradio-container .wrap,
+.gradio-container .contain {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
 .gradio-container {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
-  width: 100% !important;
-  max-width: none !important;
   margin: 0 !important;
-  padding: 1.5rem 1.25rem 2rem !important;
+  padding: 1.25rem var(--dt-page-gutter) 1.75rem !important;
   background: var(--dt-page) !important;
-  box-sizing: border-box !important;
 }
 
 .gradio-container .main,
 .gradio-container .wrap,
 .gradio-container .contain {
-  width: 100% !important;
-  max-width: 100% !important;
   margin: 0 !important;
   padding: 0 !important;
   background: transparent !important;
@@ -49,7 +55,7 @@
 .gradio-container .contain {
   display: flex !important;
   flex-direction: column !important;
-  align-items: center !important;
+  align-items: stretch !important;
 }
 
 footer {
@@ -64,9 +70,10 @@ footer {
   gap: var(--dt-gap) !important;
   width: 100% !important;
   max-width: var(--dt-shell-max) !important;
-  margin: 0 auto !important;
+  margin: 0 !important;
   padding: 0 !important;
   min-width: 0 !important;
+  flex: 1 1 auto !important;
 }
 
 .gradio-container .gr-row.dt-grid-row {
@@ -413,9 +420,9 @@ footer {
 }
 
 .gradio-container .block.dt-result-body {
-  min-height: 14rem !important;
-  height: 14rem !important;
-  max-height: 14rem !important;
+  min-height: 16rem !important;
+  height: 16rem !important;
+  max-height: 16rem !important;
   margin: 0 !important;
   padding: 0 !important;
   border: 1px solid var(--dt-border) !important;
@@ -427,12 +434,16 @@ footer {
 .gradio-container .block.dt-result-body .md,
 .gradio-container .block.dt-result-body .prose {
   height: 100% !important;
-  max-height: 14rem !important;
+  max-height: 16rem !important;
   overflow-y: auto !important;
   margin: 0 !important;
   padding: 0.75rem 0.875rem !important;
   font-size: 0.8125rem !important;
   line-height: 1.45 !important;
+}
+
+.gradio-container .block.dt-result-body > .gap {
+  max-height: 16rem !important;
 }
 
 .gradio-container .prose strong,
@@ -448,6 +459,10 @@ footer {
 }
 
 @media (max-width: 768px) {
+  :root {
+    --dt-page-gutter: 0.75rem;
+  }
+
   .gradio-container .gr-row.dt-sliders-row,
   .gradio-container .gr-row.dt-results-row {
     grid-template-columns: 1fr !important;
