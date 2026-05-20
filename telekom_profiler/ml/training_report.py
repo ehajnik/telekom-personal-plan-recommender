@@ -43,6 +43,8 @@ def _audit_row(
 ) -> dict[str, object]:
     if not verdict:
         verdict = "VALID" if status == "PASS" else "ERROR"
+    elif status == "FAIL" and verdict == "VALID":
+        verdict = "ERROR"
     return {
         "category": category,
         "check": check,
@@ -691,6 +693,24 @@ def _order_audit_df(df: pd.DataFrame) -> pd.DataFrame:
     return df[cols + extra]
 
 
+def _row_style(status: str | None, verdict: str | None) -> tuple[PatternFill | None, Font | None]:
+    """Row fill and bold font for status/verdict cells: green PASS/VALID, yellow WARNING, red FAIL/ERROR."""
+    from openpyxl.styles import Font, PatternFill
+
+    pass_fill = PatternFill("solid", fgColor="C6EFCE")
+    fail_fill = PatternFill("solid", fgColor="FFC7CE")
+    warn_fill = PatternFill("solid", fgColor="FFEB9C")
+
+    label = (verdict or "").strip().upper() or (status or "").strip().upper()
+    if label in ("VALID", "PASS"):
+        return pass_fill, Font(bold=True, color="006100")
+    if label == "WARNING":
+        return warn_fill, Font(bold=True, color="9C6500")
+    if label in ("ERROR", "FAIL"):
+        return fail_fill, Font(bold=True, color="9C0006")
+    return None, None
+
+
 def _format_excel_workbook(path: Path) -> None:
     from openpyxl import load_workbook
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -699,15 +719,11 @@ def _format_excel_workbook(path: Path) -> None:
     wb = load_workbook(path)
     header_fill = PatternFill("solid", fgColor="E20074")
     header_font = Font(bold=True, color="FFFFFF", size=11)
-    pass_fill = PatternFill("solid", fgColor="C6EFCE")
-    fail_fill = PatternFill("solid", fgColor="FFC7CE")
-    warn_fill = PatternFill("solid", fgColor="FFEB9C")
-    valid_fill = PatternFill("solid", fgColor="D9EAD3")
     thin = Side(style="thin", color="CCCCCC")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
     wrap = Alignment(wrap_text=True, vertical="top")
 
-    styled_sheets = {"sanity_input", "sanity_math", "sanity_math_detail", "overview"}
+    styled_sheets = {"sanity_input", "sanity_math", "sanity_math_detail"}
 
     for sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
@@ -725,29 +741,27 @@ def _format_excel_workbook(path: Path) -> None:
         verdict_col = headers.get("verdict")
 
         for row_idx in range(2, ws.max_row + 1):
+            st = ws.cell(row=row_idx, column=status_col).value if status_col else None
+            vd = ws.cell(row=row_idx, column=verdict_col).value if verdict_col else None
+            row_fill, label_font = _row_style(
+                str(st) if st is not None else None,
+                str(vd) if vd is not None else None,
+            )
+
             for col_idx in range(1, ws.max_column + 1):
                 cell = ws.cell(row=row_idx, column=col_idx)
                 cell.alignment = wrap
                 cell.border = border
-            if status_col and sheet_name in styled_sheets:
-                st = ws.cell(row=row_idx, column=status_col).value
-                fill = pass_fill if st == "PASS" else fail_fill if st == "FAIL" else None
-                if fill:
-                    for col_idx in range(1, ws.max_column + 1):
-                        ws.cell(row=row_idx, column=col_idx).fill = fill
-            if verdict_col and sheet_name == "sanity_math":
-                vd = ws.cell(row=row_idx, column=verdict_col).value
-                vfill = (
-                    valid_fill
-                    if vd == "VALID"
-                    else warn_fill
-                    if vd == "WARNING"
-                    else fail_fill
-                    if vd == "ERROR"
-                    else None
-                )
-                if vfill:
-                    ws.cell(row=row_idx, column=verdict_col).fill = vfill
+                if sheet_name in styled_sheets and row_fill is not None:
+                    cell.fill = row_fill
+
+            if label_font and sheet_name in styled_sheets:
+                if status_col:
+                    c = ws.cell(row=row_idx, column=status_col)
+                    c.font = label_font
+                if verdict_col:
+                    c = ws.cell(row=row_idx, column=verdict_col)
+                    c.font = label_font
 
         for col_idx in range(1, ws.max_column + 1):
             letter = get_column_letter(col_idx)
