@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.metrics import calinski_harabasz_score, silhouette_score, silhouette_samples
+from sklearn.metrics import calinski_harabasz_score, silhouette_samples, silhouette_score
 
 from telekom_profiler.ml.features import build_subscriber_features, feature_matrix, load_usage_panel
 from telekom_profiler.ml.schema import (
@@ -19,6 +19,9 @@ from telekom_profiler.ml.schema import (
     SUBSCRIBER_ID_COL,
     TREND_COLS,
 )
+
+if TYPE_CHECKING:
+    from openpyxl.styles import Font, PatternFill
 
 
 def _audit_row(
@@ -504,7 +507,9 @@ def build_math_backward_rows(
         rebuilt_col = f"{col}_rebuilt"
         if saved_col not in merged.columns:
             continue
-        n_fail, max_err, n_total = _compare_series(merged[saved_col], merged[rebuilt_col], rtol=rtol, atol=atol)
+        n_fail, max_err, n_total = _compare_series(
+            merged[saved_col], merged[rebuilt_col], rtol=rtol, atol=atol
+        )
         total_fail += n_fail
         global_max_err = max(global_max_err, max_err)
         if n_fail > 0:
@@ -536,7 +541,6 @@ def build_math_backward_rows(
     data = features["data_gb_mean"]
     roam = features["roaming_days_mean"]
     countries = features["countries_visited_mean"]
-    active_days = features["active_days_mean"].clip(lower=1.0)
     plan = features["plan_tier_mean"]
 
     expected_active_ratio = la / lt
@@ -786,9 +790,10 @@ def build_math_backward_rows(
         saved_idx = int(cm.loc[sid, "cluster_idx"])
         if saved_idx != primary_idx or int(labels[i]) != primary_idx:
             idx_fail += 1
-        if not np.isclose(float(cm.loc[sid, "primary_distance"]), primary_dist, rtol=rtol, atol=atol):
+        saved_primary = float(cm.loc[sid, "primary_distance"])
+        if not np.isclose(saved_primary, primary_dist, rtol=rtol, atol=atol):
             primary_dist_fail += 1
-            dist_max_err = max(dist_max_err, abs(float(cm.loc[sid, "primary_distance"]) - primary_dist))
+            dist_max_err = max(dist_max_err, abs(saved_primary - primary_dist))
         if cm.loc[sid, "cluster_label"] != label_map[primary_idx]:
             label_fail += 1
 
@@ -877,7 +882,11 @@ def build_math_backward_rows(
             conf_fail += 1
     conf_dist = cluster_map["confidence"].value_counts()
     conf_result = "PASSED" if conf_fail == 0 else "INVALID"
-    conf_details = f"High={conf_dist.get('High', 0)}, Medium={conf_dist.get('Medium', 0)}, Low={conf_dist.get('Low', 0)}"
+    conf_details = (
+        f"High={conf_dist.get('High', 0)}, "
+        f"Medium={conf_dist.get('Medium', 0)}, "
+        f"Low={conf_dist.get('Low', 0)}"
+    )
     if conf_fail == 0 and len(conf_dist) == 1 and conf_dist.index[0] == "High":
         conf_result = "WARNING"
         conf_details += "; all subscribers High — labels not discriminative on this dataset"
@@ -949,7 +958,8 @@ def build_statistical_validation(
             "Panel row count = subscribers × 12 months",
             category="descriptive",
             what_this_check_does=(
-                "Count rows in the raw CSV and confirm each subscriber has exactly 12 monthly records."
+                "Count rows in the raw CSV and confirm each subscriber has "
+                "exactly 12 monthly records."
             ),
             proof_shown=(
                 f"observed rows = {n_rows}; subscribers = {n_subscribers}; "
@@ -989,9 +999,10 @@ def build_statistical_validation(
                 "and compare to subscriber_features.csv (independent of training code path)."
             ),
             proof_shown=(
-                f"All {len(RAW_NUMERIC_COLS)} columns × {n_subscribers} subscribers: max error = {mean_max_err:.6g}; "
-                f"example {sid_mean} data_gb: mean(months)={dg_mean:.4f} vs saved={dg_saved:.4f} "
-                f"(see proof_examples sheet)"
+                f"All {len(RAW_NUMERIC_COLS)} columns × {n_subscribers} subscribers: "
+                f"max error = {mean_max_err:.6g}; "
+                f"example {sid_mean} data_gb: mean(months)={dg_mean:.4f} "
+                f"vs saved={dg_saved:.4f} (see proof_examples sheet)"
             ),
             formula="∀ col: mean_12m(col) = col_mean in subscriber_features",
             unit_note="Aggregation identity",
@@ -1030,7 +1041,8 @@ def build_statistical_validation(
                     {
                         "subscriber_id": sid,
                         "what_this_row_shows": (
-                            f"Fit line through 12 monthly {raw_col} values; slope must equal {trend_col}"
+                            f"Fit line through 12 monthly {raw_col} values; "
+                            f"slope must equal {trend_col}"
                         ),
                         "trend_column": trend_col,
                         "raw_monthly_column": raw_col,
@@ -1041,8 +1053,11 @@ def build_statistical_validation(
                         "months_used": len(grp),
                     }
                 )
-    beta_ex = _ols_slope(panel[panel[SUBSCRIBER_ID_COL] == "SUB00002"].sort_values(MONTH_COL)["data_gb"].values)
-    saved_beta = float(features.loc[features[SUBSCRIBER_ID_COL] == "SUB00002", "data_trend"].iloc[0])
+    sub02 = panel[panel[SUBSCRIBER_ID_COL] == "SUB00002"].sort_values(MONTH_COL)
+    beta_ex = _ols_slope(sub02["data_gb"].values)
+    saved_beta = float(
+        features.loc[features[SUBSCRIBER_ID_COL] == "SUB00002", "data_trend"].iloc[0]
+    )
     rows.append(
         _audit_row(
             "OLS trend slopes match 12-month usage trajectories",
@@ -1052,9 +1067,10 @@ def build_statistical_validation(
                 "and verify slope equals data_trend / voice_trend / roaming_trend / lines_trend."
             ),
             proof_shown=(
-                f"{n_subscribers} subscribers × 4 trends: max |Δβ|={trend_max_err:.6g}, failures={trend_fail}; "
-                f"example SUB00002 data_trend: OLS β={beta_ex:.4f} vs saved={saved_beta:.4f} "
-                f"(full table: ols_trend_audit sheet)"
+                f"{n_subscribers} subscribers × 4 trends: "
+                f"max |Δβ|={trend_max_err:.6g}, failures={trend_fail}; "
+                f"example SUB00002 data_trend: OLS β={beta_ex:.4f} "
+                f"vs saved={saved_beta:.4f} (full table: ols_trend_audit sheet)"
             ),
             formula="β = OLS_slope(month_index, monthly_usage); x = 0..11",
             unit_note="Linear trend GB/month, min/month, etc.",
@@ -1261,13 +1277,17 @@ def build_statistical_validation(
                     "scaled_saved": scaled_v,
                     "scaled_recomputed": expected,
                     "abs_error": abs(scaled_v - expected),
-                    "proof": f"({raw_v:.4g} − {mu:.4g}) / {sig:.4g} = {expected:.6g} vs scaled {scaled_v:.6g}",
+                    "proof": (
+                        f"({raw_v:.4g} − {mu:.4g}) / {sig:.4g} = {expected:.6g} "
+                        f"vs scaled {scaled_v:.6g}"
+                    ),
                 }
             )
 
     sil_samples = silhouette_samples(x_scaled, labels)
     cluster_quality = []
-    label_map = {int(k): v for k, v in json.loads((artifacts_dir / "label_map.json").read_text()).items()}
+    label_map_raw = json.loads((artifacts_dir / "label_map.json").read_text(encoding="utf-8"))
+    label_map = {int(k): v for k, v in label_map_raw.items()}
     for idx in sorted(sizes.index):
         mask = labels == idx
         cluster_quality.append(
@@ -1277,7 +1297,11 @@ def build_statistical_validation(
                 "n_subscribers": int(mask.sum()),
                 "pct_of_total": round(100.0 * mask.sum() / n_subscribers, 2),
                 "mean_silhouette": float(sil_samples[mask].mean()),
-                "mean_primary_distance": float(cluster_map.loc[cluster_map["cluster_idx"] == idx, "primary_distance"].mean()),
+                "mean_primary_distance": float(
+                    cluster_map.loc[
+                        cluster_map["cluster_idx"] == idx, "primary_distance"
+                    ].mean()
+                ),
             }
         )
 
@@ -1324,27 +1348,32 @@ def _enrich_audit_explanations(df: pd.DataFrame) -> pd.DataFrame:
     guides: list[tuple[str, str, str]] = [
         (
             "Panel row count",
-            "Counts rows in the raw monthly CSV and verifies each subscriber has exactly 12 months.",
+            "Counts rows in the raw monthly CSV and verifies each subscriber "
+            "has exactly 12 months.",
             "If this fails, aggregation means and trends would be wrong.",
         ),
         (
             "Monthly means match",
-            "For each usage column, recomputes mean(monthly values) from the panel and compares to subscriber_features.csv.",
+            "For each usage column, recomputes mean(monthly values) from the panel "
+            "and compares to subscriber_features.csv.",
             "Proof = max difference across all subscribers and columns (see max_abs_error).",
         ),
         (
             "OLS trend slopes",
-            "Fits a straight line through 12 monthly points (x=month 1..12) and compares slope to saved trend column.",
+            "Fits a straight line through 12 monthly points (x=month 1..12) "
+            "and compares slope to saved trend column.",
             "See sheet ols_trend_audit for recomputed vs saved slopes per exemplar subscriber.",
         ),
         (
             "StandardScaler transform",
-            "Re-applies z-score: (value − mean) / std using scaler.pkl; must match scaled matrix used by K-Means.",
+            "Re-applies z-score: (value − mean) / std using scaler.pkl; "
+            "must match scaled matrix used by K-Means.",
             "See sheet scaler_audit for raw → scaled arithmetic on SUB00001–03.",
         ),
         (
             "Feature matrix matches panel rebuild",
-            "Runs the full feature pipeline again from raw CSV; every engineered column must match saved CSV.",
+            "Runs the full feature pipeline again from raw CSV; "
+            "every engineered column must match saved CSV.",
             "max_abs_error shows worst drift; sanity_math_detail lists any mismatches.",
         ),
         (
@@ -1369,13 +1398,16 @@ def _enrich_audit_explanations(df: pd.DataFrame) -> pd.DataFrame:
         ),
         (
             "cluster_idx = argmin",
-            "Recomputes Euclidean distance from each subscriber to every centroid; nearest = assigned cluster.",
+            "Recomputes Euclidean distance from each subscriber to every centroid; "
+            "nearest = assigned cluster.",
             "Must match cluster_idx in subscriber_cluster_map.csv for all subscribers.",
         ),
         (
             "confidence label",
-            "Re-applies rule: compare primary vs secondary distance ratio to thresholds 0.75 and 0.9.",
-            "Yellow WARNING if math passes but every subscriber is labelled High (not discriminative).",
+            "Re-applies rule: compare primary vs secondary distance ratio "
+            "to thresholds 0.75 and 0.9.",
+            "Yellow WARNING if math passes but every subscriber is labelled High "
+            "(not discriminative).",
         ),
     ]
     if df.empty:
@@ -1385,7 +1417,8 @@ def _enrich_audit_explanations(df: pd.DataFrame) -> pd.DataFrame:
         if not mask.any():
             continue
         if "what_this_check_does" in df.columns:
-            df.loc[mask & (df["what_this_check_does"].astype(str).str.len() == 0), "what_this_check_does"] = what
+            empty_what = mask & (df["what_this_check_does"].astype(str).str.len() == 0)
+            df.loc[empty_what, "what_this_check_does"] = what
         if "proof_shown" in df.columns:
             empty_proof = mask & (df["proof_shown"].astype(str).str.len() == 0)
             for idx in df.index[empty_proof]:
@@ -1578,18 +1611,25 @@ def write_training_excel_report(
         panel, features, cluster_map, artifacts_dir, summary
     )
 
+    stat_val = stat_pack["statistical_validation"]
+    stat_passed = int((stat_val["status"] == "PASS").sum())
+    stat_failed = int((stat_val["status"] == "FAIL").sum())
+    formula_passed = int((math_sanity["status"] == "PASS").sum())
+    formula_failed = int((math_sanity["status"] == "FAIL").sum())
+    label_map_json = json.dumps(summary.get("label_map", {}), ensure_ascii=True)
+
     overview_df = pd.DataFrame(
         [
             {"metric": "input_csv", "value": str(input_csv)},
             {"metric": "n_rows_monthly_panel", "value": len(panel)},
             {"metric": "n_subscribers", "value": int(summary["n_subscribers"])},
             {"metric": "silhouette", "value": float(summary["silhouette"])},
-            {"metric": "statistical_checks_passed", "value": int((stat_pack["statistical_validation"]["status"] == "PASS").sum())},
-            {"metric": "statistical_checks_failed", "value": int((stat_pack["statistical_validation"]["status"] == "FAIL").sum())},
-            {"metric": "formula_checks_passed", "value": int((math_sanity["status"] == "PASS").sum())},
-            {"metric": "formula_checks_failed", "value": int((math_sanity["status"] == "FAIL").sum())},
+            {"metric": "statistical_checks_passed", "value": stat_passed},
+            {"metric": "statistical_checks_failed", "value": stat_failed},
+            {"metric": "formula_checks_passed", "value": formula_passed},
+            {"metric": "formula_checks_failed", "value": formula_failed},
             {"metric": "clusters", "value": cluster_map["cluster_label"].nunique()},
-            {"metric": "label_map", "value": json.dumps(summary.get("label_map", {}), ensure_ascii=True)},
+            {"metric": "label_map", "value": label_map_json},
         ]
     )
     cluster_counts = (
@@ -1604,7 +1644,9 @@ def write_training_excel_report(
     with pd.ExcelWriter(out_xlsx, engine="openpyxl") as writer:
         stat_pack["check_results"].to_excel(writer, sheet_name="check_results", index=False)
         stat_pack["check_summary"].to_excel(writer, sheet_name="check_summary", index=False)
-        stat_pack["statistical_validation"].to_excel(writer, sheet_name="statistical_validation", index=False)
+        stat_pack["statistical_validation"].to_excel(
+            writer, sheet_name="statistical_validation", index=False
+        )
         math_sanity.to_excel(writer, sheet_name="sanity_math", index=False)
         input_sanity.to_excel(writer, sheet_name="sanity_input", index=False)
         if not math_detail.empty:
