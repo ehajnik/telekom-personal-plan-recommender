@@ -128,7 +128,6 @@ def generate_panel(
                 {
                     SUBSCRIBER_ID_COL: sid,
                     MONTH_COL: month,
-                    "seed_archetype": archetype,
                     **row,
                 }
             )

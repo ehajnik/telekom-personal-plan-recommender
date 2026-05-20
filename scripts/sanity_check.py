@@ -210,6 +210,41 @@ def check_entrypoint() -> None:
         raise ValueError("app.py must delegate to telekom_profiler")
 
 
+def check_training_data_schema() -> None:
+    import pandas as pd
+
+    from telekom_profiler.ml.schema import MONTH_COL, RAW_NUMERIC_COLS, SUBSCRIBER_ID_COL
+    from telekom_profiler.paths import RAW_DATA_DIR
+
+    candidates = sorted(RAW_DATA_DIR.glob("private_mobile_usage_*_subscribers_12_months.csv"))
+    if not candidates:
+        print("    (No raw training CSV found — run scripts/generate_synthetic_data.py)")
+        return
+
+    latest = candidates[-1]
+    frame = pd.read_csv(latest)
+    expected = {SUBSCRIBER_ID_COL, MONTH_COL, *RAW_NUMERIC_COLS}
+    missing = expected.difference(frame.columns)
+    if missing:
+        raise AssertionError(f"Missing expected columns in {latest.name}: {sorted(missing)}")
+    if "seed_archetype" in frame.columns:
+        raise AssertionError(f"{latest.name} must not include seed_archetype (text labels)")
+
+    numeric_cols = [MONTH_COL, *RAW_NUMERIC_COLS]
+    non_numeric = [c for c in numeric_cols if not pd.api.types.is_numeric_dtype(frame[c])]
+    if non_numeric:
+        raise AssertionError(f"Numeric training columns contain non-numeric dtype: {non_numeric}")
+
+    if frame[numeric_cols].isna().any().any():
+        raise AssertionError(f"{latest.name} contains nulls in numeric training columns")
+
+    if not frame[MONTH_COL].between(1, 12).all():
+        raise AssertionError(f"{latest.name} has month values outside [1, 12]")
+
+    if not (frame["lines_active"] <= frame["lines_total"]).all():
+        raise AssertionError(f"{latest.name} has rows with lines_active > lines_total")
+
+
 def main() -> int:
     print("Sanity check — telekom-personal-plan-recommender\n")
     checks = [
@@ -222,6 +257,7 @@ def main() -> int:
         ("Theme & CSS", check_theme_css),
         ("Gradio demo builds", check_demo_builds),
         ("ML artifacts (optional)", check_ml_artifacts_optional),
+        ("Training data schema", check_training_data_schema),
         ("app.py entrypoint", check_entrypoint),
     ]
     for name, fn in checks:

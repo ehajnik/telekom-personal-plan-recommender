@@ -13,6 +13,12 @@ Version bumps are driven by [Commitizen](https://commitizen-tools.github.io/comm
 ### Changed
 
 - Ollama defaults tuned for CPU-only workstations: `OLLAMA_TIMEOUT=180`, `OLLAMA_NUM_PREDICT=512`; documented model guidance in configuration and runbook
+- Synthetic training CSV export now excludes text labels (`seed_archetype`) to keep K-Means inputs numeric-only
+
+### Added
+
+- Training pipeline now exports `artifacts/training_report.xlsx` with sanity checks, cluster counts, confidence distribution, and feature summary
+- Sanity script validates latest raw training CSV schema (numeric columns only, no `seed_archetype`, month bounds, and line-count consistency)
 
 ---
 
