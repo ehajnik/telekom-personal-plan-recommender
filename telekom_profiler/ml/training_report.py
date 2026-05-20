@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 import joblib
 import numpy as np
@@ -22,6 +22,30 @@ from telekom_profiler.ml.schema import (
 
 if TYPE_CHECKING:
     from openpyxl.styles import Font, PatternFill
+
+
+class _SampleTripletKw(TypedDict):
+    sample_subscriber: str
+    sample_inputs: str
+    sample_computed: str
+    sample_saved: str
+    sample_reverse: str
+
+
+def _summary_float(summary: dict[str, object], key: str) -> float:
+    value = summary[key]
+    if isinstance(value, (int, float)):
+        return float(value)
+    return float(str(value))
+
+
+def _summary_int(summary: dict[str, object], key: str) -> int:
+    value = summary[key]
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    return int(str(value))
 
 
 def _audit_row(
@@ -87,15 +111,15 @@ def _sample_triplet(
     computed: float,
     saved_col: str,
     reverse: str,
-) -> dict[str, str]:
+) -> _SampleTripletKw:
     saved = float(features.loc[features[SUBSCRIBER_ID_COL] == sid, saved_col].iloc[0])
-    return {
-        "sample_subscriber": sid,
-        "sample_inputs": inputs,
-        "sample_computed": _fmt_num(computed),
-        "sample_saved": _fmt_num(saved),
-        "sample_reverse": reverse,
-    }
+    return _SampleTripletKw(
+        sample_subscriber=sid,
+        sample_inputs=inputs,
+        sample_computed=_fmt_num(computed),
+        sample_saved=_fmt_num(saved),
+        sample_reverse=reverse,
+    )
 
 
 _EXEMPLAR_SUBSCRIBERS: tuple[str, ...] = ("SUB00001", "SUB00002", "SUB00003")
@@ -301,7 +325,7 @@ def build_check_result_lines(
         atol=atol,
     )
 
-    sil = float(summary["silhouette"])
+    sil = _summary_float(summary, "silhouette")
     sil_re = float(silhouette_score(x_scaled, labels))
     _append_result_line(
         rows,
@@ -850,7 +874,7 @@ def build_math_backward_rows(
     )
 
     sil_recomputed = float(silhouette_score(x_scaled, labels))
-    sil_saved = float(summary["silhouette"])
+    sil_saved = _summary_float(summary, "silhouette")
     sil_ok = bool(np.isclose(sil_recomputed, sil_saved, rtol=1e-4, atol=1e-4))
     rows.append(
         _audit_row(
@@ -1014,8 +1038,8 @@ def build_statistical_validation(
             n_total=n_subscribers * len(RAW_NUMERIC_COLS),
             sample_subscriber=sid_mean,
             sample_inputs=f"sum(data_gb)={sub_mean['data_gb'].sum():.2f}, n=12",
-            sample_computed=dg_mean,
-            sample_saved=dg_saved,
+            sample_computed=_fmt_num(dg_mean),
+            sample_saved=_fmt_num(dg_saved),
             details=f"checked {len(RAW_NUMERIC_COLS)} usage columns",
         )
     )
@@ -1081,8 +1105,8 @@ def build_statistical_validation(
             n_failures=trend_fail,
             n_total=n_subscribers * 4,
             sample_subscriber="SUB00002",
-            sample_computed=beta_ex,
-            sample_saved=saved_beta,
+            sample_computed=_fmt_num(beta_ex),
+            sample_saved=_fmt_num(saved_beta),
             details="4 trends × subscribers",
         )
     )
@@ -1192,7 +1216,7 @@ def build_statistical_validation(
         )
     )
 
-    sil = float(summary["silhouette"])
+    sil = _summary_float(summary, "silhouette")
     sil_re = float(silhouette_score(x_scaled, labels))
     sil_ok = sil >= 0.5
     sil_result = "PASSED" if sil_ok else "INVALID"
@@ -1622,8 +1646,8 @@ def write_training_excel_report(
         [
             {"metric": "input_csv", "value": str(input_csv)},
             {"metric": "n_rows_monthly_panel", "value": len(panel)},
-            {"metric": "n_subscribers", "value": int(summary["n_subscribers"])},
-            {"metric": "silhouette", "value": float(summary["silhouette"])},
+            {"metric": "n_subscribers", "value": _summary_int(summary, "n_subscribers")},
+            {"metric": "silhouette", "value": _summary_float(summary, "silhouette")},
             {"metric": "statistical_checks_passed", "value": stat_passed},
             {"metric": "statistical_checks_failed", "value": stat_failed},
             {"metric": "formula_checks_passed", "value": formula_passed},
