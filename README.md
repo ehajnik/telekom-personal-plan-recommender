@@ -61,7 +61,7 @@ cp .env.example .env
 # ML PoC: generate 12-month panel and train K-Means (artifacts/ gitignored)
 python scripts/generate_synthetic_data.py --subscribers 1000
 python scripts/subscriber_profiling.py
-# writes artifacts/ plus artifacts/training_report.xlsx (sanity + cluster summary)
+# writes artifacts/ plus artifacts/training_report.xlsx (input + backward math sanity, cluster summary)
 
 # Optional LLM (CPU-friendly defaults in .env.example):
 # ollama serve && ollama pull llama3.2
