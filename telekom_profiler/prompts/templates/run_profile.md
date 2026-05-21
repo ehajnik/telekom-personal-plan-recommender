@@ -85,4 +85,6 @@ List 3–5 observable signals and the **consumer** product direction each sugges
 
 **Language:** Write the entire report in **English** (product names may stay as in the catalog).
 
+**Highlighting:** Wrap the most important atomic facts in `<mark>...</mark>` so they render in Telekom magenta — at minimum: the primary archetype name, the confidence label, each headline usage figure (data GB, voice minutes, SMS, roaming days), and any tariff names mentioned in upsell signals. Use `<mark>` sparingly (≤ 12 occurrences) on short spans, not whole sentences.
+
 Respond only with the profile report in Markdown. No preamble or closing text outside the report.
