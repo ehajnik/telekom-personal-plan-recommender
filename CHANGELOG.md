@@ -18,8 +18,10 @@ Version bumps are driven by [Commitizen](https://commitizen-tools.github.io/comm
 
 ### Changed
 
+- Default Ollama model is now `llama3.2:3b` (~2 GB, fits in 8 GB RAM) with `OLLAMA_TIMEOUT=180`. The previous `mistral-nemo:12b` / 600 s default reliably hit Ollama's "timed out waiting for llama runner to start" 500 on CPU-only workstations and sent every profile and offer call into the rule-based fallback. `mistral-nemo:12b` remains documented as the higher-quality option for hosts with ≥ 16 GB RAM (raise `OLLAMA_TIMEOUT` and pre-warm the runner).
 - `scripts/generate_synthetic_data.py` reproduces the seven seed archetypes (`light_user`, `streaming_heavy`, `international_traveler`, `voice_senior`, `family_multiline`, `price_sensitive`, `power_user_5g`) so the synthetic panel and the generator stay in sync. K-Means with auto-`k` recovers six well-separated clusters on the standard 800-subscriber panel (silhouette 0.659 vs. 0.609 at fixed `k=5`).
 - Training centroids now include member-level `evening_peak_share` and `weekend_share` averages instead of the previous always-zero placeholders.
+- `docs/configuration.md` now lists `PROFILER_MODE` in the environment-variable reference; `docs/development.md` enumerates every artifact written by `scripts/subscriber_profiling.py` (including `label_map.json`, which is load-bearing for `PROFILER_MODE=auto`).
 
 ### Fixed
 
