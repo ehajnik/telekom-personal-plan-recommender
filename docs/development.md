@@ -86,6 +86,7 @@ Run the full gate locally before opening a pull request (mirrors CI):
 
 ```bash
 export OLLAMA_ENABLED=false
+export PROFILER_MODE=rules   # pin legacy archetypes so unit-test assertions stay deterministic when artifacts/ exists
 
 python -m unittest discover -s tests -v
 python scripts/sanity_check.py

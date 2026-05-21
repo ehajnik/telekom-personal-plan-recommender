@@ -81,11 +81,13 @@ Set `PROFILER_MODE=auto` (default) to use ML when `artifacts/` exists, else lega
 **Quality gate (before merge):**
 
 ```bash
-OLLAMA_ENABLED=false python -m unittest discover -s tests -v
-OLLAMA_ENABLED=false python scripts/sanity_check.py
+OLLAMA_ENABLED=false PROFILER_MODE=rules python -m unittest discover -s tests -v
+OLLAMA_ENABLED=false PROFILER_MODE=rules python scripts/sanity_check.py
 ruff check telekom_profiler tests scripts
 mypy telekom_profiler
 ```
+
+`PROFILER_MODE=rules` pins the legacy archetype scoring so unit-test assertions about archetype names (e.g. `Streamer`) are independent of any locally-trained `artifacts/`.
 
 ---
 
