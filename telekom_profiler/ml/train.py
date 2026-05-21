@@ -67,11 +67,10 @@ def assign_labels(
 ) -> dict[int, str]:
     """Globally-optimal label↔cluster mapping via the Hungarian algorithm.
 
-    Returns ``{cluster_idx: label}`` where the five named ``PROFILE_LABELS`` are
-    each matched to their best-fitting cluster according to
-    ``LABEL_CANONICAL_CENTROIDS``. Any remaining clusters (when ``k`` exceeds the
-    number of named labels) receive generic ``Profile N`` names so downstream
-    consumers can still render them.
+    Returns ``{cluster_idx: label}`` where each named ``PROFILE_LABELS`` entry is
+    matched to its best-fitting cluster according to ``LABEL_CANONICAL_CENTROIDS``.
+    Any remaining clusters (when ``k`` exceeds the number of named labels) receive
+    generic ``Profile N`` names so downstream consumers can still render them.
     """
     n_clusters = centroids_unscaled.shape[0]
     cost = _label_cost_matrix(centroids_unscaled, scaler)

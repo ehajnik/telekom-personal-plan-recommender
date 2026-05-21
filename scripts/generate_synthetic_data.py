@@ -18,10 +18,11 @@ from telekom_profiler.ml.schema import MONTH_COL, SEED_ARCHETYPES, SUBSCRIBER_ID
 from telekom_profiler.paths import RAW_DATA_DIR
 
 # Seven well-separated seed archetypes keyed by ``SEED_ARCHETYPES``. K-Means with
-# k=5 still produces a usable silhouette by collapsing related archetypes, but the
-# elbow / silhouette diagnostic recovers the underlying k≈6-7 structure. The five
-# named ``PROFILE_LABELS`` are then matched to clusters via Hungarian assignment in
-# ``telekom_profiler.ml.train.assign_labels``; the remaining clusters receive
+# a fixed lower ``k`` still produces a usable silhouette by collapsing related
+# archetypes, but the elbow / silhouette diagnostic (``--clusters auto``) recovers
+# the underlying k ≈ 5-7 structure. The named ``PROFILE_LABELS`` are then matched
+# to clusters via Hungarian assignment in
+# ``telekom_profiler.ml.train.assign_labels``; any remaining clusters receive
 # auto-generated ``Profile N`` labels.
 ARCHETYPE_PARAMS: dict[str, dict[str, tuple[float, float]]] = {
     "light_user": {
