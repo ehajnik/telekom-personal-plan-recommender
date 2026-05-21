@@ -30,9 +30,28 @@ def main() -> None:
         help="Output artifacts directory",
     )
     parser.add_argument("--min-silhouette", type=float, default=0.5, help="Minimum silhouette score")
-    parser.add_argument("--clusters", type=int, default=5, help="K-Means clusters")
+    parser.add_argument(
+        "--clusters",
+        default="auto",
+        help="K-Means clusters: integer or 'auto' for elbow + silhouette selection (default: auto)",
+    )
+    parser.add_argument(
+        "--k-min", type=int, default=2, help="Minimum k to evaluate when --clusters=auto"
+    )
+    parser.add_argument(
+        "--k-max", type=int, default=10, help="Maximum k to evaluate when --clusters=auto"
+    )
     parser.add_argument("--seed", type=int, default=42, help="Random state")
     args = parser.parse_args()
+
+    clusters: int | str
+    if isinstance(args.clusters, str) and args.clusters.lower() == "auto":
+        clusters = "auto"
+    else:
+        try:
+            clusters = int(args.clusters)
+        except (TypeError, ValueError) as exc:
+            parser.error(f"--clusters must be 'auto' or an integer, got {args.clusters!r}: {exc}")
 
     input_csv = args.input
     if input_csv is None:
@@ -49,11 +68,16 @@ def main() -> None:
     summary = train_and_save(
         input_csv,
         args.artifacts,
-        n_clusters=args.clusters,
+        n_clusters=clusters,
+        k_min=args.k_min,
+        k_max=args.k_max,
         min_silhouette=args.min_silhouette,
         random_state=args.seed,
     )
-    print(f"Training complete. Silhouette={summary['silhouette']:.4f}, n={summary['n_subscribers']}")
+    print(
+        f"Training complete. k={summary['n_clusters']}, "
+        f"silhouette={summary['silhouette']:.4f}, n={summary['n_subscribers']}"
+    )
     print(f"Artifacts → {args.artifacts}")
 
 

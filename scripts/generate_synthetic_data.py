@@ -14,12 +14,17 @@ _REPO = Path(__file__).resolve().parents[1]
 if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
-from telekom_profiler.ml.schema import MONTH_COL, PROFILE_LABELS, SUBSCRIBER_ID_COL
+from telekom_profiler.ml.schema import MONTH_COL, SEED_ARCHETYPES, SUBSCRIBER_ID_COL
 from telekom_profiler.paths import RAW_DATA_DIR
 
-# Five well-separated seed profiles (map 1:1 to K-Means k=5); tight ranges for PoC silhouette ≥ 0.5
+# Seven well-separated seed archetypes keyed by ``SEED_ARCHETYPES``. K-Means with
+# k=5 still produces a usable silhouette by collapsing related archetypes, but the
+# elbow / silhouette diagnostic recovers the underlying k≈6-7 structure. The five
+# named ``PROFILE_LABELS`` are then matched to clusters via Hungarian assignment in
+# ``telekom_profiler.ml.train.assign_labels``; the remaining clusters receive
+# auto-generated ``Profile N`` labels.
 ARCHETYPE_PARAMS: dict[str, dict[str, tuple[float, float]]] = {
-    "Light / occasional user": {
+    "light_user": {
         "data_gb": (0.5, 2.5),
         "voice_min": (15.0, 80.0),
         "sms_count": (5.0, 25.0),
@@ -29,44 +34,64 @@ ARCHETYPE_PARAMS: dict[str, dict[str, tuple[float, float]]] = {
         "lines_active": (1.0, 1.0),
         "plan_tier": (1.0, 1.0),
     },
-    "Streaming & data-heavy": {
-        "data_gb": (100.0, 135.0),
-        "voice_min": (80.0, 250.0),
-        "sms_count": (5.0, 40.0),
-        "roaming_days": (0.0, 1.0),
-        "countries_visited": (0.0, 1.0),
-        "lines_total": (1.0, 1.0),
-        "lines_active": (1.0, 1.0),
-        "plan_tier": (4.0, 5.0),
-    },
-    "Voice-centric": {
-        "data_gb": (1.0, 8.0),
-        "voice_min": (1200.0, 2400.0),
-        "sms_count": (15.0, 60.0),
+    "streaming_heavy": {
+        "data_gb": (95.0, 125.0),
+        "voice_min": (150.0, 320.0),
+        "sms_count": (15.0, 45.0),
         "roaming_days": (0.0, 2.0),
-        "countries_visited": (0.0, 1.0),
-        "lines_total": (1.0, 1.0),
-        "lines_active": (1.0, 1.0),
-        "plan_tier": (1.0, 2.0),
+        "countries_visited": (0.0, 1.5),
+        "lines_total": (1.0, 2.0),
+        "lines_active": (1.0, 2.0),
+        "plan_tier": (3.0, 4.0),
     },
-    "Roaming / travel-heavy": {
-        "data_gb": (20.0, 45.0),
-        "voice_min": (100.0, 350.0),
-        "sms_count": (10.0, 50.0),
-        "roaming_days": (10.0, 20.0),
-        "countries_visited": (5.0, 12.0),
+    "international_traveler": {
+        "data_gb": (30.0, 50.0),
+        "voice_min": (200.0, 400.0),
+        "sms_count": (30.0, 65.0),
+        "roaming_days": (10.0, 16.0),
+        "countries_visited": (5.0, 9.0),
         "lines_total": (1.0, 2.0),
         "lines_active": (1.0, 2.0),
         "plan_tier": (2.0, 3.0),
     },
-    "Underutilized / overspending": {
-        "data_gb": (2.0, 8.0),
-        "voice_min": (20.0, 100.0),
-        "sms_count": (5.0, 30.0),
-        "roaming_days": (0.0, 1.0),
-        "countries_visited": (0.0, 1.0),
+    "voice_senior": {
+        "data_gb": (1.0, 10.0),
+        "voice_min": (1200.0, 1800.0),
+        "sms_count": (40.0, 80.0),
+        "roaming_days": (0.0, 3.0),
+        "countries_visited": (0.0, 1.5),
+        "lines_total": (1.0, 1.0),
+        "lines_active": (1.0, 1.0),
+        "plan_tier": (1.0, 2.0),
+    },
+    "family_multiline": {
+        "data_gb": (50.0, 80.0),
+        "voice_min": (450.0, 800.0),
+        "sms_count": (60.0, 120.0),
+        "roaming_days": (2.0, 5.0),
+        "countries_visited": (1.5, 3.5),
         "lines_total": (3.0, 5.0),
-        "lines_active": (0.8, 1.2),
+        "lines_active": (2.5, 3.5),
+        "plan_tier": (3.0, 4.0),
+    },
+    "price_sensitive": {
+        "data_gb": (2.0, 12.0),
+        "voice_min": (70.0, 160.0),
+        "sms_count": (15.0, 45.0),
+        "roaming_days": (0.0, 2.0),
+        "countries_visited": (0.0, 1.0),
+        "lines_total": (1.0, 2.0),
+        "lines_active": (0.5, 1.0),
+        "plan_tier": (1.0, 1.0),
+    },
+    "power_user_5g": {
+        "data_gb": (110.0, 140.0),
+        "voice_min": (300.0, 550.0),
+        "sms_count": (30.0, 55.0),
+        "roaming_days": (3.0, 7.0),
+        "countries_visited": (2.0, 4.0),
+        "lines_total": (1.0, 2.0),
+        "lines_active": (1.0, 2.0),
         "plan_tier": (4.0, 5.0),
     },
 }
@@ -111,7 +136,7 @@ def generate_panel(
     seed: int = 42,
 ) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
-    archetypes = list(PROFILE_LABELS)
+    archetypes = list(SEED_ARCHETYPES)
     rows: list[dict[str, float | str | int]] = []
 
     for i in range(n_subscribers):

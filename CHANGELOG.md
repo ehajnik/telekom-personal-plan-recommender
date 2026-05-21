@@ -10,6 +10,20 @@ Version bumps are driven by [Commitizen](https://commitizen-tools.github.io/comm
 
 ## [Unreleased]
 
+### Added
+
+- Elbow + silhouette `k`-selection in the training pipeline. New `--clusters auto` (default), `--k-min`, and `--k-max` flags in `scripts/subscriber_profiling.py` sweep `k ∈ [2, 10]`, pick the silhouette-argmax `k`, cross-check against a kneedle-style elbow, and persist the full diagnostic to `artifacts/k_selection.json` for audit.
+- `telekom_profiler.ml.train.assign_labels` performs a globally-optimal label-to-cluster matching via `scipy.optimize.linear_sum_assignment`. Each named `PROFILE_LABEL` is matched to the cluster whose centroid is closest (in scaler-normalised feature space) to its canonical archetype reference (`LABEL_CANONICAL_CENTROIDS` in `telekom_profiler.ml.schema`); any additional clusters receive auto-generated `Profile N` names with a rules-based signature derived from the centroid.
+
+### Changed
+
+- `scripts/generate_synthetic_data.py` reproduces the seven seed archetypes (`light_user`, `streaming_heavy`, `international_traveler`, `voice_senior`, `family_multiline`, `price_sensitive`, `power_user_5g`) so the synthetic panel and the generator stay in sync. K-Means with auto-`k` recovers six well-separated clusters on the standard 800-subscriber panel (silhouette 0.659 vs. 0.609 at fixed `k=5`).
+- Training centroids now include member-level `evening_peak_share` and `weekend_share` averages instead of the previous always-zero placeholders.
+
+### Fixed
+
+- The "Light / occasional user" profile no longer absorbs the family / multi-line cluster. The previous greedy `_align_labels` algorithm could allocate the residual cluster to "Light" even when its centroid (data ≈ 64 GB, voice ≈ 601 min, lines ≈ 4, plan tier 3.5) directly contradicted the label's signature; the globally-optimal Hungarian matching now keeps every centroid consistent with its narrative.
+
 ### Removed
 
 - Excel training report (`training_report.xlsx`), `telekom_profiler.ml.training_report`, and `openpyxl` ML dependency

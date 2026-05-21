@@ -59,6 +59,8 @@ Generate synthetic billing history and train K-Means profiles (writes to `artifa
 ```bash
 python scripts/generate_synthetic_data.py --subscribers 1000 --seed 42
 python scripts/subscriber_profiling.py --min-silhouette 0.5
+# Defaults to --clusters auto (sweep k ∈ [2, 10], pick silhouette argmax).
+# Override with --clusters 5 (or another int) plus --k-min / --k-max if needed.
 ```
 
 | Output | Purpose |
@@ -67,8 +69,12 @@ python scripts/subscriber_profiling.py --min-silhouette 0.5
 | `artifacts/kmeans.pkl`, `scaler.pkl` | Trained model |
 | `artifacts/subscriber_cluster_map.csv` | Subscriber dropdown + distances |
 | `artifacts/profile_characteristics.json` | Profile labels and slider presets |
+| `artifacts/k_selection.json` | Inertia + silhouette per `k`, chosen value (auto-mode only) |
 
-**Design rule:** trend columns are excluded from `CLUSTER_FEATURES`; they feed overlays only.
+**Design rules:**
+
+- Trend columns are excluded from `CLUSTER_FEATURES`; they feed overlays only.
+- Named `PROFILE_LABELS` are mapped to clusters via Hungarian assignment against `LABEL_CANONICAL_CENTROIDS`. When the chosen `k` exceeds the number of named labels, the extra clusters receive auto-generated `Profile N` labels with a rules-based signature.
 
 Set `PROFILER_MODE=rules` to force legacy L1 archetypes (used in unit tests). Default `auto` selects ML when artifacts exist.
 

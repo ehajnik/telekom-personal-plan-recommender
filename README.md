@@ -24,7 +24,7 @@ The solution is delivered as an installable Python package (`telekom_profiler`) 
 | Customer profiling | Markdown profile with archetype, overlays, narrative, and risks |
 | Offer recommendation | Tariff and add-on suggestion against prototype catalogue |
 | Demo personas | Profile templates from ML training or legacy archetype presets |
-| ML segmentation | K-Means on 12-month usage (k=5); trends drive overlays only |
+| ML segmentation | K-Means on 12-month usage with elbow + silhouette `k`-selection and Hungarian label matching; trends drive overlays only |
 | Inference modes | Local Ollama (optional) with rule-based / ML fallback |
 
 ### Out of scope (current release)
@@ -60,8 +60,9 @@ cp .env.example .env
 
 # ML PoC: generate 12-month panel and train K-Means (artifacts/ gitignored)
 python scripts/generate_synthetic_data.py --subscribers 1000
-python scripts/subscriber_profiling.py
-# writes artifacts/ (K-Means model, scaler, cluster map, training summary)
+python scripts/subscriber_profiling.py            # auto-selects k via elbow + silhouette
+# python scripts/subscriber_profiling.py --clusters 5   # fixed-k override
+# writes artifacts/ (K-Means model, scaler, cluster map, k_selection.json, profile_characteristics.json)
 
 # Optional LLM (CPU-friendly defaults in .env.example):
 # ollama serve && ollama pull mistral-nemo:12b

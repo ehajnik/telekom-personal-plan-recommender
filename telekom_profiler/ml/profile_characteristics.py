@@ -135,18 +135,78 @@ def overlay_thresholds() -> dict[str, float]:
     }
 
 
+def _auto_signature_from_row(row: dict[str, float]) -> list[str]:
+    """Synthesise a short bullet list describing a centroid from feature rules.
+
+    Used for clusters that K-Means discovers but no named ``PROFILE_LABELS``
+    entry matched (i.e. ``Profile N`` placeholders when ``k`` exceeds the
+    number of named labels).
+    """
+    data = float(row.get("data_gb_mean", 0))
+    voice = float(row.get("voice_min_mean", 0))
+    lines_total = float(row.get("lines_total_mean", 1))
+    pct_idle = float(row.get("pct_idle_lines", 0))
+    roaming = float(row.get("roaming_days_mean", 0))
+    plan = float(row.get("plan_tier_mean", 0))
+
+    sig: list[str] = []
+    if data >= 80:
+        sig.append("Very high mobile data usage")
+    elif data >= 30:
+        sig.append("Elevated mobile data usage")
+    elif data < 5:
+        sig.append("Low mobile data usage")
+    if voice >= 800:
+        sig.append("Heavy voice usage")
+    elif voice >= 300:
+        sig.append("Moderate voice usage")
+    elif voice < 100:
+        sig.append("Low voice usage")
+    if lines_total >= 2.5:
+        sig.append("Multi-line household or small business")
+    elif lines_total >= 1.5:
+        sig.append("Multiple lines on the account")
+    if pct_idle >= 0.4:
+        sig.append("Significant share of idle lines")
+    if roaming >= 10:
+        sig.append("Frequent international roaming")
+    elif roaming >= 5:
+        sig.append("Occasional international roaming")
+    if plan >= 4:
+        sig.append("Premium plan tier")
+    elif plan and plan <= 1.5:
+        sig.append("Entry-level plan tier")
+    if not sig:
+        sig.append("Mixed usage profile")
+    return sig
+
+
 def build_profile_entry(
     label: str,
     cluster_idx: int,
     row: dict[str, float],
 ) -> dict[str, Any]:
-    """Single profile block under ``profiles``."""
+    """Single profile block under ``profiles``.
+
+    Named ``PROFILE_LABELS`` use the curated ``PROFILE_SIGNATURES`` /
+    ``PROFILE_EXAMPLES``; auto-discovered ``Profile N`` clusters fall back to a
+    rules-based signature derived from the centroid so the JSON is never
+    contradictory.
+    """
     centroid = build_centroid(row)
+    is_named = label in PROFILE_SIGNATURES
+    signature = (
+        list(PROFILE_SIGNATURES[label]) if is_named else _auto_signature_from_row(row)
+    )
+    examples = (
+        list(PROFILE_EXAMPLES[label]) if label in PROFILE_EXAMPLES else ["Auto-discovered cluster"]
+    )
+    emoji = PROFILE_EMOJI.get(label, "🧩" if not is_named else "📱")
     return {
-        "emoji": PROFILE_EMOJI.get(label, "📱"),
+        "emoji": emoji,
         "cluster_idx": cluster_idx,
-        "signature": list(PROFILE_SIGNATURES.get(label, [])),
-        "examples": list(PROFILE_EXAMPLES.get(label, [])),
+        "signature": signature,
+        "examples": examples,
         "centroid": centroid,
         "slider_defaults": ui_slider_defaults_from_row(row),
     }
