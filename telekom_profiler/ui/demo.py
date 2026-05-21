@@ -185,6 +185,7 @@ def create_demo() -> gr.Blocks:
                         MSG_RUN_PROFILE,
                         elem_classes=["dt-result-body"],
                         padding=False,
+                        sanitize_html=False,
                     )
 
                 with gr.Column(elem_classes=["dt-card", "dt-result-col"], scale=1, min_width=0):
@@ -193,6 +194,7 @@ def create_demo() -> gr.Blocks:
                         MSG_GENERATE_OFFER,
                         elem_classes=["dt-result-body"],
                         padding=False,
+                        sanitize_html=False,
                     )
 
         profile_pick.change(
