@@ -10,20 +10,30 @@ Version bumps are driven by [Commitizen](https://commitizen-tools.github.io/comm
 
 ## [Unreleased]
 
+---
+
+## [0.3.0] - 2026-05-21
+
 ### Added
 
-- `requirements-ml.txt` and `requirements-dev.txt` for explicit ML and dev dependency installs (includes `openpyxl`)
-- Excel `check_results` sheet: one row per method step (12 monthly rows where applicable) with exact `method`, `computed`, `expected`, and `PASSED`/`WARNING`/`INVALID`; `check_summary` aggregates per check group
+- `requirements-ml.txt` for explicit ML dependency installs (includes `openpyxl`)
+- Training pipeline exports `artifacts/training_report.xlsx` with sanity checks, cluster counts, confidence distribution, and feature summary
+- Backward math sanity checks, statistician validation sheets, and per-check proof columns in the Excel report
+- Excel `check_results` sheet: line-level `method` / `computed` / `expected` rows with `PASSED` / `WARNING` / `INVALID`; `check_summary` aggregates per check group
+- Sanity script validates latest raw training CSV schema (numeric columns only, no `seed_archetype`, month bounds, line-count consistency)
 
 ### Changed
 
-- Ollama defaults tuned for CPU-only workstations: `OLLAMA_TIMEOUT=180`, `OLLAMA_NUM_PREDICT=512`; documented model guidance in configuration and runbook
-- Synthetic training CSV export now excludes text labels (`seed_archetype`) to keep K-Means inputs numeric-only
+- Ollama defaults tuned for CPU-only workstations: `OLLAMA_TIMEOUT=180`, `OLLAMA_NUM_PREDICT=512`; model guidance in configuration and runbook
+- Synthetic training CSV export excludes text labels (`seed_archetype`) to keep K-Means inputs numeric-only
+- Gradio UI: compact grid layout, Telekom card styling, nearly full viewport width, unified palette and slider tracks
+- Profile toolbar simplified (subscriber picker removed); template dropdown and English generated copy refined
 
-### Added
+### Fixed
 
-- Training pipeline now exports `artifacts/training_report.xlsx` with sanity checks, cluster counts, confidence distribution, and feature summary
-- Sanity script validates latest raw training CSV schema (numeric columns only, no `seed_archetype`, month bounds, and line-count consistency)
+- Excel audit rows colored by verdict (green / yellow / red); training-report ruff and mypy issues resolved
+- Gradio template-dropdown borders and padding; slider row spacing and bordered feature rows
+- Package `__init__` import order
 
 ---
 
