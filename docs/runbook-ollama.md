@@ -13,10 +13,10 @@ Operational procedures for local LLM inference in the Private Customer Profiler.
 curl -s http://localhost:11434/api/tags
 
 # Model installed?
-ollama list | grep -F "${OLLAMA_MODEL:-mistral-nemo:12b}"
+ollama list | grep -F "${OLLAMA_MODEL:-llama3.2:3b}"
 
 # Install default model if missing
-ollama pull mistral-nemo:12b
+ollama pull llama3.2:3b
 ```
 
 Ensure `ollama serve` is running when `OLLAMA_ENABLED=true`.
@@ -28,9 +28,9 @@ Ensure `ollama serve` is running when `OLLAMA_ENABLED=true`.
 | Variable | Default | If misconfigured |
 |----------|---------|------------------|
 | `OLLAMA_HOST` | `http://localhost:11434` | Start Ollama or correct service URL |
-| `OLLAMA_MODEL` | `mistral-nemo:12b` | `ollama pull <model>` |
+| `OLLAMA_MODEL` | `llama3.2:3b` | `ollama pull <model>` |
 | `OLLAMA_ENABLED` | `true` | Set `false` for rule-based-only operation |
-| `OLLAMA_TIMEOUT` | `600` | Lower for smaller models; raise if 12B still times out on CPU |
+| `OLLAMA_TIMEOUT` | `180` | Raise if a larger model still times out on CPU |
 | `OLLAMA_NUM_PREDICT` | `512` | Increase for longer narratives; decrease to shorten latency |
 | `OLLAMA_FALLBACK_ON_ERROR` | `true` | Set `false` to surface errors to the UI |
 | `LOG_LEVEL` | `INFO` | Set `DEBUG` for verbose client logging |
@@ -87,7 +87,7 @@ Use to validate gateway connectivity and prompt behaviour without masking errors
 With `LOG_LEVEL=INFO`, successful completions log:
 
 ```
-INFO telekom_profiler.llm.client: Ollama completion ok model=mistral-nemo:12b duration_ms=...
+INFO telekom_profiler.llm.client: Ollama completion ok model=llama3.2:3b duration_ms=...
 ```
 
 Fallback activation logs warnings from `telekom_profiler.services.fallback`.
@@ -123,28 +123,28 @@ Copy `.env.example` (CPU-tuned defaults) and pull the configured model:
 ```bash
 cp .env.example .env
 ollama serve   # separate terminal
-ollama pull mistral-nemo:12b
+ollama pull llama3.2:3b
 ```
 
 Default `.env` values:
 
 ```env
-OLLAMA_MODEL=mistral-nemo:12b
-OLLAMA_TIMEOUT=600
+OLLAMA_MODEL=llama3.2:3b
+OLLAMA_TIMEOUT=180
 OLLAMA_NUM_PREDICT=512
 OLLAMA_FALLBACK_ON_ERROR=true
 ```
 
-Each full UI flow may run **two** sequential LLM calls (profile, then offer). Expect multi-minute latency on CPU; lowering `OLLAMA_NUM_PREDICT` or disabling the LLM reduces wait time.
+Each full UI flow runs **two** sequential LLM calls (profile, then offer). On CPU with `llama3.2:3b` each call typically completes in tens of seconds; lowering `OLLAMA_NUM_PREDICT` or disabling the LLM reduces wait time further.
 
 ### 8.2 Model selection
 
 | Model tag | When to use |
 |-----------|-------------|
-| `mistral-nemo:12b` | Default; strong quality; needs ~16 GB+ RAM; default `OLLAMA_TIMEOUT=600` on CPU |
-| `llama3.2` | Lighter default if 12B is too slow or RAM-limited |
-| `llama3.2:1b` | Tighter RAM or faster workshops |
+| `llama3.2:3b` | Default; CPU-friendly (~2 GB on disk, fits in 8 GB RAM); default `OLLAMA_TIMEOUT=180` |
+| `llama3.2:1b` | Tighter RAM or faster workshops; shorter / more generic narratives |
 | `qwen2.5:3b`, `phi3:mini` | Alternatives with similar size class |
+| `mistral-nemo:12b` | Strongest narrative quality, but needs ~16 GB RAM; raise `OLLAMA_TIMEOUT` (e.g. 600) and pre-warm with `ollama run mistral-nemo:12b ""` to avoid runner-start timeouts |
 | `llama3:latest` (8B+) | **Not recommended** on CPU-only — timeouts and RAM pressure |
 
 Deterministic archetype labels always come from `ScoringResult` in code/ML, not from the LLM ([ADR 001](adr/001-scoring-in-code.md)).

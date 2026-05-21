@@ -15,9 +15,9 @@ cp .env.example .env
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API base URL (no trailing slash) |
-| `OLLAMA_MODEL` | `mistral-nemo:12b` | Model tag; must exist on the host (`ollama pull`) |
+| `OLLAMA_MODEL` | `llama3.2:3b` | Model tag; must exist on the host (`ollama pull`) |
 | `OLLAMA_ENABLED` | `true` | When `false`, selects rule-based profile and offer providers |
-| `OLLAMA_TIMEOUT` | `600` | HTTP client timeout (seconds); 12B models on CPU need headroom |
+| `OLLAMA_TIMEOUT` | `180` | HTTP client timeout (seconds); raise for larger models on CPU |
 | `OLLAMA_NUM_PREDICT` | `512` | Maximum completion tokens per request |
 | `OLLAMA_FALLBACK_ON_ERROR` | `true` | On LLM failure, delegate to rule-based providers |
 | `LOG_LEVEL` | `INFO` | Root log level (`DEBUG`, `WARNING`, `ERROR`, …) |
@@ -47,11 +47,12 @@ The repository defaults assume **CPU inference** via local Ollama. Archetype sco
 
 | Goal | Suggested `OLLAMA_MODEL` | Notes |
 |------|--------------------------|-------|
-| Default balance | `mistral-nemo:12b` | Matches `.env.example`; `ollama pull mistral-nemo:12b` |
-| Faster / less RAM | `llama3.2`, `llama3.2:1b`, `qwen2.5:3b`, `phi3:mini` | Set `OLLAMA_MODEL` accordingly after `ollama pull` |
+| Default balance | `llama3.2:3b` | Matches `.env.example`; `ollama pull llama3.2:3b` |
+| Even less RAM | `llama3.2:1b`, `phi3:mini` | Faster cold start; lower narrative quality |
+| Higher quality (more RAM) | `qwen2.5:3b`, `mistral-nemo:12b` | Raise `OLLAMA_TIMEOUT` accordingly; `mistral-nemo:12b` needs ~16 GB RAM |
 | No local LLM | — | `OLLAMA_ENABLED=false` (recommended for CI) |
 
-Keep `OLLAMA_FALLBACK_ON_ERROR=true` on laptops so timeouts fall back to rule-based providers. Avoid 7B+ models (for example `llama3:latest`) on CPU-only hosts.
+Keep `OLLAMA_FALLBACK_ON_ERROR=true` on laptops so timeouts fall back to rule-based providers. Avoid 7B+ models (for example `llama3:latest`, `mistral-nemo:12b`) on CPU-only hosts unless you also raise `OLLAMA_TIMEOUT` and have the RAM headroom.
 
 Operational detail: [Ollama runbook — CPU-only](runbook-ollama.md#8-cpu-only-workstations-no-dedicated-gpu).
 

@@ -65,7 +65,7 @@ python scripts/subscriber_profiling.py            # auto-selects k via elbow + s
 # writes artifacts/ (K-Means model, scaler, cluster map, k_selection.json, profile_characteristics.json)
 
 # Optional LLM (CPU-friendly defaults in .env.example):
-# ollama serve && ollama pull mistral-nemo:12b
+# ollama serve && ollama pull llama3.2:3b
 
 python app.py
 ```
