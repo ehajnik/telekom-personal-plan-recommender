@@ -49,6 +49,7 @@ PROFILE_LABELS: Final[tuple[str, ...]] = (
     "Voice-centric",
     "Roaming / travel-heavy",
     "Underutilized / overspending",
+    "Family / multi-line",
 )
 
 PROFILE_EMOJI: Final[dict[str, str]] = {
@@ -57,6 +58,7 @@ PROFILE_EMOJI: Final[dict[str, str]] = {
     "Voice-centric": "📞",
     "Roaming / travel-heavy": "✈️",
     "Underutilized / overspending": "💤",
+    "Family / multi-line": "👨‍👩‍👧‍👦",
 }
 
 # Subscriber-level means (12-month aggregate)
@@ -123,6 +125,7 @@ LABEL_DISCRIMINATORS: Final[dict[str, str]] = {
     "Voice-centric": "voice_min_mean",
     "Roaming / travel-heavy": "roaming_intensity",
     "Underutilized / overspending": "pct_idle_lines",
+    "Family / multi-line": "lines_active_mean",
 }
 
 # Canonical centroid per named label, in the same feature space as ``CLUSTER_FEATURES``.
@@ -206,5 +209,20 @@ LABEL_CANONICAL_CENTROIDS: Final[dict[str, dict[str, float]]] = {
         "roaming_intensity": 0.008,
         "data_per_active_line": 20.0,
         "session_intensity": 25.0,
+    },
+    "Family / multi-line": {
+        "data_gb_mean": 65.0,
+        "voice_min_mean": 625.0,
+        "sms_count_mean": 90.0,
+        "roaming_days_mean": 3.5,
+        "countries_visited_mean": 2.5,
+        "lines_total_mean": 4.0,
+        "lines_active_mean": 3.0,
+        "plan_tier_mean": 3.5,
+        "active_line_ratio": 0.75,
+        "pct_idle_lines": 0.25,
+        "roaming_intensity": 0.292,
+        "data_per_active_line": 86.67,
+        "session_intensity": 21125.0,
     },
 }

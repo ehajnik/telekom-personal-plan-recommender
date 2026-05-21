@@ -14,6 +14,7 @@ Version bumps are driven by [Commitizen](https://commitizen-tools.github.io/comm
 
 - Elbow + silhouette `k`-selection in the training pipeline. New `--clusters auto` (default), `--k-min`, and `--k-max` flags in `scripts/subscriber_profiling.py` sweep `k ∈ [2, 10]`, pick the silhouette-argmax `k`, cross-check against a kneedle-style elbow, and persist the full diagnostic to `artifacts/k_selection.json` for audit.
 - `telekom_profiler.ml.train.assign_labels` performs a globally-optimal label-to-cluster matching via `scipy.optimize.linear_sum_assignment`. Each named `PROFILE_LABEL` is matched to the cluster whose centroid is closest (in scaler-normalised feature space) to its canonical archetype reference (`LABEL_CANONICAL_CENTROIDS` in `telekom_profiler.ml.schema`); any additional clusters receive auto-generated `Profile N` names with a rules-based signature derived from the centroid.
+- Sixth named profile **`Family / multi-line`** (emoji 👨‍👩‍👧‍👦) with curated signature, examples, canonical centroid, and discriminator. The auto-`k=6` cluster (centroid ≈ 64 GB data, 601 voice min, ~4 lines, plan tier 3.5) previously surfaced as a generic `Profile 6` placeholder; Hungarian matching now claims it under its proper name and mirrors the `family_multiline` seed archetype.
 
 ### Changed
 

@@ -44,6 +44,12 @@ PROFILE_SIGNATURES: dict[str, list[str]] = {
         "Low data per active line",
         "Downgrade / rightsizing opportunity",
     ],
+    "Family / multi-line": [
+        "Multi-line household (3-5 SIMs, most active)",
+        "Combined family data and voice consumption",
+        "Mid-to-upper plan tier with shared allowances",
+        "Some incidental roaming for holidays",
+    ],
 }
 
 PROFILE_EXAMPLES: dict[str, list[str]] = {
@@ -71,6 +77,11 @@ PROFILE_EXAMPLES: dict[str, list[str]] = {
         "Family plan with unused lines",
         "Legacy tier after usage drop",
         "Multi-SIM with idle secondary lines",
+    ],
+    "Family / multi-line": [
+        "Parents and teens on a shared MagentaMobil tariff",
+        "PlusKarte add-ons for additional household lines",
+        "Mid-sized family with mixed voice and streaming usage",
     ],
 }
 
