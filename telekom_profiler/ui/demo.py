@@ -221,4 +221,8 @@ def create_demo() -> gr.Blocks:
 def main() -> None:
     configure_logging()
     reset_engine()
-    create_demo().launch(theme=DT_THEME, css=DT_CSS)
+    create_demo().launch(
+        theme=DT_THEME,
+        css=DT_CSS,
+        favicon_path=str(ASSETS_DIR / "telekom-logo.svg"),
+    )
