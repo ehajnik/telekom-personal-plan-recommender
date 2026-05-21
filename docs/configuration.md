@@ -21,8 +21,9 @@ cp .env.example .env
 | `OLLAMA_NUM_PREDICT` | `512` | Maximum completion tokens per request |
 | `OLLAMA_FALLBACK_ON_ERROR` | `true` | On LLM failure, delegate to rule-based providers |
 | `LOG_LEVEL` | `INFO` | Root log level (`DEBUG`, `WARNING`, `ERROR`, …) |
+| `PROFILER_MODE` | `auto` | `auto` uses trained K-Means when `artifacts/` is complete, otherwise rule-based archetypes; `ml` forces ML (errors if artifacts are missing); `rules` pins the legacy archetype scoring (used by CI and the unit-test gate) |
 
-Operational detail and troubleshooting: [Ollama runbook](runbook-ollama.md).
+Operational detail and troubleshooting: [Ollama runbook](runbook-ollama.md). ML pipeline outputs are detailed in [Development § 4](development.md#4-ml-profiling-pipeline-poc).
 
 ### 1.1 CI and offline development
 
