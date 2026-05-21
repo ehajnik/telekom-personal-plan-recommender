@@ -12,7 +12,6 @@ if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
 from telekom_profiler.ml.train import train_and_save
-from telekom_profiler.ml.training_report import write_training_excel_report
 from telekom_profiler.paths import ARTIFACTS_DIR, RAW_DATA_DIR
 
 
@@ -33,17 +32,6 @@ def main() -> None:
     parser.add_argument("--min-silhouette", type=float, default=0.5, help="Minimum silhouette score")
     parser.add_argument("--clusters", type=int, default=5, help="K-Means clusters")
     parser.add_argument("--seed", type=int, default=42, help="Random state")
-    parser.add_argument(
-        "--excel-report",
-        type=Path,
-        default=None,
-        help="Excel report path (default: artifacts/training_report.xlsx)",
-    )
-    parser.add_argument(
-        "--no-excel",
-        action="store_true",
-        help="Skip Excel report (e.g. when openpyxl is not installed)",
-    )
     args = parser.parse_args()
 
     input_csv = args.input
@@ -67,17 +55,6 @@ def main() -> None:
     )
     print(f"Training complete. Silhouette={summary['silhouette']:.4f}, n={summary['n_subscribers']}")
     print(f"Artifacts → {args.artifacts}")
-    if args.no_excel:
-        print("Excel report skipped (--no-excel)")
-        return
-    excel_report = args.excel_report or (args.artifacts / "training_report.xlsx")
-    try:
-        write_training_excel_report(input_csv, args.artifacts, summary, excel_report)
-    except RuntimeError as exc:
-        print(f"WARNING: {exc}", file=sys.stderr)
-        print("Training artifacts were saved; re-run after installing openpyxl.", file=sys.stderr)
-        sys.exit(1)
-    print(f"Excel report → {excel_report}")
 
 
 if __name__ == "__main__":

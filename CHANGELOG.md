@@ -10,6 +10,10 @@ Version bumps are driven by [Commitizen](https://commitizen-tools.github.io/comm
 
 ## [Unreleased]
 
+### Removed
+
+- Excel training report (`training_report.xlsx`), `telekom_profiler.ml.training_report`, and `openpyxl` ML dependency
+
 ---
 
 ## [0.3.0] - 2026-05-21
