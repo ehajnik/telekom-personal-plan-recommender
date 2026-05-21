@@ -29,9 +29,9 @@ pip install -r requirements.txt -r requirements-ml.txt
 pip install -e ".[dev]"   # or: pip install -e ".[dev,ml]"
 
 cp .env.example .env
-# Optional LLM path (CPU-friendly defaults: llama3.2, 180s timeout, 512 tokens):
+# Optional LLM path (default: mistral-nemo:12b; 600s timeout, 512 tokens):
 ollama serve
-ollama pull llama3.2
+ollama pull mistral-nemo:12b
 ```
 
 For CPU-only hosts without a dedicated GPU, see [Ollama runbook § 8](runbook-ollama.md#8-cpu-only-workstations-no-dedicated-gpu). Use `OLLAMA_ENABLED=false` when you do not need LLM narratives.

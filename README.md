@@ -64,7 +64,7 @@ python scripts/subscriber_profiling.py
 # writes artifacts/ plus artifacts/training_report.xlsx (statistical validation, formula checks, audit tables)
 
 # Optional LLM (CPU-friendly defaults in .env.example):
-# ollama serve && ollama pull llama3.2
+# ollama serve && ollama pull mistral-nemo:12b
 
 python app.py
 ```

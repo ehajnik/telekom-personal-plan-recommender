@@ -12,7 +12,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(_PROJECT_ROOT / ".env")
 
 OLLAMA_HOST: Final[str] = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
-OLLAMA_MODEL: Final[str] = os.getenv("OLLAMA_MODEL", "llama3.2")
+OLLAMA_MODEL: Final[str] = os.getenv("OLLAMA_MODEL", "mistral-nemo:12b")
 
 OLLAMA_ENABLED: Final[bool] = os.getenv("OLLAMA_ENABLED", "true").lower() in (
     "1",
@@ -20,8 +20,8 @@ OLLAMA_ENABLED: Final[bool] = os.getenv("OLLAMA_ENABLED", "true").lower() in (
     "yes",
 )
 
-# Defaults tuned for CPU-only workstations (no dedicated GPU).
-OLLAMA_TIMEOUT: Final[float] = float(os.getenv("OLLAMA_TIMEOUT", "180"))
+# Defaults tuned for mistral-nemo:12b on CPU-only workstations (no dedicated GPU).
+OLLAMA_TIMEOUT: Final[float] = float(os.getenv("OLLAMA_TIMEOUT", "600"))
 OLLAMA_NUM_PREDICT: Final[int] = int(os.getenv("OLLAMA_NUM_PREDICT", "512"))
 
 OLLAMA_FALLBACK_ON_ERROR: Final[bool] = os.getenv(

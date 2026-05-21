@@ -15,9 +15,9 @@ cp .env.example .env
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API base URL (no trailing slash) |
-| `OLLAMA_MODEL` | `llama3.2` | Model tag; must exist on the host (`ollama pull`) |
+| `OLLAMA_MODEL` | `mistral-nemo:12b` | Model tag; must exist on the host (`ollama pull`) |
 | `OLLAMA_ENABLED` | `true` | When `false`, selects rule-based profile and offer providers |
-| `OLLAMA_TIMEOUT` | `180` | HTTP client timeout (seconds); higher on CPU-only hosts |
+| `OLLAMA_TIMEOUT` | `600` | HTTP client timeout (seconds); 12B models on CPU need headroom |
 | `OLLAMA_NUM_PREDICT` | `512` | Maximum completion tokens per request |
 | `OLLAMA_FALLBACK_ON_ERROR` | `true` | On LLM failure, delegate to rule-based providers |
 | `LOG_LEVEL` | `INFO` | Root log level (`DEBUG`, `WARNING`, `ERROR`, …) |
@@ -47,8 +47,8 @@ The repository defaults assume **CPU inference** via local Ollama. Archetype sco
 
 | Goal | Suggested `OLLAMA_MODEL` | Notes |
 |------|--------------------------|-------|
-| Default balance | `llama3.2` | Matches `.env.example`; `ollama pull llama3.2` |
-| Faster / less RAM | `llama3.2:1b`, `qwen2.5:3b`, `phi3:mini` | Set `OLLAMA_MODEL` accordingly after `ollama pull` |
+| Default balance | `mistral-nemo:12b` | Matches `.env.example`; `ollama pull mistral-nemo:12b` |
+| Faster / less RAM | `llama3.2`, `llama3.2:1b`, `qwen2.5:3b`, `phi3:mini` | Set `OLLAMA_MODEL` accordingly after `ollama pull` |
 | No local LLM | — | `OLLAMA_ENABLED=false` (recommended for CI) |
 
 Keep `OLLAMA_FALLBACK_ON_ERROR=true` on laptops so timeouts fall back to rule-based providers. Avoid 7B+ models (for example `llama3:latest`) on CPU-only hosts.
