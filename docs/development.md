@@ -65,7 +65,7 @@ python scripts/subscriber_profiling.py --min-silhouette 0.5
 
 | Output | Purpose |
 |--------|---------|
-| `data/raw/private_mobile_usage_*_12_months.csv` | Monthly panel input |
+| `data/raw/private_mobile_usage_*_subscribers_12_months.csv` | Monthly panel input |
 | `artifacts/kmeans.pkl`, `scaler.pkl` | Trained model |
 | `artifacts/subscriber_cluster_map.csv` | Subscriber dropdown + distances |
 | `artifacts/profile_characteristics.json` | Profile labels and slider presets |

@@ -21,7 +21,7 @@ def main() -> None:
         "--input",
         type=Path,
         default=None,
-        help="Input CSV (default: latest data/raw/private_mobile_usage_*_12_months.csv)",
+        help="Input CSV (default: latest data/raw/private_mobile_usage_*_subscribers_12_months.csv)",
     )
     parser.add_argument(
         "--artifacts",

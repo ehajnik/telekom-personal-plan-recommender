@@ -169,7 +169,7 @@ def main() -> None:
         "--output",
         type=Path,
         default=None,
-        help="Output CSV path (default: data/raw/private_mobile_usage_N_12_months.csv)",
+        help="Output CSV path (default: data/raw/private_mobile_usage_<subscribers>_subscribers_12_months.csv)",
     )
     args = parser.parse_args()
 
