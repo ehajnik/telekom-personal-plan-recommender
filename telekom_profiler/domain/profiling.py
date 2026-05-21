@@ -93,15 +93,15 @@ def render_profile_report(data: dict[str, float]) -> str:
         upsells.append("Messaging-heavy → unlimited SMS bundles in postpaid tiers.")
 
     return f"""### 1. Primary archetype
-**{primary}** (proximity {primary_score:.3f}) — confidence: **{confidence}**.
+<mark>{primary}</mark> (proximity {primary_score:.3f}) — confidence: <mark>{confidence}</mark>.
 
 ### 2. Overlay characteristics
 {overlay_text}
 {secondary_block}
 ### 4. Lifestyle narrative
-This subscriber shows **{behaviour}**. They use about **{data["data_gb"]:.0f} GB** data,
-**{data["voice_min"]:.0f}** voice minutes, **{data["sms_count"]:.0f}** SMS, and
-**{data["roaming_days"]:.0f}** roaming days per month. Data trend **{data["data_trend"]:+.0f}**,
+This subscriber shows **{behaviour}**. They use about <mark>{data["data_gb"]:.0f} GB</mark> data,
+<mark>{data["voice_min"]:.0f}</mark> voice minutes, <mark>{data["sms_count"]:.0f}</mark> SMS, and
+<mark>{data["roaming_days"]:.0f}</mark> roaming days per month. Data trend **{data["data_trend"]:+.0f}**,
 voice trend **{data["voice_trend"]:+.0f}** (trajectory only).
 
 ### 5. Likely customer context

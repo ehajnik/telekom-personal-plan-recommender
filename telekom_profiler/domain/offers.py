@@ -196,7 +196,7 @@ def render_offer_report(
     )
 
     return f"""### 1. Recommended main tariff
-**{tariff[0]}** — {tariff[2]}{primary_note}
+<mark>{tariff[0]}</mark> — {tariff[2]}{primary_note}
 
 ### 2. Recommended add-ons and options
 {addon_bullets}
