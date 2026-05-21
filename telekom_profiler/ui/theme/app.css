@@ -451,6 +451,88 @@ footer {
   color: var(--dt-magenta) !important;
 }
 
+/* ── LLM output highlights ───────────────────────────────────────────────── */
+
+/* Headings inside the LLM/result body use Telekom magenta */
+.gradio-container .block.dt-result-body .md h1,
+.gradio-container .block.dt-result-body .md h2,
+.gradio-container .block.dt-result-body .md h3,
+.gradio-container .block.dt-result-body .md h4,
+.gradio-container .block.dt-result-body .prose h1,
+.gradio-container .block.dt-result-body .prose h2,
+.gradio-container .block.dt-result-body .prose h3,
+.gradio-container .block.dt-result-body .prose h4 {
+  color: var(--dt-magenta) !important;
+  font-weight: 700 !important;
+  margin: 0.75rem 0 0.35rem !important;
+}
+
+.gradio-container .block.dt-result-body .md h3,
+.gradio-container .block.dt-result-body .prose h3 {
+  font-size: 0.9rem !important;
+}
+
+.gradio-container .block.dt-result-body .md h4,
+.gradio-container .block.dt-result-body .prose h4 {
+  font-size: 0.85rem !important;
+}
+
+/* Inline <code> inside results: magenta on subtle tinted background */
+.gradio-container .block.dt-result-body .md :not(pre) > code,
+.gradio-container .block.dt-result-body .prose :not(pre) > code {
+  color: var(--dt-magenta) !important;
+  background: rgba(226, 0, 116, 0.08) !important;
+  border: 1px solid rgba(226, 0, 116, 0.18) !important;
+  border-radius: 4px !important;
+  padding: 0 0.3rem !important;
+  font-size: 0.8em !important;
+}
+
+/* <mark> tags act as an explicit magenta highlighter */
+.gradio-container .block.dt-result-body .md mark,
+.gradio-container .block.dt-result-body .prose mark,
+.gradio-container .prose mark,
+.gradio-container .md mark {
+  background: rgba(226, 0, 116, 0.18) !important;
+  color: var(--dt-magenta) !important;
+  padding: 0 0.25rem !important;
+  border-radius: 3px !important;
+  font-weight: 600 !important;
+}
+
+.dark .gradio-container .block.dt-result-body .md :not(pre) > code,
+.dark .gradio-container .block.dt-result-body .prose :not(pre) > code {
+  color: #f48bbf !important;
+  background: rgba(244, 139, 191, 0.12) !important;
+  border-color: rgba(244, 139, 191, 0.25) !important;
+}
+
+.dark .gradio-container .block.dt-result-body .md mark,
+.dark .gradio-container .block.dt-result-body .prose mark,
+.dark .gradio-container .prose mark,
+.dark .gradio-container .md mark {
+  background: rgba(244, 139, 191, 0.22) !important;
+  color: #f48bbf !important;
+}
+
+/* Table header cells in results use a magenta accent */
+.gradio-container .block.dt-result-body .md table th,
+.gradio-container .block.dt-result-body .prose table th {
+  color: var(--dt-magenta) !important;
+  border-bottom: 2px solid var(--dt-magenta) !important;
+  font-weight: 700 !important;
+}
+
+/* Blockquotes in results get a magenta left border for emphasis */
+.gradio-container .block.dt-result-body .md blockquote,
+.gradio-container .block.dt-result-body .prose blockquote {
+  border-left: 3px solid var(--dt-magenta) !important;
+  padding: 0.1rem 0.5rem !important;
+  margin: 0.4rem 0 !important;
+  color: var(--dt-text) !important;
+  background: rgba(226, 0, 116, 0.05) !important;
+}
+
 /* Reset nested Gradio chrome inside cards */
 .gradio-container .dt-card > .block:not(.dt-section-title):not(.dt-slider-item) {
   background: transparent !important;
