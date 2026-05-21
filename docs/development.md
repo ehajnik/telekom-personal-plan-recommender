@@ -66,10 +66,13 @@ python scripts/subscriber_profiling.py --min-silhouette 0.5
 | Output | Purpose |
 |--------|---------|
 | `data/raw/private_mobile_usage_*_subscribers_12_months.csv` | Monthly panel input |
-| `artifacts/kmeans.pkl`, `scaler.pkl` | Trained model |
-| `artifacts/subscriber_cluster_map.csv` | Subscriber dropdown + distances |
+| `artifacts/kmeans.pkl`, `scaler.pkl` | Trained K-Means model and feature scaler |
+| `artifacts/label_map.json` | Cluster-index → profile-label map (required by `PROFILER_MODE=auto`) |
 | `artifacts/profile_characteristics.json` | Profile labels and slider presets |
+| `artifacts/cluster_features.json` | Per-cluster centroid summary in original feature units |
 | `artifacts/k_selection.json` | Inertia + silhouette per `k`, chosen value (auto-mode only) |
+| `artifacts/subscriber_features.csv` | Engineered subscriber-level features used for training |
+| `artifacts/subscriber_cluster_map.csv` | Subscriber dropdown + per-cluster distances |
 
 **Design rules:**
 
