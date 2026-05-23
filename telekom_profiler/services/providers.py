@@ -83,6 +83,13 @@ def _base_profile_provider() -> ProfileProvider:
     return RuleBasedProfileProvider()
 
 
+def _profile_fallback_provider() -> ProfileProvider:
+    """Deterministic fallback when Ollama fails (matches active profiler mode)."""
+    if effective_profiler_mode() == "ml":
+        return MlProfileProvider()
+    return RuleBasedProfileProvider()
+
+
 def default_profile_provider() -> ProfileProvider:
     """Factory: ML or rules base; Ollama wraps when enabled."""
     base = _base_profile_provider()
@@ -90,7 +97,7 @@ def default_profile_provider() -> ProfileProvider:
         return base
     ollama = OllamaProfileProvider()
     if fallback_on_error():
-        return FallbackProfileProvider(ollama, base)
+        return FallbackProfileProvider(ollama, _profile_fallback_provider())
     return ollama
 
 
