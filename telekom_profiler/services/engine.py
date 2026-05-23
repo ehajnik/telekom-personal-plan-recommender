@@ -11,11 +11,30 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from telekom_profiler.domain.models import CustomerUsage, ProfileResult
+from telekom_profiler.domain.scoring import build_scoring_result
 from telekom_profiler.services.protocols import OfferProvider, ProfileProvider
 from telekom_profiler.services.providers import (
     default_offer_provider,
     default_profile_provider,
 )
+
+
+def _normalize_usage(
+    usage: CustomerUsage | Mapping[str, float],
+    *,
+    clamp: bool = True,
+) -> CustomerUsage:
+    """Validate and optionally clamp usage before profiling or offers."""
+    if isinstance(usage, CustomerUsage):
+        customer = (
+            CustomerUsage.from_mapping(usage.as_dict(), clamp=True)
+            if clamp
+            else usage
+        )
+    else:
+        customer = CustomerUsage.from_mapping(usage, clamp=clamp)
+    customer.validate()
+    return customer
 
 
 class ProfilerEngine:
@@ -30,9 +49,7 @@ class ProfilerEngine:
         self._offer_provider = offer_provider or default_offer_provider()
 
     def profile(self, usage: CustomerUsage | Mapping[str, float]) -> ProfileResult:
-        customer = (
-            usage if isinstance(usage, CustomerUsage) else CustomerUsage.from_mapping(usage)
-        )
+        customer = _normalize_usage(usage)
         return self._profile_provider.profile(customer)
 
     def recommend(
@@ -40,23 +57,22 @@ class ProfilerEngine:
         profile: ProfileResult | str,
         usage: CustomerUsage | Mapping[str, float],
     ) -> str:
+        customer = _normalize_usage(usage)
+        scoring = build_scoring_result(customer)
         if isinstance(profile, str):
-            customer = (
-                usage
-                if isinstance(usage, CustomerUsage)
-                else CustomerUsage.from_mapping(usage)
-            )
             profile_result = ProfileResult(
                 markdown=profile,
                 usage=customer,
+                scoring=scoring,
                 source="external",
             )
         else:
-            profile_result = profile
-            customer = (
-                usage
-                if isinstance(usage, CustomerUsage)
-                else CustomerUsage.from_mapping(usage)
+            profile_result = ProfileResult(
+                markdown=profile.markdown,
+                usage=customer,
+                scoring=scoring,
+                source=profile.source,
+                metadata=dict(profile.metadata),
             )
         return self._offer_provider.recommend(profile_result, customer)
 

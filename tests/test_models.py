@@ -23,6 +23,18 @@ class ModelTests(unittest.TestCase):
         usage = CustomerUsage.from_mapping(HEAVY_DATA)
         self.assertEqual(usage.as_dict(), {k: float(v) for k, v in HEAVY_DATA.items()})
 
+    def test_customer_usage_validate_rejects_out_of_range(self) -> None:
+        usage = CustomerUsage.from_mapping(HEAVY_DATA)
+        with self.assertRaises(ValueError):
+            CustomerUsage(
+                data_gb=999,
+                voice_min=usage.voice_min,
+                sms_count=usage.sms_count,
+                roaming_days=usage.roaming_days,
+                data_trend=usage.data_trend,
+                voice_trend=usage.voice_trend,
+            ).validate()
+
     def test_customer_usage_clamp(self) -> None:
         usage = CustomerUsage.from_mapping(
             {**HEAVY_DATA, "data_gb": 999, "data_trend": 100},
