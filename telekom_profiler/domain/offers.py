@@ -24,6 +24,7 @@ _ML_STREAMING = "Streaming & data-heavy"
 _ML_VOICE = "Voice-centric"
 _ML_ROAMING = "Roaming / travel-heavy"
 _ML_UNDER = "Underutilized / overspending"
+_ML_FAMILY = "Family / multi-line"
 
 _TARIFF_XL = (
     "MagentaMobil XL (MM-XL-001)",
@@ -97,6 +98,12 @@ def _select_tariff(
         if data["data_gb"] < OFFER_DATA_PREPAID_MAX_GB:
             return _TARIFF_PREPAID_M
         return _TARIFF_XS if data["data_gb"] < OFFER_DATA_M_GB else _TARIFF_S
+    if primary == _ML_FAMILY:
+        if data["data_gb"] >= OFFER_DATA_L_GB:
+            return _TARIFF_L
+        if data["data_gb"] >= OFFER_DATA_M_GB:
+            return _TARIFF_M
+        return _TARIFF_S
 
     if primary == ARCHETYPE_ESSENTIAL and data["data_gb"] < OFFER_DATA_M_GB:
         return _TARIFF_PREPAID_M if data["data_gb"] < OFFER_DATA_PREPAID_MAX_GB else _TARIFF_XS
@@ -162,12 +169,16 @@ def render_offer_report(
     if data["data_gb"] >= OFFER_DATA_BOOST_GB and tariff[0] != _TARIFF_XL[0]:
         addons.append(
             (
-                "Travel & Surf WeekPass (ADD-TS-WEEK-001)",
-                "from €15.95",
-                "Short-term data buffer for peaks outside the EU allowance.",
+                "MagentaMobil Special (ADD-SPEC-001)",
+                "€10.00",
+                "10 GB plus 100 GB Datendepot (24 months) for domestic usage peaks.",
             )
         )
-    if data["data_gb"] >= OFFER_MULTISIM_DATA_GB and "PlusKarte" not in tariff[0]:
+    family_multiline = primary_name in (_ML_FAMILY,)
+    multisim_threshold = OFFER_MULTISIM_DATA_GB
+    if family_multiline:
+        multisim_threshold = min(multisim_threshold, OFFER_DATA_M_GB)
+    if data["data_gb"] >= multisim_threshold and "PlusKarte" not in tariff[0]:
         addons.append(
             (
                 "MagentaMobil PlusKarte (MM-PLUS-001)",

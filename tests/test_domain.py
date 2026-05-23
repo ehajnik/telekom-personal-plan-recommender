@@ -9,6 +9,7 @@ from telekom_profiler.domain import (
     render_offer_report,
     render_profile_report,
 )
+from telekom_profiler.domain.models import ArchetypeScore, ScoringResult
 from telekom_profiler.prompts import build_profile_prompt
 
 HEAVY_DATA = {
@@ -31,6 +32,33 @@ class DomainTests(unittest.TestCase):
         profile = render_profile_report(HEAVY_DATA)
         offer = render_offer_report(profile, HEAVY_DATA)
         self.assertIn("MagentaMobil", offer)
+
+    def test_high_data_addon_uses_datendepot_not_travel_weekpass(self) -> None:
+        scoring = ScoringResult(
+            primary=ArchetypeScore("Messenger", 1.0),
+            secondary=None,
+        )
+        data = {**HEAVY_DATA, "data_gb": 50, "roaming_days": 2}
+        offer = render_offer_report("", data, scoring=scoring)
+        self.assertNotIn("ADD-TS-WEEK-001", offer)
+        self.assertIn("ADD-SPEC-001", offer)
+
+    def test_family_label_selects_postpaid_and_pluskarte(self) -> None:
+        scoring = ScoringResult(
+            primary=ArchetypeScore("Family / multi-line", 0.5),
+            secondary=None,
+        )
+        data = {
+            "data_gb": 25,
+            "voice_min": 300,
+            "sms_count": 50,
+            "roaming_days": 2,
+            "data_trend": 0,
+            "voice_trend": 0,
+        }
+        offer = render_offer_report("", data, scoring=scoring)
+        self.assertIn("MagentaMobil M (MM-M-001)", offer)
+        self.assertIn("PlusKarte", offer)
 
     def test_profile_prompt_substitutes_placeholders(self) -> None:
         data = {**HEAVY_DATA, "data_gb": 30, "roaming_days": 2}
