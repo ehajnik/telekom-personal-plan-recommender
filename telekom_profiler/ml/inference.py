@@ -214,6 +214,7 @@ def scoring_result_from_prediction(pred: MlPrediction) -> ScoringResult:
         all_distances=pred.distances,
         overlays=pred.overlays,
         confidence=pred.confidence,
+        backend="ml",
     )
 
 

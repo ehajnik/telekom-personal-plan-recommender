@@ -102,6 +102,8 @@ class ScoringResult:
     all_distances: tuple[ArchetypeScore, ...] = ()
     overlays: tuple[str, ...] = ()
     confidence: str = "Medium"
+    backend: str = "legacy"
+    fallback_reason: str | None = None
 
     @property
     def primary_name(self) -> str:
@@ -148,6 +150,8 @@ class ProfileResult:
                 ],
                 "confidence": self.scoring.confidence,
                 "overlays": list(self.scoring.overlays),
+                "backend": self.scoring.backend,
+                "fallback_reason": self.scoring.fallback_reason,
             }
         return {
             "markdown": self.markdown,
@@ -188,6 +192,8 @@ class ProfileResult:
                 all_distances=all_distances or (primary,),
                 overlays=tuple(raw_scoring.get("overlays") or []),
                 confidence=raw_scoring.get("confidence", "Medium"),
+                backend=str(raw_scoring.get("backend", "legacy")),
+                fallback_reason=raw_scoring.get("fallback_reason"),
             )
         return cls(
             markdown=data["markdown"],

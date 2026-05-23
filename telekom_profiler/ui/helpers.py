@@ -39,9 +39,13 @@ def format_scoring_summary(profile: ProfileResult | None) -> str:
         if scoring.secondary
         else "—"
     )
+    fallback_note = ""
+    if scoring.fallback_reason:
+        fallback_note = f"\n**Scoring note:** legacy fallback ({scoring.fallback_reason})"
     primary_line = (
         f"**Primary:** {scoring.primary.name} ({scoring.primary.distance:.3f}) · "
-        f"**Confidence:** {scoring.confidence}"
+        f"**Confidence:** {scoring.confidence} · **Backend:** {scoring.backend}"
+        f"{fallback_note}"
     )
 
     distance_rows = ""

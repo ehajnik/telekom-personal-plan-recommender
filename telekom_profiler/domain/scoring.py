@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from telekom_profiler.config.profiler_settings import use_ml_scoring
 from telekom_profiler.domain.archetypes import (
     compute_archetype_distances,
@@ -10,6 +12,28 @@ from telekom_profiler.domain.archetypes import (
 )
 from telekom_profiler.domain.models import ArchetypeScore, CustomerUsage, ScoringResult
 from telekom_profiler.runtime_context import subscriber_id_var
+
+_logger = logging.getLogger(__name__)
+
+
+def _legacy_scoring_result(data: dict[str, float]) -> ScoringResult:
+    distances = compute_archetype_distances(data)
+    primary_name, primary_dist = distances[0]
+    secondary: ArchetypeScore | None = None
+    if len(distances) > 1:
+        sec_name, sec_dist = distances[1]
+        secondary = ArchetypeScore(sec_name, sec_dist)
+
+    sec_dist_val = secondary.distance if secondary else 0.0
+    legacy_overlays = list(compute_overlays(data))
+    return ScoringResult(
+        primary=ArchetypeScore(primary_name, primary_dist),
+        secondary=secondary,
+        all_distances=tuple(ArchetypeScore(n, d) for n, d in distances),
+        overlays=tuple(legacy_overlays),
+        confidence=confidence_label(primary_dist, sec_dist_val),
+        backend="legacy",
+    )
 
 
 def build_scoring_result(
@@ -33,23 +57,31 @@ def build_scoring_result(
             else:
                 pred = predict_from_features(features_from_usage(usage))
             return scoring_result_from_prediction(pred)
-        except (FileNotFoundError, KeyError):
-            pass
+        except FileNotFoundError as exc:
+            reason = f"ml_artifacts_missing: {exc}"
+            _logger.warning("ML scoring unavailable (%s), using legacy L1 archetypes", reason)
+            result = _legacy_scoring_result(usage.as_dict())
+            return ScoringResult(
+                primary=result.primary,
+                secondary=result.secondary,
+                all_distances=result.all_distances,
+                overlays=result.overlays,
+                confidence=result.confidence,
+                backend="legacy",
+                fallback_reason=reason,
+            )
+        except KeyError as exc:
+            reason = f"ml_lookup_failed: {exc}"
+            _logger.warning("ML scoring failed (%s), using legacy L1 archetypes", reason)
+            result = _legacy_scoring_result(usage.as_dict())
+            return ScoringResult(
+                primary=result.primary,
+                secondary=result.secondary,
+                all_distances=result.all_distances,
+                overlays=result.overlays,
+                confidence=result.confidence,
+                backend="legacy",
+                fallback_reason=reason,
+            )
 
-    data = usage.as_dict()
-    distances = compute_archetype_distances(data)
-    primary_name, primary_dist = distances[0]
-    secondary: ArchetypeScore | None = None
-    if len(distances) > 1:
-        sec_name, sec_dist = distances[1]
-        secondary = ArchetypeScore(sec_name, sec_dist)
-
-    sec_dist_val = secondary.distance if secondary else 0.0
-    legacy_overlays = list(compute_overlays(data))
-    return ScoringResult(
-        primary=ArchetypeScore(primary_name, primary_dist),
-        secondary=secondary,
-        all_distances=tuple(ArchetypeScore(n, d) for n, d in distances),
-        overlays=tuple(legacy_overlays),
-        confidence=confidence_label(primary_dist, sec_dist_val),
-    )
+    return _legacy_scoring_result(usage.as_dict())
