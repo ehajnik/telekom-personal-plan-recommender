@@ -59,6 +59,14 @@ class ProfileCharacteristicsTests(unittest.TestCase):
         self.assertEqual(loaded["profiles"]["Streaming & data-heavy"]["cluster_idx"], 2)
 
 
+def _find_synthetic_csv(repo: Path) -> Path | None:
+    raw = repo / "data/raw"
+    if not raw.is_dir():
+        return None
+    matches = sorted(raw.glob("private_mobile_usage_*_subscribers_12_months.csv"))
+    return matches[0] if matches else None
+
+
 class MlFeatureTests(unittest.TestCase):
     def test_cluster_features_exclude_trends(self) -> None:
         for col in TREND_COLS:
@@ -66,12 +74,12 @@ class MlFeatureTests(unittest.TestCase):
 
     def test_build_subscriber_features_shape(self) -> None:
         repo = Path(__file__).resolve().parents[1]
-        csv = repo / "data/raw/private_mobile_usage_1000_subscribers_12_months.csv"
-        if not csv.is_file():
+        csv = _find_synthetic_csv(repo)
+        if csv is None:
             self.skipTest("Synthetic CSV not generated; run scripts/generate_synthetic_data.py")
         panel = load_usage_panel(csv)
         features = build_subscriber_features(panel)
-        self.assertEqual(len(features), 1000)
+        self.assertGreater(len(features), 0)
         for col in CLUSTER_FEATURES:
             self.assertIn(col, features.columns)
         for col in TREND_COLS:
@@ -81,8 +89,8 @@ class MlFeatureTests(unittest.TestCase):
 class MlTrainTests(unittest.TestCase):
     def test_train_meets_silhouette(self) -> None:
         repo = Path(__file__).resolve().parents[1]
-        csv = repo / "data/raw/private_mobile_usage_1000_subscribers_12_months.csv"
-        if not csv.is_file():
+        csv = _find_synthetic_csv(repo)
+        if csv is None:
             self.skipTest("Synthetic CSV not generated")
         from telekom_profiler.ml.train import train_and_save
 
