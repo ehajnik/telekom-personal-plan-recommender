@@ -31,7 +31,7 @@ Ensure `ollama serve` is running when `OLLAMA_ENABLED=true`.
 | `OLLAMA_MODEL` | `llama3.2:3b` | `ollama pull <model>` |
 | `OLLAMA_ENABLED` | `true` | Set `false` for rule-based-only operation |
 | `OLLAMA_TIMEOUT` | `180` | Raise if a larger model still times out on CPU |
-| `OLLAMA_NUM_PREDICT` | `512` | Increase for longer narratives; decrease to shorten latency |
+| `OLLAMA_NUM_PREDICT` | `2048` | Increase for longer narratives; decrease to shorten latency |
 | `OLLAMA_FALLBACK_ON_ERROR` | `true` | Set `false` to surface errors to the UI |
 | `LOG_LEVEL` | `INFO` | Set `DEBUG` for verbose client logging |
 
@@ -131,7 +131,7 @@ Default `.env` values:
 ```env
 OLLAMA_MODEL=llama3.2:3b
 OLLAMA_TIMEOUT=180
-OLLAMA_NUM_PREDICT=512
+OLLAMA_NUM_PREDICT=2048
 OLLAMA_FALLBACK_ON_ERROR=true
 ```
 

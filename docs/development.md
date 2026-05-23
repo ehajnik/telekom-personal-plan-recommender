@@ -26,7 +26,7 @@ cd telekom-personal-plan-recommender
 # Or: make setup
 
 source .venv/bin/activate
-# Optional LLM path (default: llama3.2:3b; 180s timeout, 512 tokens):
+# Optional LLM path (default: llama3.2:3b; 180s timeout, 2048 completion tokens):
 ollama serve
 ollama pull llama3.2:3b
 ```

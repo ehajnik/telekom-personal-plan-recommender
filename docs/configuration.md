@@ -18,7 +18,7 @@ cp .env.example .env
 | `OLLAMA_MODEL` | `llama3.2:3b` | Model tag; must exist on the host (`ollama pull`) |
 | `OLLAMA_ENABLED` | `true` | When `false`, selects rule-based profile and offer providers |
 | `OLLAMA_TIMEOUT` | `180` | HTTP client timeout (seconds); raise for larger models on CPU |
-| `OLLAMA_NUM_PREDICT` | `512` | Maximum completion tokens per request |
+| `OLLAMA_NUM_PREDICT` | `2048` | Maximum completion tokens per request |
 | `OLLAMA_FALLBACK_ON_ERROR` | `true` | On LLM failure, delegate to rule-based providers |
 | `LOG_LEVEL` | `INFO` | Root log level (`DEBUG`, `WARNING`, `ERROR`, …) |
 | `PROFILER_MODE` | `auto` | `auto` uses trained K-Means when `artifacts/` is complete, otherwise rule-based archetypes; `ml` forces ML (errors if artifacts are missing); `rules` pins the legacy archetype scoring (used by CI and the unit-test gate) |
