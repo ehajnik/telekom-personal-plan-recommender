@@ -22,13 +22,10 @@ On Fedora, install the venv module if needed: `sudo dnf install python3-venv`.
 git clone <repository-url>
 cd telekom-personal-plan-recommender
 
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt -r requirements-ml.txt
-pip install -e ".[dev]"   # or: pip install -e ".[dev,ml]"
+./scripts/setup.sh    # creates .venv, installs -e ".[dev,ml]", copies .env.example → .env
+# Or: make setup
 
-cp .env.example .env
+source .venv/bin/activate
 # Optional LLM path (default: llama3.2:3b; 180s timeout, 512 tokens):
 ollama serve
 ollama pull llama3.2:3b
@@ -37,6 +34,10 @@ ollama pull llama3.2:3b
 For CPU-only hosts without a dedicated GPU, see [Ollama runbook § 8](runbook-ollama.md#8-cpu-only-workstations-no-dedicated-gpu). Use `OLLAMA_ENABLED=false` when you do not need LLM narratives.
 
 The editable install (`pip install -e .`) registers the `telekom-profiler` console script and ensures imports resolve as `telekom_profiler`.
+
+**Makefile shortcuts** (after `make setup`): `make run`, `make test`, `make lint`, `make typecheck`, `make sanity`, `make ml-train`.
+
+VS Code picks up `.venv` automatically via `.vscode/settings.json`.
 
 ---
 

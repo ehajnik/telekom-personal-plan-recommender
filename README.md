@@ -49,14 +49,11 @@ Default local URL: `http://127.0.0.1:7860` (port assigned by Gradio; confirm in 
 git clone <repository-url>
 cd telekom-personal-plan-recommender
 
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt -r requirements-ml.txt
-pip install -e ".[dev]"      # optional: lint + commit tooling
-# Or in one step: pip install -e ".[dev,ml]"
+# One-shot: .venv + pip install -e ".[dev,ml]" + .env from example
+./scripts/setup.sh
+# Or: make setup
 
-cp .env.example .env
+source .venv/bin/activate
 
 # ML PoC: generate 12-month panel and train K-Means (artifacts/ gitignored)
 python scripts/generate_synthetic_data.py --subscribers 1000
