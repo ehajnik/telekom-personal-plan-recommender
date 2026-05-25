@@ -57,6 +57,8 @@ source .venv/bin/activate
 
 # ML PoC: generate 12-month panel and train K-Means (artifacts/ gitignored)
 python scripts/generate_synthetic_data.py --subscribers 1000
+# Optional: MOSTLY AI-backed generator (requires requirements-mostlyai.txt)
+# python scripts/generate_synthetic_data_mostlyai.py --subscribers 1000
 python scripts/subscriber_profiling.py            # auto-selects k via elbow + silhouette
 # python scripts/subscriber_profiling.py --clusters 5   # fixed-k override
 # writes artifacts/ (K-Means model, scaler, cluster map, k_selection.json, profile_characteristics.json)
@@ -74,6 +76,20 @@ Set `PROFILER_MODE=auto` (default) to use ML when `artifacts/` exists, else lega
 | `python app.py` | Launch UI |
 | `python -m telekom_profiler` | Same entry via package module |
 | `telekom-profiler` | Console script after `pip install -e .` |
+
+Optional MOSTLY AI integration:
+
+```bash
+pip install -r requirements-mostlyai.txt
+# Or: pip install -e ".[mostlyai]"
+
+# Uses the latest panel under data/raw/ as the training seed by default.
+python scripts/generate_synthetic_data_mostlyai.py --subscribers 1000
+python scripts/subscriber_profiling.py \
+  --input data/raw/private_mobile_usage_mostlyai_1000_subscribers_12_months.csv
+```
+
+The MOSTLY AI path keeps the existing deterministic generator as a fallback and writes its workspace under `artifacts/mostlyai/`.
 
 **Quality gate (before merge):**
 

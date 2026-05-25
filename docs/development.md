@@ -39,6 +39,13 @@ The editable install (`pip install -e .`) registers the `telekom-profiler` conso
 
 VS Code picks up `.venv` automatically via `.vscode/settings.json`.
 
+Optional MOSTLY AI integration:
+
+```bash
+pip install -r requirements-mostlyai.txt
+# Or: pip install -e ".[mostlyai]"
+```
+
 ---
 
 ## 3. Running the application
@@ -63,6 +70,17 @@ python scripts/subscriber_profiling.py --min-silhouette 0.5
 # Defaults to --clusters auto (sweep k ∈ [2, 10], pick silhouette argmax).
 # Override with --clusters 5 (or another int) plus --k-min / --k-max if needed.
 ```
+
+Alternative generator path via MOSTLY AI:
+
+```bash
+# Trains MOSTLY AI on the latest seed panel under data/raw/ by default.
+python scripts/generate_synthetic_data_mostlyai.py --subscribers 1000 --seed 42
+python scripts/subscriber_profiling.py \
+  --input data/raw/private_mobile_usage_mostlyai_1000_subscribers_12_months.csv
+```
+
+The MOSTLY AI workflow is optional and writes an engine workspace under `artifacts/mostlyai/`. It is intentionally separate from the baseline synthetic generator so CI and the default PoC path stay lightweight and deterministic.
 
 | Output | Purpose |
 |--------|---------|

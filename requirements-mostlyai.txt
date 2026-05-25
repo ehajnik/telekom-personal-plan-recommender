@@ -1,0 +1,3 @@
+# Optional MOSTLY AI engine integration for synthetic-data generation.
+# Install with: pip install -r requirements-mostlyai.txt
+mostlyai-engine>=1.3.2,<2
