@@ -420,9 +420,9 @@ footer {
 }
 
 .gradio-container .block.dt-result-body {
-  min-height: 16rem !important;
-  height: 16rem !important;
-  max-height: 16rem !important;
+  min-height: 24rem !important;
+  height: 24rem !important;
+  max-height: 24rem !important;
   margin: 0 !important;
   padding: 0 !important;
   border: 1px solid var(--dt-border) !important;
@@ -434,7 +434,7 @@ footer {
 .gradio-container .block.dt-result-body .md,
 .gradio-container .block.dt-result-body .prose {
   height: 100% !important;
-  max-height: 16rem !important;
+  max-height: 24rem !important;
   overflow: auto !important;
   margin: 0 !important;
   padding: 0.75rem 0.875rem !important;
@@ -445,7 +445,7 @@ footer {
 }
 
 .gradio-container .block.dt-result-body > .gap {
-  max-height: 16rem !important;
+  max-height: 24rem !important;
 }
 
 .gradio-container .block.dt-result-body .md pre,
@@ -562,8 +562,8 @@ footer {
   }
 
   .gradio-container .block.dt-result-body {
-    min-height: 12rem !important;
-    height: 12rem !important;
-    max-height: 12rem !important;
+    min-height: 18rem !important;
+    height: 18rem !important;
+    max-height: 18rem !important;
   }
 }
