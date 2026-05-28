@@ -77,6 +77,7 @@ Runtime ML mode uses five fixed labels from `app_config.yaml`:
 | **Underutilized / overspending** | High overall engagement and elevated plan gap signals |
 
 Centroids and profile metadata are hardcoded in root configuration and profile characteristics modules, then mapped once during training.
+If you retrain on a new dataset, you must refresh both hardcoded layers and corresponding frozen artifacts to avoid drift.
 
 ### 3.1 Distance metric
 

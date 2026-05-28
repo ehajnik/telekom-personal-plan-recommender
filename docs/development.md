@@ -75,7 +75,9 @@ When the input dataset changes, you must intentionally refresh both:
 
 1. `model.fixed_centroids` in `app_config.yaml`
 2. Curated profile text/defaults in `telekom_profiler/ml/profile_characteristics.py`
+3. Regenerated runtime artifacts (`frozen_centroids.json`, `profile_characteristics.json`)
 
+Warning: retraining without updating the hardcoded profile layer causes profile/config drift.
 Do not continuously retrain at runtime.
 
 Alternative generator path via MOSTLY AI:

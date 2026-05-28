@@ -76,7 +76,9 @@ If you change the underlying training dataset, update both config and profile de
 
 - `app_config.yaml` → `model.fixed_centroids`
 - `telekom_profiler/ml/profile_characteristics.py` → curated signatures/examples/slider defaults
+- retrained runtime artifacts (`artifacts/frozen_centroids.json`, `artifacts/profile_characteristics.json`)
 
+Warning: retraining without these hardcoded profile updates will produce inconsistent profile behavior.
 This project is designed for frozen runtime inference, not continuous retraining.
 
 ## 3. Slider and preset configuration
