@@ -435,15 +435,25 @@ footer {
 .gradio-container .block.dt-result-body .prose {
   height: 100% !important;
   max-height: 16rem !important;
-  overflow-y: auto !important;
+  overflow: auto !important;
   margin: 0 !important;
   padding: 0.75rem 0.875rem !important;
   font-size: 0.8125rem !important;
   line-height: 1.45 !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 .gradio-container .block.dt-result-body > .gap {
   max-height: 16rem !important;
+}
+
+.gradio-container .block.dt-result-body .md pre,
+.gradio-container .block.dt-result-body .prose pre,
+.gradio-container .block.dt-result-body .md code,
+.gradio-container .block.dt-result-body .prose code {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
 }
 
 .gradio-container .prose strong,
