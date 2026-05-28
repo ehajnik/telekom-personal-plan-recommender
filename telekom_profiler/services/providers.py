@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from telekom_profiler.config.ollama_settings import fallback_on_error, llm_enabled, model_provider
 from telekom_profiler.config.profiler_settings import effective_profiler_mode
 from telekom_profiler.domain.models import CustomerUsage, ProfileResult
@@ -41,7 +43,8 @@ END_MARKER = "[END_OF_REPORT]"
 
 
 def _strip_end_marker(markdown: str) -> str:
-    return markdown.replace(END_MARKER, "").strip()
+    cleaned = re.sub(r"`?\[END_OF_REPORT\]`?", "", markdown, flags=re.IGNORECASE)
+    return cleaned.strip()
 
 
 class RuleBasedProfileProvider:
