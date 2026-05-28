@@ -217,7 +217,3 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# ML PoC — generated data and trained models (regenerate locally / in CI)
-artifacts/
-data/raw/*.csv
-*.pkl
