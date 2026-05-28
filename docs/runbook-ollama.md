@@ -29,10 +29,14 @@ Ensure `ollama serve` is running when `OLLAMA_ENABLED=true`.
 |----------|---------|------------------|
 | `OLLAMA_HOST` | `http://localhost:11434` | Start Ollama or correct service URL |
 | `OLLAMA_MODEL` | `ollama/llama3.2:3b` | `ollama pull <model-without-prefix>` |
+| `LITELLM_API_BASE` | _(empty)_ | Optional custom endpoint for non-Ollama providers |
 | `OLLAMA_ENABLED` | `true` | Set `false` for rule-based-only operation |
 | `OLLAMA_TIMEOUT` | `180` | Raise if a larger model still times out on CPU |
 | `OLLAMA_NUM_PREDICT` | `2048` | Increase for longer narratives; decrease to shorten latency |
 | `OLLAMA_FALLBACK_ON_ERROR` | `true` | Set `false` to surface errors to the UI |
+| `OPENAI_API_KEY` | _(empty)_ | Required for `openai/*` models |
+| `ANTHROPIC_API_KEY` | _(empty)_ | Required for `anthropic/*` models |
+| `GEMINI_API_KEY` / `GOOGLE_API_KEY` | _(empty)_ | Required for `gemini/*` models |
 | `LOG_LEVEL` | `INFO` | Set `DEBUG` for verbose client logging |
 
 After changing `.env`, restart the application process.
@@ -144,6 +148,9 @@ Each full UI flow runs **two** sequential LLM calls (profile, then offer). On CP
 | `ollama/llama3.2:3b` | Default; CPU-friendly (~2 GB on disk, fits in 8 GB RAM); default `OLLAMA_TIMEOUT=180` |
 | `ollama/llama3.2:1b` | Tighter RAM or faster workshops; shorter / more generic narratives |
 | `ollama/qwen2.5:3b`, `ollama/phi3:mini` | Alternatives with similar size class |
+| `openai/gpt-4o-mini` | Cloud API model via OpenAI key; generally paid usage |
+| `anthropic/claude-3-5-haiku-latest` | Cloud API model via Anthropic key; generally paid usage |
+| `gemini/gemini-1.5-flash` | Cloud API model via Gemini/Google key; billing may apply |
 | `ollama/mistral-nemo:12b` | Strongest narrative quality, but needs ~16 GB RAM; raise `OLLAMA_TIMEOUT` (e.g. 600) and pre-warm with `ollama run mistral-nemo:12b ""` to avoid runner-start timeouts |
 | `ollama/llama3:latest` (8B+) | **Not recommended** on CPU-only — timeouts and RAM pressure |
 

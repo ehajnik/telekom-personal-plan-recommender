@@ -147,6 +147,7 @@ Full detail: [docs/architecture.md](docs/architecture.md).
 Reference: [docs/configuration.md](docs/configuration.md). LLM operations: [docs/runbook-ollama.md](docs/runbook-ollama.md).
 
 The model list for the UI dropdown is centrally managed in `app_config.yaml` under `llm.models` with `llm.default_model`.
+Cloud providers (`openai/*`, `anthropic/*`, `gemini/*`) require valid API keys and usually paid billing accounts.
 
 ---
 

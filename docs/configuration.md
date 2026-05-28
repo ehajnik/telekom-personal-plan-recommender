@@ -16,10 +16,14 @@ cp .env.example .env
 |----------|---------|-------------|
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API base URL (no trailing slash) |
 | `OLLAMA_MODEL` | `ollama/llama3.2:3b` | Startup model id for LiteLLM (provider prefix required); must exist on the host (`ollama pull`) |
+| `LITELLM_API_BASE` | _(empty)_ | Optional custom base URL for non-Ollama LiteLLM providers/proxies |
 | `OLLAMA_ENABLED` | `true` | When `false`, selects rule-based profile and offer providers |
 | `OLLAMA_TIMEOUT` | `180` | LiteLLM request timeout (seconds); raise for larger models on CPU |
 | `OLLAMA_NUM_PREDICT` | `2048` | Maximum completion tokens per request |
 | `OLLAMA_FALLBACK_ON_ERROR` | `true` | On LLM failure, delegate to rule-based providers |
+| `OPENAI_API_KEY` | _(empty)_ | Required for `openai/*` model ids (paid OpenAI account required) |
+| `ANTHROPIC_API_KEY` | _(empty)_ | Required for `anthropic/*` model ids (paid Anthropic account required) |
+| `GEMINI_API_KEY` / `GOOGLE_API_KEY` | _(empty)_ | Required for `gemini/*` model ids (Google AI Studio/Vertex billing may apply) |
 | `LOG_LEVEL` | `INFO` | Root log level (`DEBUG`, `WARNING`, `ERROR`, …) |
 | `PROFILER_MODE` | `auto` | `auto` uses trained K-Means when `artifacts/` is complete, otherwise rule-based archetypes; `ml` forces ML (errors if artifacts are missing); `rules` pins the legacy archetype scoring (used by CI and the unit-test gate) |
 
