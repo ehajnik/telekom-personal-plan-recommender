@@ -41,10 +41,10 @@ PROFILE_SIGNATURES: dict[str, list[str]] = {
         "Mix of data and voice while abroad",
     ],
     "Underutilized / overspending": [
-        "High proportion of idle lines",
-        "Plan tier above actual usage",
-        "Low data per active line",
-        "Downgrade / rightsizing opportunity",
+        "High engagement across data, voice, and messaging",
+        "Upper-mid plan tier with strong regular usage",
+        "Notably high session intensity and app activity",
+        "Value optimization via bundled options",
     ],
 }
 
@@ -70,9 +70,9 @@ PROFILE_EXAMPLES: dict[str, list[str]] = {
         "International sales rep",
     ],
     "Underutilized / overspending": [
-        "Family plan with unused lines",
-        "Legacy tier after usage drop",
-        "Multi-SIM with idle secondary lines",
+        "Always-connected digital-heavy user",
+        "Power communicator using data plus voice daily",
+        "Premium-plan customer with broad service usage",
     ],
 }
 
@@ -110,12 +110,12 @@ HARD_CODED_SLIDER_DEFAULTS: dict[str, dict[str, int]] = {
         "voice_trend": 0,
     },
     "Underutilized / overspending": {
-        "data_gb": 8,
-        "voice_min": 90,
-        "sms_count": 20,
-        "roaming_days": 1,
-        "data_trend": -6,
-        "voice_trend": -2,
+        "data_gb": 65,
+        "voice_min": 620,
+        "sms_count": 90,
+        "roaming_days": 3,
+        "data_trend": 4,
+        "voice_trend": 2,
     },
 }
 

@@ -194,48 +194,48 @@
       "emoji": "\ud83d\udca4",
       "cluster_idx": 1,
       "signature": [
-        "High proportion of idle lines",
-        "Plan tier above actual usage",
-        "Low data per active line",
-        "Downgrade / rightsizing opportunity"
+        "High engagement across data, voice, and messaging",
+        "Upper-mid plan tier with strong regular usage",
+        "Notably high session intensity and app activity",
+        "Value optimization via bundled options"
       ],
       "examples": [
-        "Family plan with unused lines",
-        "Legacy tier after usage drop",
-        "Multi-SIM with idle secondary lines"
+        "Always-connected digital-heavy user",
+        "Power communicator using data plus voice daily",
+        "Premium-plan customer with broad service usage"
       ],
       "centroid": {
         "lines_total": 1.0,
         "lines_active": 1.0,
         "active_line_ratio": 1.0,
-        "avg_monthly_data_gb": 5.0,
-        "avg_monthly_voice_min": 60.0,
-        "avg_monthly_sms": 17.0,
+        "avg_monthly_data_gb": 64.9,
+        "avg_monthly_voice_min": 623.2,
+        "avg_monthly_sms": 90.8,
         "pct_idle_lines": 0.0,
         "roaming_days_ratio": 0.0,
-        "avg_roaming_days": 0.5,
-        "countries_visited": 0.5,
+        "avg_roaming_days": 3.5,
+        "countries_visited": 2.5,
         "avg_session_mb": 0.0,
         "active_days_per_month": 0.0,
-        "plan_tier": 4.5,
-        "roaming_intensity": 0.01,
-        "data_per_active_line": 5.0,
-        "session_intensity": 25.0,
+        "plan_tier": 3.5,
+        "roaming_intensity": 0.29,
+        "data_per_active_line": 64.9,
+        "session_intensity": 20901.9,
         "evening_peak_share": 0.0,
         "weekend_share": 0.0,
-        "plan_usage_gap": 4.4,
+        "plan_usage_gap": 2.21,
         "mean_data_trend_per_month": 0.0,
         "mean_voice_trend_per_month": 0.0,
         "mean_roaming_trend_per_month": 0.0,
         "mean_lines_trend_per_month": 0.0
       },
       "slider_defaults": {
-        "data_gb": 8,
-        "voice_min": 90,
-        "sms_count": 20,
-        "roaming_days": 1,
-        "data_trend": -6,
-        "voice_trend": -2
+        "data_gb": 65,
+        "voice_min": 620,
+        "sms_count": 90,
+        "roaming_days": 3,
+        "data_trend": 4,
+        "voice_trend": 2
       }
     }
   },

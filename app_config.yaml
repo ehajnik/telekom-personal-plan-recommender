@@ -77,16 +77,16 @@ model:
       session_intensity: 8081.28
       plan_usage_gap: 1.72
     Underutilized / overspending:
-      data_gb_mean: 5.0
-      voice_min_mean: 60.0
-      sms_count_mean: 17.0
-      roaming_days_mean: 0.5
-      countries_visited_mean: 0.5
-      plan_tier_mean: 4.5
-      roaming_intensity: 0.008
-      data_per_active_line: 5.0
-      session_intensity: 25.0
-      plan_usage_gap: 4.4
+      data_gb_mean: 64.89
+      voice_min_mean: 623.17
+      sms_count_mean: 90.78
+      roaming_days_mean: 3.49
+      countries_visited_mean: 2.5
+      plan_tier_mean: 3.5
+      roaming_intensity: 0.29
+      data_per_active_line: 64.89
+      session_intensity: 20901.92
+      plan_usage_gap: 2.21
 runtime:
   feature_defaults:
     countries_multiplier: 0.8
