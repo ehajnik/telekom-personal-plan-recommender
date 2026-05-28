@@ -1,0 +1,162 @@
+model:
+  n_profiles: 5
+  profile_labels:
+    - Light / occasional user
+    - Streaming & data-heavy
+    - Voice-centric
+    - Roaming / travel-heavy
+    - Underutilized / overspending
+  profile_emoji:
+    Light / occasional user: "🌱"
+    Streaming & data-heavy: "📺"
+    Voice-centric: "📞"
+    Roaming / travel-heavy: "✈️"
+    Underutilized / overspending: "💤"
+  cluster_features:
+    - data_gb_mean
+    - voice_min_mean
+    - sms_count_mean
+    - roaming_days_mean
+    - countries_visited_mean
+    - active_days_mean
+    - avg_session_mb_mean
+    - plan_tier_mean
+    - roaming_intensity
+    - data_per_active_line
+    - session_intensity
+    - plan_usage_gap
+  discriminators:
+    Light / occasional user: data_gb_mean
+    Streaming & data-heavy: data_gb_mean
+    Voice-centric: voice_min_mean
+    Roaming / travel-heavy: roaming_intensity
+    Underutilized / overspending: plan_usage_gap
+  fixed_centroids:
+    Light / occasional user:
+      data_gb_mean: 1.5
+      voice_min_mean: 50.0
+      sms_count_mean: 15.0
+      roaming_days_mean: 0.25
+      countries_visited_mean: 0.25
+      plan_tier_mean: 1.0
+      roaming_intensity: 0.002
+      data_per_active_line: 1.5
+      session_intensity: 7.5
+      plan_usage_gap: 0.9
+    Streaming & data-heavy:
+      data_gb_mean: 117.0
+      voice_min_mean: 165.0
+      sms_count_mean: 22.0
+      roaming_days_mean: 0.5
+      countries_visited_mean: 0.5
+      plan_tier_mean: 4.5
+      roaming_intensity: 0.008
+      data_per_active_line: 117.0
+      session_intensity: 70200.0
+      plan_usage_gap: 2.1
+    Voice-centric:
+      data_gb_mean: 4.5
+      voice_min_mean: 1800.0
+      sms_count_mean: 37.0
+      roaming_days_mean: 1.0
+      countries_visited_mean: 0.5
+      plan_tier_mean: 1.5
+      roaming_intensity: 0.017
+      data_per_active_line: 4.5
+      session_intensity: 22.5
+      plan_usage_gap: 1.3
+    Roaming / travel-heavy:
+      data_gb_mean: 32.0
+      voice_min_mean: 225.0
+      sms_count_mean: 30.0
+      roaming_days_mean: 15.0
+      countries_visited_mean: 8.5
+      plan_tier_mean: 2.5
+      roaming_intensity: 4.25
+      data_per_active_line: 32.0
+      session_intensity: 5120.0
+      plan_usage_gap: 1.6
+    Underutilized / overspending:
+      data_gb_mean: 5.0
+      voice_min_mean: 60.0
+      sms_count_mean: 17.0
+      roaming_days_mean: 0.5
+      countries_visited_mean: 0.5
+      plan_tier_mean: 4.5
+      roaming_intensity: 0.008
+      data_per_active_line: 5.0
+      session_intensity: 25.0
+      plan_usage_gap: 4.4
+runtime:
+  feature_defaults:
+    countries_multiplier: 0.8
+    countries_min: 1.0
+    countries_max: 12.0
+    night_ratio_low: 0.2
+    night_ratio_high: 0.35
+    night_ratio_data_threshold: 40.0
+    weekend_ratio: 0.4
+    session_mb_multiplier: 3.0
+    session_mb_max: 500.0
+    active_days_base: 10.0
+    active_days_data_divisor: 5.0
+    active_days_max: 28.0
+    plan_tier_mid_threshold: 25.0
+    plan_tier_high_threshold: 60.0
+  overlay_thresholds:
+    mixed_profile_ratio: 1.3
+    data_trend_growing_min: 0.15
+    data_trend_shrinking_max: -0.15
+    voice_trend_declining_max: -0.15
+    roaming_trend_growing_min: 0.2
+    lines_trend_growing_min: 0.1
+training:
+  min_silhouette: 0.5
+  random_state: 42
+  offline_only: true
+ui:
+  title: Private Customer Profiler
+  usage_sliders:
+    data_gb: ["Monthly data (GB)", 0, 150, 30]
+    voice_min: ["Voice minutes", 0, 3000, 400]
+    sms_count: ["SMS count", 0, 500, 50]
+    roaming_days: ["Roaming days / month", 0, 30, 2]
+  trend_sliders:
+    data_trend: ["Data trend", -50, 50, 5]
+    voice_trend: ["Voice trend", -50, 50, 0]
+  profiles:
+    Streamer:
+      data_gb: 100
+      voice_min: 150
+      sms_count: 20
+      roaming_days: 3
+      data_trend: 12
+      voice_trend: -5
+    Chatterbox:
+      data_gb: 12
+      voice_min: 2000
+      sms_count: 80
+      roaming_days: 2
+      data_trend: -5
+      voice_trend: 8
+    Essential:
+      data_gb: 8
+      voice_min: 200
+      sms_count: 30
+      roaming_days: 1
+      data_trend: 0
+      voice_trend: 0
+    Roamer:
+      data_gb: 35
+      voice_min: 400
+      sms_count: 25
+      roaming_days: 15
+      data_trend: 5
+      voice_trend: 0
+    Messenger:
+      data_gb: 25
+      voice_min: 100
+      sms_count: 200
+      roaming_days: 1
+      data_trend: 3
+      voice_trend: -8

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from typing import Final
 
+from telekom_profiler.config.app_config import ui_config
 from telekom_profiler.paths import ARTIFACTS_DIR
 
 CUSTOM_PROFILE: Final[str] = "— Custom —"
@@ -17,17 +18,16 @@ MSG_GENERATE_OFFER: Final[str] = "_Tariff recommendation appears here._"
 
 SliderSpec = tuple[str, int, int, int]
 
-USAGE_SLIDERS: Final[dict[str, SliderSpec]] = {
-    "data_gb": ("Monthly data (GB)", 0, 150, 30),
-    "voice_min": ("Voice minutes", 0, 3000, 400),
-    "sms_count": ("SMS count", 0, 500, 50),
-    "roaming_days": ("Roaming days / month", 0, 30, 2),
-}
+_UI = ui_config()
 
-TREND_SLIDERS: Final[dict[str, SliderSpec]] = {
-    "data_trend": ("Data trend", -50, 50, 5),
-    "voice_trend": ("Voice trend", -50, 50, 0),
-}
+
+def _slider_specs(section: str) -> dict[str, SliderSpec]:
+    specs = _UI.get(section, {})
+    return {k: (str(v[0]), int(v[1]), int(v[2]), int(v[3])) for k, v in specs.items()}
+
+
+USAGE_SLIDERS: Final[dict[str, SliderSpec]] = _slider_specs("usage_sliders")
+TREND_SLIDERS: Final[dict[str, SliderSpec]] = _slider_specs("trend_sliders")
 
 SLIDER_KEYS: Final[tuple[str, ...]] = tuple(USAGE_SLIDERS) + tuple(TREND_SLIDERS)
 
@@ -35,46 +35,7 @@ ProfilePreset = dict[str, int] | None
 
 PROFILES: Final[dict[str, ProfilePreset]] = {
     CUSTOM_PROFILE: None,
-    "Streamer": {
-        "data_gb": 100,
-        "voice_min": 150,
-        "sms_count": 20,
-        "roaming_days": 3,
-        "data_trend": 12,
-        "voice_trend": -5,
-    },
-    "Chatterbox": {
-        "data_gb": 12,
-        "voice_min": 2000,
-        "sms_count": 80,
-        "roaming_days": 2,
-        "data_trend": -5,
-        "voice_trend": 8,
-    },
-    "Essential": {
-        "data_gb": 8,
-        "voice_min": 200,
-        "sms_count": 30,
-        "roaming_days": 1,
-        "data_trend": 0,
-        "voice_trend": 0,
-    },
-    "Roamer": {
-        "data_gb": 35,
-        "voice_min": 400,
-        "sms_count": 25,
-        "roaming_days": 15,
-        "data_trend": 5,
-        "voice_trend": 0,
-    },
-    "Messenger": {
-        "data_gb": 25,
-        "voice_min": 100,
-        "sms_count": 200,
-        "roaming_days": 1,
-        "data_trend": 3,
-        "voice_trend": -8,
-    },
+    **{k: {kk: int(vv) for kk, vv in v.items()} for k, v in _UI.get("profiles", {}).items()},
 }
 
 

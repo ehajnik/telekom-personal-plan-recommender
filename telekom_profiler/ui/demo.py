@@ -16,6 +16,7 @@ from telekom_profiler.config import (
     SliderSpec,
     profile_template_choices,
 )
+from telekom_profiler.config.app_config import ui_config
 from telekom_profiler.config.ollama_settings import fallback_on_error, llm_enabled
 from telekom_profiler.domain.models import CustomerUsage, ProfileResult
 from telekom_profiler.logging_config import configure_logging
@@ -131,9 +132,10 @@ def generate_offer(
 
 
 def create_demo() -> gr.Blocks:
+    title = str(ui_config().get("title", "Private Customer Profiler"))
     template_choices = profile_template_choices()
 
-    with gr.Blocks(title="Private Customer Profiler", fill_width=True) as demo:
+    with gr.Blocks(title=title, fill_width=True) as demo:
         profile_state = gr.State(value=None)
 
         with gr.Column(elem_classes=["dt-shell"]):
