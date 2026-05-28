@@ -59,6 +59,8 @@ source .venv/bin/activate
 # If the source dataset changes, you MUST refresh:
 #   1) model.fixed_centroids in app_config.yaml
 #   2) curated profile definitions in telekom_profiler/ml/profile_characteristics.py
+#   3) regenerate artifacts/profile_characteristics.json + frozen_centroids.json via one training run
+# WARNING: retraining without updating the hardcoded profile layer creates config/profile drift.
 # Keep runtime inference frozen between dataset refreshes (no continuous retraining).
 python scripts/generate_synthetic_data.py --subscribers 1000
 # Optional: MOSTLY AI-backed generator (requires requirements-mostlyai.txt)
