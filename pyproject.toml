@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "telekom-personal-plan-recommender"
-version = "0.3.0"
+version = "0.4.0"
 description = "Telekom Private Customer Profiler — B2C usage-driven plan recommendations"
 readme = "README.md"
 requires-python = ">=3.10"

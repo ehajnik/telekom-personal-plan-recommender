@@ -8,98 +8,112 @@ Version bumps are driven by [Commitizen](https://commitizen-tools.github.io/comm
 
 ---
 
-## [Unreleased]
-
-### Added
-
-- Elbow + silhouette `k`-selection in the training pipeline. New `--clusters auto` (default), `--k-min`, and `--k-max` flags in `scripts/subscriber_profiling.py` sweep `k ∈ [2, 10]`, pick the silhouette-argmax `k`, cross-check against a kneedle-style elbow, and persist the full diagnostic to `artifacts/k_selection.json` for audit.
-- `telekom_profiler.ml.train.assign_labels` performs a globally-optimal label-to-cluster matching via `scipy.optimize.linear_sum_assignment`. Each named `PROFILE_LABEL` is matched to the cluster whose centroid is closest (in scaler-normalised feature space) to its canonical archetype reference (`LABEL_CANONICAL_CENTROIDS` in `telekom_profiler.ml.schema`); any additional clusters receive auto-generated `Profile N` names with a rules-based signature derived from the centroid.
-- Sixth named profile **`Family / multi-line`** (emoji 👨‍👩‍👧‍👦) with curated signature, examples, canonical centroid, and discriminator. The auto-`k=6` cluster (centroid ≈ 64 GB data, 601 voice min, ~4 lines, plan tier 3.5) previously surfaced as a generic `Profile 6` placeholder; Hungarian matching now claims it under its proper name and mirrors the `family_multiline` seed archetype.
-
-### Changed
-
-- `OLLAMA_NUM_PREDICT` default raised from 512 to 2048 so LLM-generated profile and offer markdown is not truncated mid-section on longer narratives.
-- Default Ollama model is now `llama3.2:3b` (~2 GB, fits in 8 GB RAM) with `OLLAMA_TIMEOUT=180`. The previous `mistral-nemo:12b` / 600 s default reliably hit Ollama's "timed out waiting for llama runner to start" 500 on CPU-only workstations and sent every profile and offer call into the rule-based fallback. `mistral-nemo:12b` remains documented as the higher-quality option for hosts with ≥ 16 GB RAM (raise `OLLAMA_TIMEOUT` and pre-warm the runner).
-- `scripts/generate_synthetic_data.py` reproduces the seven seed archetypes (`light_user`, `streaming_heavy`, `international_traveler`, `voice_senior`, `family_multiline`, `price_sensitive`, `power_user_5g`) so the synthetic panel and the generator stay in sync. K-Means with auto-`k` recovers six well-separated clusters on the standard 800-subscriber panel (silhouette 0.659 vs. 0.609 at fixed `k=5`).
-- Training centroids now include member-level `evening_peak_share` and `weekend_share` averages instead of the previous always-zero placeholders.
-- `docs/configuration.md` now lists `PROFILER_MODE` in the environment-variable reference; `docs/development.md` enumerates every artifact written by `scripts/subscriber_profiling.py` (including `label_map.json`, which is load-bearing for `PROFILER_MODE=auto`).
-
-### Fixed
-
-- The "Light / occasional user" profile no longer absorbs the family / multi-line cluster. The previous greedy `_align_labels` algorithm could allocate the residual cluster to "Light" even when its centroid (data ≈ 64 GB, voice ≈ 601 min, lines ≈ 4, plan tier 3.5) directly contradicted the label's signature; the globally-optimal Hungarian matching now keeps every centroid consistent with its narrative.
-
-### Removed
-
-- Excel training report (`training_report.xlsx`), `telekom_profiler.ml.training_report`, and `openpyxl` ML dependency
-
----
-
-## [0.3.0] - 2026-05-21
-
-### Added
-
-- `requirements-ml.txt` for explicit ML dependency installs (includes `openpyxl`)
-- Training pipeline exports `artifacts/training_report.xlsx` with sanity checks, cluster counts, confidence distribution, and feature summary
-- Backward math sanity checks, statistician validation sheets, and per-check proof columns in the Excel report
-- Excel `check_results` sheet: line-level `method` / `computed` / `expected` rows with `PASSED` / `WARNING` / `INVALID`; `check_summary` aggregates per check group
-- Sanity script validates latest raw training CSV schema (numeric columns only, no `seed_archetype`, month bounds, line-count consistency)
-
-### Changed
-
-- Ollama defaults tuned for CPU-only workstations: `OLLAMA_TIMEOUT=180`, `OLLAMA_NUM_PREDICT=512`; model guidance in configuration and runbook
-- Synthetic training CSV export excludes text labels (`seed_archetype`) to keep K-Means inputs numeric-only
-- Gradio UI: compact grid layout, Telekom card styling, nearly full viewport width, unified palette and slider tracks
-- Profile toolbar simplified (subscriber picker removed); template dropdown and English generated copy refined
-
-### Fixed
-
-- Excel audit rows colored by verdict (green / yellow / red); training-report ruff and mypy issues resolved
-- Gradio template-dropdown borders and padding; slider row spacing and bordered feature rows
-- Package `__init__` import order
-
----
-
-## [0.2.0] - 2026-05-19
-
-### Added
-
-- ML PoC: synthetic 12-month usage generator, `subscriber_profiling.py` training pipeline
-- K-Means segmentation (k=5) with artifacts under `artifacts/` (scaler, model, cluster map)
-- `telekom_profiler.ml` feature engineering, inference, and overlay detection
-- Subscriber dropdown in UI; distance table and overlay badges in scoring panel
-- Consumer catalog `plans_and_options.md` with SKUs for offer prompts
-- `PROFILER_MODE` (`auto` / `ml` / `rules`) and optional `[ml]` dependencies
-- ML unit tests and CI train-on-synthetic step (silhouette ≥ 0.5)
-- Commitizen-based semver releases (`cz bump`, GitHub **Release** workflow)
-
-### Changed
-
-- Consumer catalog aligned with **Telekom Deutschland** official price lists (MagentaMobil XS–XL, Prepaid, Young, PlusKarte, Travel & Surf)
-- Profile scoring uses trained clusters when artifacts present; legacy L1 fallback otherwise
-- Ollama/rule providers use ML or rules base per `PROFILER_MODE`
-- Rule-based offers bias tariff selection by primary archetype from scoring
-- Profile prompts require deterministic primary archetype from code scoring
-- UI session uses `gr.State` with `ProfileResult` instead of markdown-only handoff
-- Centralised business thresholds in `telekom_profiler/config/thresholds.py`
-- Typed `CustomerUsage` validation and clamping; `ProfileResult` state serialisation for Gradio
-- Fallback providers when Ollama fails (`OLLAMA_FALLBACK_ON_ERROR`)
-- Ollama tuning: `OLLAMA_TIMEOUT`, `OLLAMA_NUM_PREDICT`
-- UI scoring summary panel and inference mode indicator
-- Structured logging via `telekom_profiler/logging_config.py`
-- Technical documentation set under `docs/` including ADR and Ollama runbook
-- Developer tooling: Ruff, Mypy, GitHub Actions CI
-- Documentation rewritten for enterprise readability and integration clarity
-- Removed duplicate root `styles/`, `data/`, and `assets/` directories (package paths only)
-
-### Fixed
-
-- Gradio 6 header width and main column layout CSS
-- Engine singleton reset at application startup for correct provider selection
-
----
-
-## [0.1.0] - 2026-05-19
 
 ### Added
 
 - Baseline Gradio application with rule-based and Ollama providers, five B2C archetypes, and Telekom branding
+
+## v0.4.0 (2026-05-28)
+
+### Feat
+
+- **ml**: freeze hardcoded profiles from 1000-subscriber baseline
+- **ml**: switch to fixed 5-profile frozen-centroid scoring
+- **config**: centralize runtime knobs in root YAML
+- **ml**: add MOSTLY AI synthetic panel generator
+- **ui**: set Telekom logo as Gradio favicon
+- **domain**: wrap headline archetype and tariff facts in <mark>
+- **prompts**: ask LLM to wrap key facts in <mark> for magenta highlight
+- **ui**: render inline HTML in result Markdown for highlight tags
+- **ui**: style result Markdown with Telekom magenta highlights
+- **ml**: name the family / multi-line profile instead of Profile 6
+- **ml**: elbow + silhouette k-selection and Hungarian label matching
+
+### Fix
+
+- **vscode**: use supported Python formatter id
+- **config**: raise Ollama completion limit to 2048 tokens
+- **providers**: use ML profile provider when Ollama fails in ml mode
+- **scoring**: log ML fallback and expose backend metadata on ScoringResult
+- **offers**: correct high-data addon and family profile tariff rules
+- **engine**: re-score offers from current usage and validate inputs
+- **scripts**: correct documented synthetic-data CSV filename pattern
+
+### Refactor
+
+- **ml**: remove Excel training report output
+
+## v0.3.0 (2026-05-21)
+
+### Feat
+
+- **ml**: line-level check_results with PASSED/WARNING/INVALID in Excel
+- **ml**: show what each Excel check does with visible proof
+- **ml**: add statistician validation sheets to training Excel report
+- **ml**: enrich Excel sanity sheet with audit columns and styling
+- **ml**: add backward math sanity checks to training Excel report
+- **ml**: add numeric-data sanity checks and Excel training report
+
+### Fix
+
+- **ml**: resolve mypy errors in training_report
+- **ml**: satisfy ruff lint in training_report
+- **ml**: color full Excel audit rows by verdict (green/yellow/red)
+- **deps**: add requirements-ml.txt and clearer openpyxl install path
+- **ui**: expand layout to nearly full viewport width
+- **ui**: revert outer template padding; inset text from panel border
+- **ui**: add template dropdown inner padding; English generated text
+- **ui**: drop inner wrap border on profile template dropdown only
+- **ui**: remove inner border on profile template dropdown text
+- **ui**: tighten slider spacing and style profile template dropdown
+- **ui**: bordered slider rows with spacing between features
+- **ui**: unify Telekom color palette and slider track styling
+- **ui**: align layout on shared grid shell with card styling
+- **ui**: stack info row, template, then sliders and actions
+- **ui**: compact Gradio layout and clarify placeholder copy
+- sort imports in package __init__
+
+### Refactor
+
+- **ui**: remove subscriber picker and simplify toolbar
+
+## v0.2.0 (2026-05-20)
+
+### Feat
+
+- **catalog**: align offers with Telekom Deutschland price lists
+- **ml**: align profile_characteristics with enterprise centroid schema.
+- **ui**: add subscriber picker, distance table, and slider override.
+- **ml**: integrate inference, scoring, providers, and catalog prompts.
+- **ml**: add synthetic data generator and K-Means training pipeline.
+- add logging, operational docs, and configuration reference
+- **ui**: add typed state, scoring panel, and layout fixes
+- **ollama**: add fallback providers and aligned prompts
+- add centralized thresholds and domain validation
+- **domain**: add typed models and shared archetype scoring
+
+### Fix
+
+- fix Ruff import ordering in domain modules
+- **docs**: correct paths to telekom_profiler package data
+
+### Refactor
+
+- **services**: add ProfilerEngine and pluggable providers
+
+## v0.1.0 (2026-05-19)
+
+### Feat
+
+- add archetype-aligned profile presets for five clusters
+- **ui**: add Deutsche Telekom theme and brand styling
+- add Gradio private customer profiler prototype
+
+### Fix
+
+- **ui**: fix full-width header and stable result panels
+- **ui**: fix action button layout in single column
+
+### Refactor
+
+- restructure into telekom_profiler package with Ollama
