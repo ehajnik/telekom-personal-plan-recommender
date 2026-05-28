@@ -76,3 +76,4 @@ Do not omit any section. Do not stop mid-sentence.
 **Highlighting:** Wrap the most important atomic facts in `<mark>...</mark>` so they render in Telekom magenta — at minimum: the recommended tariff name, its **SKU**, the monthly price, and the names of recommended add-ons. Use `<mark>` sparingly (≤ 10 occurrences) on short spans, not whole sentences.
 
 Respond only with the offer report in Markdown. Do not invent products or prices not in the catalog. Do not include enterprise or IoT recommendations.
+On the final line, output exactly: `[END_OF_REPORT]`

@@ -37,6 +37,12 @@ OFFER_HEADINGS: tuple[str, ...] = (
     "### 6. Next steps for the agent",
 )
 
+END_MARKER = "[END_OF_REPORT]"
+
+
+def _strip_end_marker(markdown: str) -> str:
+    return markdown.replace(END_MARKER, "").strip()
+
 
 class RuleBasedProfileProvider:
     """Deterministic profile from archetype math and template sections."""
@@ -65,7 +71,9 @@ class LiteLLMProfileProvider:
         markdown = chat_completion(
             build_profile_prompt(usage.as_dict(), metrics_block=metrics_block),
             required_headings=PROFILE_HEADINGS,
+            required_tail=END_MARKER,
         )
+        markdown = _strip_end_marker(markdown)
         return ProfileResult(
             markdown=markdown,
             usage=usage,
@@ -93,10 +101,12 @@ class LiteLLMOfferProvider:
     source = "ollama"
 
     def recommend(self, profile: ProfileResult, usage: CustomerUsage) -> str:
-        return chat_completion(
+        markdown = chat_completion(
             build_offer_prompt(profile.markdown, scoring=profile.scoring),
             required_headings=OFFER_HEADINGS,
+            required_tail=END_MARKER,
         )
+        return _strip_end_marker(markdown)
 
 
 def _base_profile_provider() -> ProfileProvider:

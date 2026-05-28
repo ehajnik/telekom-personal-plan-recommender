@@ -100,3 +100,4 @@ Do not omit any section. Do not stop mid-sentence.
 **Highlighting:** Wrap the most important atomic facts in `<mark>...</mark>` so they render in Telekom magenta — at minimum: the primary archetype name, the confidence label, each headline usage figure (data GB, voice minutes, SMS, roaming days), and any tariff names mentioned in upsell signals. Use `<mark>` sparingly (≤ 12 occurrences) on short spans, not whole sentences.
 
 Respond only with the profile report in Markdown. No preamble or closing text outside the report.
+On the final line, output exactly: `[END_OF_REPORT]`

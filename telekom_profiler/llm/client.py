@@ -38,6 +38,7 @@ def chat_completion(
     temperature: float = 0.3,
     model: str | None = None,
     required_headings: tuple[str, ...] = (),
+    required_tail: str = "",
 ) -> str:
     """
     Run a single-turn chat completion via LiteLLM.
@@ -117,6 +118,26 @@ def chat_completion(
                 repair_kwargs["max_tokens"] = repair_tokens
                 response = completion(**repair_kwargs)
                 content = response.choices[0].message.content
+        if required_tail and not str(content or "").rstrip().endswith(required_tail):
+            tail_tokens = min(
+                max(int(OLLAMA_NUM_PREDICT * 1.75), OLLAMA_NUM_PREDICT + 1024),
+                6144,
+            )
+            tail_messages = [
+                {
+                    "role": "user",
+                    "content": (
+                        f"{user_prompt}\n\n"
+                        "IMPORTANT: Your previous answer was cut off. "
+                        f"Regenerate the full answer and end exactly with `{required_tail}`."
+                    ),
+                }
+            ]
+            tail_kwargs = dict(completion_kwargs)
+            tail_kwargs["messages"] = tail_messages
+            tail_kwargs["max_tokens"] = tail_tokens
+            response = completion(**tail_kwargs)
+            content = response.choices[0].message.content
         if not content or not str(content).strip():
             raise RuntimeError("LLM returned an empty response.")
         elapsed_ms = (time.perf_counter() - started) * 1000
