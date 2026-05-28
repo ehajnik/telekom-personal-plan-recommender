@@ -421,21 +421,21 @@ footer {
 
 .gradio-container .block.dt-result-body {
   min-height: 40rem !important;
-  height: 40rem !important;
-  max-height: 40rem !important;
+  height: auto !important;
+  max-height: none !important;
   margin: 0 !important;
   padding: 0 !important;
   border: 1px solid var(--dt-border) !important;
   border-radius: 6px !important;
   background: var(--dt-page) !important;
-  overflow: hidden !important;
+  overflow: visible !important;
 }
 
 .gradio-container .block.dt-result-body .md,
 .gradio-container .block.dt-result-body .prose {
-  height: 100% !important;
-  max-height: 40rem !important;
-  overflow: auto !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
   margin: 0 !important;
   padding: 0.75rem 0.875rem !important;
   font-size: 0.8125rem !important;
@@ -445,7 +445,7 @@ footer {
 }
 
 .gradio-container .block.dt-result-body > .gap {
-  max-height: 40rem !important;
+  max-height: none !important;
 }
 
 .gradio-container .block.dt-result-body .md pre,
@@ -563,7 +563,7 @@ footer {
 
   .gradio-container .block.dt-result-body {
     min-height: 26rem !important;
-    height: 26rem !important;
-    max-height: 26rem !important;
+    height: auto !important;
+    max-height: none !important;
   }
 }
