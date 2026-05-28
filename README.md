@@ -86,7 +86,7 @@ python scripts/subscriber_profiling.py --input data/raw/private_mobile_usage_100
 # no runtime retraining
 
 # Optional LLM (CPU-friendly defaults in .env.example):
-# ollama serve && ollama pull llama3.2:3b
+# ollama serve && ollama pull qwen2.5:7b
 
 python app.py
 ```

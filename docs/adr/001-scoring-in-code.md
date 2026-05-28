@@ -11,7 +11,9 @@
 
 ## Context
 
-The Private Customer Profiler assigns each subscriber to one of five B2C usage archetypes (Streamer, Chatterbox, Essential, Roamer, Messenger). Proximity to archetype centroids can be computed deterministically in Python (L1 distance on normalised usage), or inferred solely from LLM-generated narrative.
+The Private Customer Profiler assigns each subscriber to one primary usage profile from a fixed five-profile taxonomy. In ML mode, labels come from the frozen centroid set (`Light / occasional user`, `Streaming & data-heavy`, `Voice-centric`, `Roaming / travel-heavy`, `Value optimization candidate`). In rules mode (`PROFILER_MODE=rules`), legacy archetype names (`Streamer`, `Chatterbox`, `Essential`, `Roamer`, `Messenger`) remain available for deterministic fallback and test stability.
+
+Across both modes, proximity scoring can be computed deterministically in Python, while LLM output remains narrative-only.
 
 Campaign, pricing, and CRM teams require **auditable, repeatable** segment labels for analytics, targeting, and approval workflows. LLM output is valuable for agent-facing explanation but is not a suitable system of record for segment identity.
 

@@ -74,7 +74,7 @@ Runtime ML mode uses five fixed labels from `app_config.yaml`:
 | **Streaming & data-heavy** | Very high data and session intensity |
 | **Voice-centric** | High voice minutes with low-to-moderate data |
 | **Roaming / travel-heavy** | Frequent roaming and multiple countries visited |
-| **Underutilized / overspending** | High overall engagement and elevated plan gap signals |
+| **Value optimization candidate** | High overall engagement and elevated plan gap signals |
 
 Centroids and profile metadata are hardcoded in root configuration and profile characteristics modules, then mapped once during training.
 If you retrain on a new dataset, you must refresh both hardcoded layers and corresponding frozen artifacts to avoid drift.
@@ -164,6 +164,8 @@ Rule-based `render_profile_report()` always uses `distances[0]` as the stated pr
 ## 8. UI profile templates
 
 UI templates are defined under `ui.profiles` in root `app_config.yaml` and resolved through `config/sliders.py`. Presets are aligned with fixed profile behavior for demonstration; production feeds should populate `CustomerUsage` directly from systems of record.
+
+Note: names like `Streamer`/`Chatterbox` are legacy rule-mode presets used when ML artifacts are unavailable or when `PROFILER_MODE=rules` is selected. They are not the canonical ML taxonomy.
 
 ---
 
