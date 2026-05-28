@@ -121,6 +121,9 @@ llm:
     - ollama/llama3.2:1b
     - ollama/qwen2.5:3b
     - ollama/phi3:mini
+    - openai/gpt-4o-mini
+    - anthropic/claude-3-5-haiku-latest
+    - gemini/gemini-1.5-flash
 ui:
   title: Private Customer Profiler
   usage_sliders:

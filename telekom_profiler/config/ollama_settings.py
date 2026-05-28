@@ -14,6 +14,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(_PROJECT_ROOT / ".env")
 
 OLLAMA_HOST: Final[str] = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+LITELLM_API_BASE: Final[str] = os.getenv("LITELLM_API_BASE", "").rstrip("/")
 
 OLLAMA_ENABLED: Final[bool] = os.getenv("OLLAMA_ENABLED", "true").lower() in (
     "1",
@@ -78,3 +79,8 @@ def set_selected_model(model: str) -> str:
         )
     _selected_model = normalized
     return _selected_model
+
+
+def model_provider(model: str | None = None) -> str:
+    active = _normalize_model_id(model or _selected_model)
+    return active.split("/", 1)[0].lower()

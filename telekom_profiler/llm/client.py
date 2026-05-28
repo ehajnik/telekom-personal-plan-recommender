@@ -6,10 +6,12 @@ import logging
 import time
 
 from telekom_profiler.config.ollama_settings import (
+    LITELLM_API_BASE,
     OLLAMA_HOST,
     OLLAMA_NUM_PREDICT,
     OLLAMA_TIMEOUT,
     llm_enabled,
+    model_provider,
     selected_model,
 )
 
@@ -40,15 +42,23 @@ def chat_completion(
         raise RuntimeError("Install LiteLLM: pip install litellm") from exc
 
     active_model = model or selected_model()
+    provider = model_provider(active_model)
     started = time.perf_counter()
     try:
+        completion_kwargs: dict[str, object] = {
+            "model": active_model,
+            "messages": [{"role": "user", "content": user_prompt}],
+            "timeout": OLLAMA_TIMEOUT,
+            "temperature": temperature,
+            "max_tokens": OLLAMA_NUM_PREDICT,
+        }
+        if provider == "ollama":
+            completion_kwargs["api_base"] = OLLAMA_HOST
+        elif LITELLM_API_BASE:
+            completion_kwargs["api_base"] = LITELLM_API_BASE
+
         response = completion(
-            model=active_model,
-            messages=[{"role": "user", "content": user_prompt}],
-            api_base=OLLAMA_HOST,
-            timeout=OLLAMA_TIMEOUT,
-            temperature=temperature,
-            max_tokens=OLLAMA_NUM_PREDICT,
+            **completion_kwargs,
         )
         content = response.choices[0].message.content
         if not content or not str(content).strip():
@@ -63,10 +73,20 @@ def chat_completion(
     except RuntimeError:
         raise
     except ConnectionError as exc:
-        _logger.warning("LiteLLM connection failed host=%s: %s", OLLAMA_HOST, exc)
+        endpoint = (
+            OLLAMA_HOST
+            if provider == "ollama"
+            else (LITELLM_API_BASE or "provider endpoint")
+        )
+        _logger.warning("LiteLLM connection failed endpoint=%s: %s", endpoint, exc)
+        if provider == "ollama":
+            raise RuntimeError(
+                f"Cannot reach LLM endpoint at {OLLAMA_HOST}. "
+                f"Start Ollama (ollama serve) and pull the model ({active_model})."
+            ) from exc
         raise RuntimeError(
-            f"Cannot reach LLM endpoint at {OLLAMA_HOST}. "
-            f"Start Ollama (ollama serve) and pull the model ({active_model})."
+            f"Cannot reach provider endpoint for model '{active_model}'. "
+            "Check internet connectivity and API base settings."
         ) from exc
     except Exception as exc:
         elapsed_ms = (time.perf_counter() - started) * 1000
@@ -78,6 +98,11 @@ def chat_completion(
         )
         err = str(exc).lower()
         if "connection" in err or "refused" in err:
+            if provider != "ollama":
+                raise RuntimeError(
+                    f"Cannot reach provider endpoint for model '{active_model}'. "
+                    "Check network and credentials."
+                ) from exc
             raise RuntimeError(
                 f"Cannot reach LLM endpoint at {OLLAMA_HOST}. "
                 f"Run: ollama serve  &&  ollama pull {active_model.removeprefix('ollama/')}"
@@ -86,5 +111,15 @@ def chat_completion(
             raise RuntimeError(
                 f"Model '{active_model}' not found. "
                 f"Run: ollama pull {active_model.removeprefix('ollama/')}"
+            ) from exc
+        if "api key" in err or "unauthorized" in err or "authentication" in err or "401" in err:
+            key_hint = {
+                "openai": "OPENAI_API_KEY",
+                "anthropic": "ANTHROPIC_API_KEY",
+                "gemini": "GEMINI_API_KEY (or GOOGLE_API_KEY)",
+            }.get(provider, "provider API key")
+            raise RuntimeError(
+                f"Authentication failed for model '{active_model}'. "
+                f"Set {key_hint} in your environment."
             ) from exc
         raise RuntimeError(f"LiteLLM request failed: {exc}") from exc
