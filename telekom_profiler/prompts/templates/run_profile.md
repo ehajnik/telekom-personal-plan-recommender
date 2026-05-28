@@ -81,6 +81,18 @@ List 3–5 observable signals and the **consumer** product direction each sugges
 
 **Important:** Usage **trends** (data/voice trajectory) describe direction only; they do not by themselves change archetype assignment unless your analysis explicitly treats them as overlays.
 
+**Formatting requirement (strict):** Use the exact numbered section headings below, in this exact order, each as a Markdown heading:
+
+- `### 1. Primary archetype`
+- `### 2. Overlay characteristics`
+- `### 3. Secondary archetype influence`
+- `### 4. Lifestyle narrative`
+- `### 5. Likely customer context`
+- `### 6. Pain points & risks`
+- `### 7. Upsell & retention signals`
+
+Do not omit any section. Do not stop mid-sentence.
+
 ---
 
 **Language:** Write the entire report in **English** (product names may stay as in the catalog).

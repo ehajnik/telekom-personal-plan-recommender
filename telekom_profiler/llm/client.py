@@ -23,6 +23,11 @@ def reset_client() -> None:
     return None
 
 
+def _is_truncated(finish_reason: object) -> bool:
+    reason = str(finish_reason or "").strip().lower()
+    return reason in {"length", "max_tokens"}
+
+
 def chat_completion(
     user_prompt: str, *, temperature: float = 0.3, model: str | None = None
 ) -> str:
@@ -57,10 +62,27 @@ def chat_completion(
         elif LITELLM_API_BASE:
             completion_kwargs["api_base"] = LITELLM_API_BASE
 
-        response = completion(
-            **completion_kwargs,
-        )
-        content = response.choices[0].message.content
+        response = completion(**completion_kwargs)
+        choice = response.choices[0]
+        content = choice.message.content
+        finish_reason = getattr(choice, "finish_reason", None)
+        if _is_truncated(finish_reason):
+            retry_tokens = min(max(int(OLLAMA_NUM_PREDICT * 1.5), OLLAMA_NUM_PREDICT + 512), 4096)
+            retry_messages = [
+                {
+                    "role": "user",
+                    "content": (
+                        f"{user_prompt}\n\n"
+                        "IMPORTANT: Return a complete response with all required sections. "
+                        "Do not stop mid-sentence."
+                    ),
+                }
+            ]
+            retry_kwargs = dict(completion_kwargs)
+            retry_kwargs["messages"] = retry_messages
+            retry_kwargs["max_tokens"] = retry_tokens
+            response = completion(**retry_kwargs)
+            content = response.choices[0].message.content
         if not content or not str(content).strip():
             raise RuntimeError("LLM returned an empty response.")
         elapsed_ms = (time.perf_counter() - started) * 1000
@@ -108,6 +130,11 @@ def chat_completion(
                 f"Run: ollama serve  &&  ollama pull {active_model.removeprefix('ollama/')}"
             ) from exc
         if "not found" in err or "404" in err:
+            if provider != "ollama":
+                raise RuntimeError(
+                    f"Model '{active_model}' not found for provider '{provider}'. "
+                    "Use a currently supported provider model id and verify API access."
+                ) from exc
             raise RuntimeError(
                 f"Model '{active_model}' not found. "
                 f"Run: ollama pull {active_model.removeprefix('ollama/')}"
