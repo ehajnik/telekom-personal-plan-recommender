@@ -12,7 +12,7 @@ from telekom_profiler.ml.features import (
     features_from_usage,
     load_usage_panel,
 )
-from telekom_profiler.ml.schema import CLUSTER_FEATURES, TREND_COLS
+from telekom_profiler.ml.schema import CLUSTER_FEATURES, PROFILE_LABELS, TREND_COLS
 
 
 class ProfileCharacteristicsTests(unittest.TestCase):
@@ -68,9 +68,15 @@ def _find_synthetic_csv(repo: Path) -> Path | None:
 
 
 class MlFeatureTests(unittest.TestCase):
+    def test_profile_count_and_labels(self) -> None:
+        self.assertEqual(len(PROFILE_LABELS), 5)
+        self.assertNotIn("Family / multi-line", PROFILE_LABELS)
+
     def test_cluster_features_exclude_trends(self) -> None:
         for col in TREND_COLS:
             self.assertNotIn(col, CLUSTER_FEATURES)
+        self.assertNotIn("lines_total_mean", CLUSTER_FEATURES)
+        self.assertNotIn("lines_active_mean", CLUSTER_FEATURES)
 
     def test_build_subscriber_features_shape(self) -> None:
         repo = Path(__file__).resolve().parents[1]
@@ -101,14 +107,15 @@ class MlTrainTests(unittest.TestCase):
                 min_silhouette=0.5,
             )
             self.assertGreaterEqual(summary["silhouette"], 0.5)
-            self.assertTrue((Path(tmp) / "kmeans.pkl").is_file())
+            self.assertEqual(summary["n_clusters"], 5)
+            self.assertTrue((Path(tmp) / "frozen_centroids.json").is_file())
 
 
 class MlInferenceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls._artifacts = Path(__file__).resolve().parents[1] / "artifacts"
-        if not (cls._artifacts / "kmeans.pkl").is_file():
+        if not (cls._artifacts / "frozen_centroids.json").is_file():
             raise unittest.SkipTest("Artifacts not trained; run scripts/subscriber_profiling.py")
 
     def test_predict_subscriber(self) -> None:
@@ -132,6 +139,8 @@ class MlInferenceTests(unittest.TestCase):
         row = features_from_usage(usage)
         self.assertIn("data_gb_mean", row)
         self.assertAlmostEqual(row["data_gb_mean"], 100.0)
+        self.assertEqual(row["lines_total_mean"], 1.0)
+        self.assertEqual(row["lines_active_mean"], 1.0)
 
 
 if __name__ == "__main__":

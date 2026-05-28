@@ -36,6 +36,20 @@ def _legacy_scoring_result(data: dict[str, float]) -> ScoringResult:
     )
 
 
+def _legacy_fallback(usage: CustomerUsage, reason: str) -> ScoringResult:
+    _logger.warning("ML scoring unavailable (%s), using legacy L1 archetypes", reason)
+    result = _legacy_scoring_result(usage.as_dict())
+    return ScoringResult(
+        primary=result.primary,
+        secondary=result.secondary,
+        all_distances=result.all_distances,
+        overlays=result.overlays,
+        confidence=result.confidence,
+        backend="legacy",
+        fallback_reason=reason,
+    )
+
+
 def build_scoring_result(
     usage: CustomerUsage,
     *,
@@ -58,30 +72,8 @@ def build_scoring_result(
                 pred = predict_from_features(features_from_usage(usage))
             return scoring_result_from_prediction(pred)
         except FileNotFoundError as exc:
-            reason = f"ml_artifacts_missing: {exc}"
-            _logger.warning("ML scoring unavailable (%s), using legacy L1 archetypes", reason)
-            result = _legacy_scoring_result(usage.as_dict())
-            return ScoringResult(
-                primary=result.primary,
-                secondary=result.secondary,
-                all_distances=result.all_distances,
-                overlays=result.overlays,
-                confidence=result.confidence,
-                backend="legacy",
-                fallback_reason=reason,
-            )
+            return _legacy_fallback(usage, f"ml_artifacts_missing: {exc}")
         except KeyError as exc:
-            reason = f"ml_lookup_failed: {exc}"
-            _logger.warning("ML scoring failed (%s), using legacy L1 archetypes", reason)
-            result = _legacy_scoring_result(usage.as_dict())
-            return ScoringResult(
-                primary=result.primary,
-                secondary=result.secondary,
-                all_distances=result.all_distances,
-                overlays=result.overlays,
-                confidence=result.confidence,
-                backend="legacy",
-                fallback_reason=reason,
-            )
+            return _legacy_fallback(usage, f"ml_lookup_failed: {exc}")
 
     return _legacy_scoring_result(usage.as_dict())
