@@ -23,7 +23,7 @@ _ML_LIGHT = "Light / occasional user"
 _ML_STREAMING = "Streaming & data-heavy"
 _ML_VOICE = "Voice-centric"
 _ML_ROAMING = "Roaming / travel-heavy"
-_ML_UNDER = "Underutilized / overspending"
+_ML_UNDER = "Value optimization candidate"
 
 _TARIFF_XL = (
     "MagentaMobil XL (MM-XL-001)",
