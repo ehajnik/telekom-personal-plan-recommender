@@ -19,10 +19,9 @@ PROFILER_MODE: Final[str] = os.getenv("PROFILER_MODE", "auto").lower()
 def artifacts_available() -> bool:
     """True when trained K-Means artifacts exist."""
     required = (
-        ARTIFACTS_DIR / "kmeans.pkl",
-        ARTIFACTS_DIR / "scaler.pkl",
         ARTIFACTS_DIR / "label_map.json",
         ARTIFACTS_DIR / "profile_characteristics.json",
+        ARTIFACTS_DIR / "frozen_centroids.json",
     )
     return all(p.is_file() for p in required)
 

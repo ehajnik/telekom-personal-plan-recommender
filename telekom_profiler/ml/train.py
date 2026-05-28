@@ -15,6 +15,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 
+from telekom_profiler.config.app_config import model_config, training_config
 from telekom_profiler.ml.features import build_subscriber_features, feature_matrix, load_usage_panel
 from telekom_profiler.ml.overlays import compute_ml_overlays
 from telekom_profiler.ml.profile_characteristics import (
@@ -173,20 +174,19 @@ def train_and_save(
     input_csv: Path,
     artifacts_dir: Path,
     *,
-    n_clusters: int | str = "auto",
-    k_min: int = 2,
-    k_max: int = 10,
-    min_silhouette: float = 0.5,
-    random_state: int = 42,
+    n_clusters: int | None = None,
+    min_silhouette: float | None = None,
+    random_state: int | None = None,
 ) -> dict[str, Any]:
-    """Full training pipeline; returns summary metrics.
-
-    ``n_clusters`` accepts an int for a fixed k or ``"auto"`` to pick k via
-    :func:`select_k` (silhouette argmax with elbow cross-check). When auto-
-    selection is used, ``artifacts_dir/k_selection.json`` is written alongside
-    the model artifacts.
-    """
+    """Offline training pipeline with fixed profile count."""
     artifacts_dir.mkdir(parents=True, exist_ok=True)
+    train_cfg = training_config()
+    model_cfg = model_config()
+    fixed_clusters = int(model_cfg.get("n_profiles", 5))
+    if n_clusters is not None and int(n_clusters) != fixed_clusters:
+        raise ValueError(f"Fixed profile count is {fixed_clusters}; got n_clusters={n_clusters}")
+    min_silhouette = float(min_silhouette if min_silhouette is not None else train_cfg.get("min_silhouette", 0.5))
+    random_state = int(random_state if random_state is not None else train_cfg.get("random_state", 42))
 
     panel = load_usage_panel(input_csv)
     features_df = build_subscriber_features(panel)
@@ -196,22 +196,7 @@ def train_and_save(
     scaler = StandardScaler()
     x_scaled = scaler.fit_transform(x)
 
-    k_selection: dict[str, Any] | None = None
-    if isinstance(n_clusters, str):
-        if n_clusters.lower() != "auto":
-            raise ValueError(f"n_clusters must be int or 'auto', got {n_clusters!r}")
-        chosen_k, candidates = select_k(
-            x_scaled, k_min=k_min, k_max=k_max, random_state=random_state
-        )
-        n_clusters = chosen_k
-        k_selection = {
-            "chosen_k": chosen_k,
-            "method": "silhouette_argmax",
-            "k_min": k_min,
-            "k_max": k_max,
-            "candidates": candidates,
-        }
-    n_clusters = int(n_clusters)
+    n_clusters = fixed_clusters
 
     print(f"Fitting K-Means (k={n_clusters})...")
     kmeans = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=20)
@@ -302,16 +287,26 @@ def train_and_save(
         json.dumps(list(CLUSTER_FEATURES), indent=2),
         encoding="utf-8",
     )
-    if k_selection is not None:
-        (artifacts_dir / "k_selection.json").write_text(
-            json.dumps(k_selection, indent=2),
-            encoding="utf-8",
-        )
+    frozen_centroids = {
+        "cluster_features": list(CLUSTER_FEATURES),
+        "labels": [label_map[i] for i in range(n_clusters)],
+        "centroids_unscaled": {
+            label_map[i]: {CLUSTER_FEATURES[j]: float(centroids_unscaled[i, j]) for j in range(len(CLUSTER_FEATURES))}
+            for i in range(n_clusters)
+        },
+        "scaler_scale": {
+            CLUSTER_FEATURES[i]: float(scaler.scale_[i]) for i in range(len(CLUSTER_FEATURES))
+        },
+    }
+    (artifacts_dir / "frozen_centroids.json").write_text(
+        json.dumps(frozen_centroids, indent=2),
+        encoding="utf-8",
+    )
 
     return {
         "silhouette": sil,
         "n_subscribers": len(subscriber_ids),
         "n_clusters": n_clusters,
         "label_map": label_map_json,
-        "k_selection": k_selection,
+        "k_selection": None,
     }

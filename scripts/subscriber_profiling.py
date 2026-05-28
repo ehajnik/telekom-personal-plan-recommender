@@ -11,11 +11,14 @@ _REPO = Path(__file__).resolve().parents[1]
 if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
+from telekom_profiler.config.app_config import model_config, training_config
 from telekom_profiler.ml.train import train_and_save
 from telekom_profiler.paths import ARTIFACTS_DIR, RAW_DATA_DIR
 
 
 def main() -> None:
+    train_cfg = training_config()
+    model_cfg = model_config()
     parser = argparse.ArgumentParser(description="Train private mobile subscriber profiles")
     parser.add_argument(
         "--input",
@@ -29,29 +32,19 @@ def main() -> None:
         default=ARTIFACTS_DIR,
         help="Output artifacts directory",
     )
-    parser.add_argument("--min-silhouette", type=float, default=0.5, help="Minimum silhouette score")
     parser.add_argument(
-        "--clusters",
-        default="auto",
-        help="K-Means clusters: integer or 'auto' for elbow + silhouette selection (default: auto)",
+        "--min-silhouette",
+        type=float,
+        default=float(train_cfg.get("min_silhouette", 0.5)),
+        help="Minimum silhouette score",
     )
     parser.add_argument(
-        "--k-min", type=int, default=2, help="Minimum k to evaluate when --clusters=auto"
+        "--seed",
+        type=int,
+        default=int(train_cfg.get("random_state", 42)),
+        help="Random state",
     )
-    parser.add_argument(
-        "--k-max", type=int, default=10, help="Maximum k to evaluate when --clusters=auto"
-    )
-    parser.add_argument("--seed", type=int, default=42, help="Random state")
     args = parser.parse_args()
-
-    clusters: int | str
-    if isinstance(args.clusters, str) and args.clusters.lower() == "auto":
-        clusters = "auto"
-    else:
-        try:
-            clusters = int(args.clusters)
-        except (TypeError, ValueError) as exc:
-            parser.error(f"--clusters must be 'auto' or an integer, got {args.clusters!r}: {exc}")
 
     input_csv = args.input
     if input_csv is None:
@@ -68,9 +61,7 @@ def main() -> None:
     summary = train_and_save(
         input_csv,
         args.artifacts,
-        n_clusters=clusters,
-        k_min=args.k_min,
-        k_max=args.k_max,
+        n_clusters=int(model_cfg.get("n_profiles", 5)),
         min_silhouette=args.min_silhouette,
         random_state=args.seed,
     )

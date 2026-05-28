@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
+from telekom_profiler.config.app_config import runtime_config
 from telekom_profiler.domain.models import CustomerUsage
 from telekom_profiler.ml.schema import (
     CLUSTER_FEATURES,
@@ -95,16 +96,39 @@ def features_from_usage(usage: CustomerUsage) -> dict[str, float]:
 
     Maps six slider values to the same feature space used at training time.
     """
+    defaults = runtime_config().get("feature_defaults", {})
     d = usage.as_dict()
     data, voice, sms, roam = d["data_gb"], d["voice_min"], d["sms_count"], d["roaming_days"]
-    lines_total = 2.0 if roam > 5 else 1.0
-    lines_active = 1.5 if lines_total > 1 else 1.0
-    countries = min(12.0, max(1.0, roam * 0.8))
-    night_ratio = 0.35 if data > 40 else 0.2
-    weekend_ratio = 0.4
-    session_mb = min(500.0, data * 3.0)
-    active_days = min(28.0, 10.0 + data / 5.0)
-    plan_tier = 3.0 if data > 60 else 2.0 if data > 25 else 1.0
+    lines_total = 1.0
+    lines_active = 1.0
+    countries = min(
+        float(defaults.get("countries_max", 12.0)),
+        max(
+            float(defaults.get("countries_min", 1.0)),
+            roam * float(defaults.get("countries_multiplier", 0.8)),
+        ),
+    )
+    night_ratio = (
+        float(defaults.get("night_ratio_high", 0.35))
+        if data > float(defaults.get("night_ratio_data_threshold", 40.0))
+        else float(defaults.get("night_ratio_low", 0.2))
+    )
+    weekend_ratio = float(defaults.get("weekend_ratio", 0.4))
+    session_mb = min(
+        float(defaults.get("session_mb_max", 500.0)),
+        data * float(defaults.get("session_mb_multiplier", 3.0)),
+    )
+    active_days = min(
+        float(defaults.get("active_days_max", 28.0)),
+        float(defaults.get("active_days_base", 10.0))
+        + data / float(defaults.get("active_days_data_divisor", 5.0)),
+    )
+    if data > float(defaults.get("plan_tier_high_threshold", 60.0)):
+        plan_tier = 3.0
+    elif data > float(defaults.get("plan_tier_mid_threshold", 25.0)):
+        plan_tier = 2.0
+    else:
+        plan_tier = 1.0
 
     row: dict[str, float] = {
         "data_gb_mean": data,

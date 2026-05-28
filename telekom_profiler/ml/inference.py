@@ -8,12 +8,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-import joblib
 import numpy as np
 import pandas as pd
-from numpy.typing import NDArray
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
 
 from telekom_profiler.config.profiler_settings import artifacts_available as _settings_artifacts
 from telekom_profiler.domain.models import ArchetypeScore, CustomerUsage, ScoringResult
@@ -45,17 +41,17 @@ class MlPrediction:
 
 @dataclass
 class _ArtifactBundle:
-    kmeans: KMeans
-    scaler: StandardScaler
     label_map: dict[int, str]
     profile_characteristics: dict[str, Any]
     cluster_map: pd.DataFrame
     cluster_features: tuple[str, ...]
+    centroids_unscaled: dict[str, dict[str, float]]
+    scaler_scale: dict[str, float]
 
 
 def artifacts_available(artifacts_dir: Path | None = None) -> bool:
     if artifacts_dir is not None:
-        required = ("kmeans.pkl", "scaler.pkl", "label_map.json", "profile_characteristics.json")
+        required = ("label_map.json", "profile_characteristics.json", "frozen_centroids.json")
         base = Path(artifacts_dir)
         return all((base / name).is_file() for name in required)
     return _settings_artifacts()
@@ -76,30 +72,25 @@ def load_artifacts(artifacts_dir: str | None = None) -> _ArtifactBundle:
         json.loads((base / "cluster_features.json").read_text(encoding="utf-8"))
     )
     cluster_map = pd.read_csv(base / "subscriber_cluster_map.csv")
+    frozen = json.loads((base / "frozen_centroids.json").read_text(encoding="utf-8"))
+    centroids_unscaled = {
+        str(label): {str(k): float(v) for k, v in vals.items()}
+        for label, vals in dict(frozen.get("centroids_unscaled", {})).items()
+    }
+    scaler_scale = {str(k): float(v) for k, v in dict(frozen.get("scaler_scale", {})).items()}
 
     return _ArtifactBundle(
-        kmeans=joblib.load(base / "kmeans.pkl"),
-        scaler=joblib.load(base / "scaler.pkl"),
         label_map=label_map,
         profile_characteristics=profile_chars,
         cluster_map=cluster_map,
         cluster_features=cluster_features,
+        centroids_unscaled=centroids_unscaled,
+        scaler_scale=scaler_scale,
     )
 
 
 def clear_artifacts_cache() -> None:
     load_artifacts.cache_clear()
-
-
-def _distances_to_scores(
-    dists: NDArray[np.floating],
-    label_map: dict[int, str],
-) -> tuple[ArchetypeScore, ...]:
-    order = np.argsort(dists)
-    return tuple(
-        ArchetypeScore(label_map[int(i)], float(dists[int(i)]))
-        for i in order
-    )
 
 
 def _confidence(primary_d: float, secondary_d: float | None) -> str:
@@ -122,17 +113,24 @@ def predict_from_features(
     """Score a feature dict (from CSV row or slider override)."""
     bundle = load_artifacts(artifacts_dir)
     cols = bundle.cluster_features or CLUSTER_FEATURES
-    x = np.array([[float(feature_row[c]) for c in cols]], dtype=float)
-    x_scaled = bundle.scaler.transform(x)
-    centroids = bundle.kmeans.cluster_centers_
-    dists = np.linalg.norm(centroids - x_scaled, axis=1)
+    labels_by_cluster = [bundle.label_map[i] for i in sorted(bundle.label_map)]
+    x = np.array([float(feature_row[c]) for c in cols], dtype=float)
+    centroid_vectors = np.array(
+        [[float(bundle.centroids_unscaled[label][c]) for c in cols] for label in labels_by_cluster],
+        dtype=float,
+    )
+    scales = np.array([max(bundle.scaler_scale.get(c, 1.0), 1e-9) for c in cols], dtype=float)
+    dists = np.linalg.norm((centroid_vectors - x) / scales, axis=1)
     order = np.argsort(dists)
     primary_idx = int(order[0])
     secondary_idx = int(order[1]) if len(order) > 1 else primary_idx
     primary_dist = float(dists[primary_idx])
     secondary_dist = float(dists[secondary_idx])
-    label = bundle.label_map[primary_idx]
-    scores = _distances_to_scores(dists, bundle.label_map)
+    label = labels_by_cluster[primary_idx]
+    scores = tuple(
+        ArchetypeScore(labels_by_cluster[int(i)], float(dists[int(i)]))
+        for i in order
+    )
     overlays = tuple(
         compute_ml_overlays(
             feature_row,
@@ -144,7 +142,7 @@ def predict_from_features(
     return MlPrediction(
         subscriber_id=subscriber_id,
         primary_label=label,
-        cluster_idx=primary_idx,
+        cluster_idx=int(sorted(bundle.label_map)[primary_idx]),
         distances=scores,
         overlays=overlays,
         confidence=_confidence(primary_dist, secondary_dist),
