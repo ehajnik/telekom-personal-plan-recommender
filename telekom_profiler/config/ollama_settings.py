@@ -22,7 +22,7 @@ OLLAMA_ENABLED: Final[bool] = os.getenv("OLLAMA_ENABLED", "true").lower() in (
     "yes",
 )
 
-# Defaults tuned for llama3.2:3b on CPU-only workstations (no dedicated GPU).
+# Defaults tuned for qwen2.5:7b on CPU-only workstations with fallback enabled.
 OLLAMA_TIMEOUT: Final[float] = float(os.getenv("OLLAMA_TIMEOUT", "180"))
 OLLAMA_NUM_PREDICT: Final[int] = int(os.getenv("OLLAMA_NUM_PREDICT", "6144"))
 
@@ -31,7 +31,7 @@ OLLAMA_FALLBACK_ON_ERROR: Final[bool] = os.getenv(
 ).lower() in ("1", "true", "yes")
 
 _LLM = llm_config()
-_DEFAULT_MODEL = str(_LLM.get("default_model", "ollama/llama3.2:3b"))
+_DEFAULT_MODEL = str(_LLM.get("default_model", "ollama/qwen2.5:7b"))
 
 
 def _normalize_model_id(model: str) -> str:

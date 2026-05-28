@@ -13,10 +13,10 @@ Operational procedures for local LLM inference in the Private Customer Profiler.
 curl -s http://localhost:11434/api/tags
 
 # Model installed?
-ollama list | grep -F "${OLLAMA_MODEL:-llama3.2:3b}"
+ollama list | grep -F "${OLLAMA_MODEL:-qwen2.5:7b}"
 
 # Install default model if missing
-ollama pull llama3.2:3b
+ollama pull qwen2.5:7b
 ```
 
 Ensure `ollama serve` is running when `OLLAMA_ENABLED=true`.
@@ -28,7 +28,7 @@ Ensure `ollama serve` is running when `OLLAMA_ENABLED=true`.
 | Variable | Default | If misconfigured |
 |----------|---------|------------------|
 | `OLLAMA_HOST` | `http://localhost:11434` | Start Ollama or correct service URL |
-| `OLLAMA_MODEL` | `ollama/llama3.2:3b` | `ollama pull <model-without-prefix>` |
+| `OLLAMA_MODEL` | `ollama/qwen2.5:7b` | `ollama pull <model-without-prefix>` |
 | `LITELLM_API_BASE` | _(empty)_ | Optional custom endpoint for non-Ollama providers |
 | `OLLAMA_ENABLED` | `true` | Set `false` for rule-based-only operation |
 | `OLLAMA_TIMEOUT` | `180` | Raise if a larger model still times out on CPU |
@@ -91,7 +91,7 @@ Use to validate gateway connectivity and prompt behaviour without masking errors
 With `LOG_LEVEL=INFO`, successful completions log:
 
 ```
-INFO telekom_profiler.llm.client: LiteLLM completion ok model=ollama/llama3.2:3b duration_ms=...
+INFO telekom_profiler.llm.client: LiteLLM completion ok model=ollama/qwen2.5:7b duration_ms=...
 ```
 
 Fallback activation logs warnings from `telekom_profiler.services.fallback`.
@@ -127,32 +127,31 @@ Copy `.env.example` (CPU-tuned defaults) and pull the configured model:
 ```bash
 cp .env.example .env
 ollama serve   # separate terminal
-ollama pull llama3.2:3b
+ollama pull qwen2.5:7b
 ```
 
 Default `.env` values:
 
 ```env
-OLLAMA_MODEL=ollama/llama3.2:3b
+OLLAMA_MODEL=ollama/qwen2.5:7b
 OLLAMA_TIMEOUT=180
 OLLAMA_NUM_PREDICT=2048
 OLLAMA_FALLBACK_ON_ERROR=true
 ```
 
-Each full UI flow runs **two** sequential LLM calls (profile, then offer). On CPU with `llama3.2:3b` each call typically completes in tens of seconds; lowering `OLLAMA_NUM_PREDICT` or disabling the LLM reduces wait time further.
+Each full UI flow runs **two** sequential LLM calls (profile, then offer). On CPU with `qwen2.5:7b` each call can take longer than the old 1B/3B defaults; lowering `OLLAMA_NUM_PREDICT` or disabling the LLM reduces wait time further.
 
 ### 8.2 Model selection
 
 | Model id | When to use |
 |-----------|-------------|
-| `ollama/llama3.2:3b` | Default; CPU-friendly (~2 GB on disk, fits in 8 GB RAM); default `OLLAMA_TIMEOUT=180` |
-| `ollama/llama3.2:1b` | Tighter RAM or faster workshops; shorter / more generic narratives |
-| `ollama/qwen2.5:3b`, `ollama/phi3:mini` | Alternatives with similar size class |
-| `openai/gpt-4o-mini` | Cloud API model via OpenAI key; generally paid usage |
-| `anthropic/claude-3-5-haiku-latest` | Cloud API model via Anthropic key; generally paid usage |
-| `gemini/gemini-1.5-flash` | Cloud API model via Gemini/Google key; billing may apply |
+| `ollama/qwen2.5:7b` | New default local model; better output quality than 1B/3B class with moderate CPU cost |
+| `ollama/llama3.1:8b` | Similar quality tier alternative; good general-purpose instruction following |
 | `ollama/mistral-nemo:12b` | Strongest narrative quality, but needs ~16 GB RAM; raise `OLLAMA_TIMEOUT` (e.g. 600) and pre-warm with `ollama run mistral-nemo:12b ""` to avoid runner-start timeouts |
-| `ollama/llama3:latest` (8B+) | **Not recommended** on CPU-only — timeouts and RAM pressure |
+| `openai/gpt-4.1-mini` | Cloud API model via OpenAI key; strong quality/latency tradeoff, paid usage |
+| `anthropic/claude-3-5-sonnet-latest` | Cloud API model via Anthropic key; high quality, paid usage |
+| `gemini/gemini-2.5-flash` | Cloud API model via Gemini/Google key; billing may apply |
+| `ollama/llama3:latest` (8B+) | Feasible with enough RAM, but slower on CPU-only systems |
 
 Deterministic archetype labels always come from `ScoringResult` in code/ML, not from the LLM ([ADR 001](adr/001-scoring-in-code.md)).
 

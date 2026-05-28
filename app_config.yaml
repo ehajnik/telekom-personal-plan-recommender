@@ -115,14 +115,13 @@ training:
   random_state: 42
   offline_only: true
 llm:
-  default_model: ollama/llama3.2:3b
+  default_model: ollama/qwen2.5:7b
   models:
-    - ollama/llama3.2:3b
-    - ollama/llama3.2:1b
-    - ollama/qwen2.5:3b
-    - ollama/phi3:mini
-    - openai/gpt-4o-mini
-    - anthropic/claude-3-5-haiku-latest
+    - ollama/qwen2.5:7b
+    - ollama/llama3.1:8b
+    - ollama/mistral-nemo:12b
+    - openai/gpt-4.1-mini
+    - anthropic/claude-3-5-sonnet-latest
     - gemini/gemini-2.5-flash
 ui:
   title: Private Customer Profiler

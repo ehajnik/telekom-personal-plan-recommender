@@ -16,6 +16,22 @@ The solution is delivered as an installable Python package (`telekom_profiler`) 
 
 ---
 
+## Current project state
+
+This repository is in a **stabilized prototype** phase: the core profiling and recommendation flow is functional and test-covered, while enterprise integration concerns are intentionally deferred.
+
+| Area | Current state | Why it is this way |
+|------|---------------|--------------------|
+| Core domain scoring | Stable and deterministic | Sales workflows need explainable, repeatable outputs; deterministic scoring prevents narrative drift from changing profile assignments. |
+| UI workflow | Stable for workshops and internal demos | Product validation and stakeholder feedback are faster with a runnable end-to-end UI than with backend-only prototypes. |
+| ML segmentation runtime | Frozen-centroid inference from committed artifacts | Runtime retraining was excluded to avoid environment-dependent behavior and to keep CI/unit assertions predictable. |
+| LLM narrative layer | Optional enhancement with rule-based fallback | Narrative quality improves user experience, but business decisions must not depend on external model availability or latency. |
+| External integration (CRM/BSS/SSO/audit) | Not production-complete | Integration and governance requirements are organization-specific and are separated from the prototype to reduce coupling early. |
+
+**Bottom line:** this codebase is optimized for correctness and explainability of recommendation logic first, and for enterprise hardening second.
+
+---
+
 ## Business capability
 
 | Capability | Description |

@@ -15,7 +15,7 @@ cp .env.example .env
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API base URL (no trailing slash) |
-| `OLLAMA_MODEL` | `ollama/llama3.2:3b` | Startup model id for LiteLLM (provider prefix required); must exist on the host (`ollama pull`) |
+| `OLLAMA_MODEL` | `ollama/qwen2.5:7b` | Startup model id for LiteLLM (provider prefix required); must exist on the host (`ollama pull`) |
 | `LITELLM_API_BASE` | _(empty)_ | Optional custom base URL for non-Ollama LiteLLM providers/proxies |
 | `OLLAMA_ENABLED` | `true` | When `false`, selects rule-based profile and offer providers |
 | `OLLAMA_TIMEOUT` | `180` | LiteLLM request timeout (seconds); raise for larger models on CPU |
@@ -52,12 +52,12 @@ The repository defaults assume **LiteLLM routed to local Ollama**. Archetype sco
 
 | Goal | Suggested `OLLAMA_MODEL` | Notes |
 |------|--------------------------|-------|
-| Default balance | `ollama/llama3.2:3b` | Matches `.env.example`; `ollama pull llama3.2:3b` |
-| Even less RAM | `ollama/llama3.2:1b`, `ollama/phi3:mini` | Faster cold start; lower narrative quality |
-| Higher quality (more RAM) | `ollama/qwen2.5:3b`, `ollama/mistral-nemo:12b` | Raise `OLLAMA_TIMEOUT` accordingly; `mistral-nemo:12b` needs ~16 GB RAM |
+| Default quality | `ollama/qwen2.5:7b` | Matches `.env.example`; stronger narratives than 1B/3B class models |
+| Similar quality alternative | `ollama/llama3.1:8b` | Good general reasoning; comparable hardware profile |
+| Highest local quality | `ollama/mistral-nemo:12b` | Raise `OLLAMA_TIMEOUT`; needs ~16 GB RAM and benefits from pre-warm |
 | No local LLM | — | `OLLAMA_ENABLED=false` (recommended for CI) |
 
-Keep `OLLAMA_FALLBACK_ON_ERROR=true` on laptops so timeouts fall back to rule-based providers. Avoid 7B+ models (for example `llama3:latest`, `mistral-nemo:12b`) on CPU-only hosts unless you also raise `OLLAMA_TIMEOUT` and have the RAM headroom.
+Keep `OLLAMA_FALLBACK_ON_ERROR=true` on laptops so timeouts fall back to rule-based providers. For `mistral-nemo:12b`, raise `OLLAMA_TIMEOUT` and ensure RAM headroom.
 
 Operational detail: [Ollama runbook — CPU-only](runbook-ollama.md#8-cpu-only-workstations-no-dedicated-gpu).
 

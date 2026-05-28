@@ -2,6 +2,17 @@
 
 Technical documentation for the **Private Customer Profiler** — a Telekom Mobile B2C application for usage-driven customer profiling and tariff recommendation.
 
+## Current state at a glance
+
+The documentation reflects a **working internal prototype** with deterministic business logic and optional LLM enrichment.
+
+- Profile/offer flow is feature-complete for workshops and internal validation.
+- Scoring is deterministic by design; LLM output is presentation, not ground truth.
+- ML artifacts are frozen for runtime consistency; retraining is a controlled maintenance task.
+- Production controls (SSO, audit logging, secret management, full compliance hardening) are documented as target-state work, not delivered runtime capabilities.
+
+Why this framing: teams can safely iterate on business behavior and integration boundaries without conflating demo-readiness with production-readiness.
+
 ## Document catalogue
 
 | Document | Primary audience | Purpose |

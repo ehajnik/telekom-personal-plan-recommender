@@ -25,6 +25,20 @@ Design rationale for deterministic scoring: [ADR 001](adr/001-scoring-in-code.md
 
 ---
 
+## 2.1 Why the architecture looks like this
+
+The current architecture is intentionally biased toward **auditability and replaceability** over short-term model sophistication:
+
+- Deterministic scoring stays in code so profile labels and confidence remain explainable in sales and governance discussions.
+- LLM usage is isolated behind providers so model/vendor changes do not force UI or domain rewrites.
+- Fallback providers are first-class because local model serving on laptops is variable and must not block the business flow.
+- Config is centralized (`app_config.yaml` + env) to reduce "hidden behavior" and make workshop behavior reproducible.
+- Runtime ML is frozen to avoid accidental drift across environments and to keep CI expectations stable.
+
+This is a deliberate tradeoff: slightly less automation in exchange for operational predictability and safer industrialization.
+
+---
+
 ## 3. Layered structure
 
 ```mermaid

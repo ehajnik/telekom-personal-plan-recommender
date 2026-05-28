@@ -26,9 +26,9 @@ cd telekom-personal-plan-recommender
 # Or: make setup
 
 source .venv/bin/activate
-# Optional LLM path (default: llama3.2:3b; 180s timeout, 2048 completion tokens):
+# Optional LLM path (default: qwen2.5:7b; tune timeout/tokens in .env for your hardware):
 ollama serve
-ollama pull llama3.2:3b
+ollama pull qwen2.5:7b
 ```
 
 For CPU-only hosts without a dedicated GPU, see [Ollama runbook § 8](runbook-ollama.md#8-cpu-only-workstations-no-dedicated-gpu). Use `OLLAMA_ENABLED=false` when you do not need LLM narratives.
@@ -109,6 +109,19 @@ The MOSTLY AI workflow is optional and writes an engine workspace under `artifac
 - Profile text/signatures/defaults are curated and hardcoded; they are not generated dynamically from cluster members.
 
 Set `PROFILER_MODE=rules` to force legacy L1 archetypes (used in unit tests). Default `auto` selects ML when artifacts exist.
+
+---
+
+## 4.1 Why ML is operated as "train then freeze"
+
+The project intentionally does **not** retrain in normal runtime:
+
+- Teams need consistent archetype assignment during demos, QA, and stakeholder review.
+- Unit tests and sanity checks must stay deterministic even when local environments differ.
+- Regulated enterprise rollouts require explicit promotion of model/data updates rather than implicit runtime learning.
+- Profile wording and UX defaults are curated by humans; auto-refreshing clusters without curation creates business-language drift.
+
+Treat retraining as a controlled maintenance event, then commit refreshed artifacts/config together.
 
 ---
 
