@@ -15,7 +15,7 @@
   ],
   "labels": [
     "Voice-centric",
-    "Value optimization candidate",
+    "Broad usage profile",
     "Streaming & data-heavy",
     "Light / occasional user",
     "Roaming / travel-heavy"
@@ -35,7 +35,7 @@
       "session_intensity": 179.2168039959106,
       "plan_usage_gap": 1.39113355182512
     },
-    "Value optimization candidate": {
+    "Broad usage profile": {
       "data_gb_mean": 64.88772198642387,
       "voice_min_mean": 623.1675896098876,
       "sms_count_mean": 90.78380746792278,

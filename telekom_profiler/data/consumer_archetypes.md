@@ -6,7 +6,7 @@
 | **Voice-centric** | Low–medium | High (800+ min) | Medium–high | Low | Voice-first usage with moderate messaging |
 | **Light / occasional user** | Low (<15 GB) | Low–medium | Low | Rare | Cost-sensitive, basic smartphone use |
 | **Roaming / travel-heavy** | Medium | Medium | Low | High (10+ days/mo) | Cross-border travel, EU/non-EU mix |
-| **Value optimization candidate** | Medium-high | Medium | Medium-high | Low-medium | High plan gap signals; candidate for plan rightsizing |
+| **Broad usage profile** | Medium-high | Medium | Medium-high | Low-medium | Broad engagement across services with mixed usage intensity |
 
 **Overlays (may combine with any archetype):**
 - **Data growth** — positive data trend; candidate for higher data tier or boosters

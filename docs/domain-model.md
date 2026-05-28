@@ -74,7 +74,7 @@ Runtime ML mode uses five fixed labels from `app_config.yaml`:
 | **Streaming & data-heavy** | Very high data and session intensity |
 | **Voice-centric** | High voice minutes with low-to-moderate data |
 | **Roaming / travel-heavy** | Frequent roaming and multiple countries visited |
-| **Value optimization candidate** | High overall engagement and elevated plan gap signals |
+| **Broad usage profile** | High overall engagement with mixed usage intensity |
 
 Centroids and profile metadata are hardcoded in root configuration and profile characteristics modules, then mapped once during training.
 If you retrain on a new dataset, you must refresh both hardcoded layers and corresponding frozen artifacts to avoid drift.

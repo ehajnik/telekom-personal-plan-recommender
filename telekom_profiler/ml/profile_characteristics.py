@@ -40,7 +40,7 @@ PROFILE_SIGNATURES: dict[str, list[str]] = {
         "Many countries visited",
         "Mix of data and voice while abroad",
     ],
-    "Value optimization candidate": [
+    "Broad usage profile": [
         "High engagement across data, voice, and messaging",
         "Upper-mid plan tier with strong regular usage",
         "Notably high session intensity and app activity",
@@ -69,7 +69,7 @@ PROFILE_EXAMPLES: dict[str, list[str]] = {
         "Frequent leisure traveller",
         "International sales rep",
     ],
-    "Value optimization candidate": [
+    "Broad usage profile": [
         "Always-connected digital-heavy user",
         "Power communicator using data plus voice daily",
         "Premium-plan customer with broad service usage",
@@ -109,7 +109,7 @@ HARD_CODED_SLIDER_DEFAULTS: dict[str, dict[str, int]] = {
         "data_trend": 6,
         "voice_trend": 0,
     },
-    "Value optimization candidate": {
+    "Broad usage profile": {
         "data_gb": 65,
         "voice_min": 620,
         "sms_count": 90,

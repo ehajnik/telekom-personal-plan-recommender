@@ -101,6 +101,6 @@ Preise und GB je Land/LG: [ebs01.telekom.de/preisinformationen-ausland](https://
 - **Streaming & data-heavy** → MagentaMobil L/XL oder Prepaid XL/Max
 - **Voice-centric** → MagentaMobil S/M (Flat DE); bei hoher Auslandssprache → L (unbegrenzt EU/CH/GB/TR)
 - **Roaming / travel-heavy** → MagentaMobil L/XL + Travel & Surf Pass; prüfen LG 1 vs 2/3
-- **Value optimization candidate** → Downgrade Stufe oder Prepaid; **Flex** ohne Bindung
+- **Broad usage profile** → Downgrade Stufe oder Prepaid; **Flex** ohne Bindung
 - **Mehrere Geräte** → PlusKarte / PlusKarte+ statt fiktives „Family pool“
 - **18–27** → MagentaMobil Young (höheres Datenvolumen, niedrigerer Grundpreis)

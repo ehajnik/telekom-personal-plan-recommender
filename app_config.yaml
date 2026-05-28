@@ -5,13 +5,13 @@ model:
     - Streaming & data-heavy
     - Voice-centric
     - Roaming / travel-heavy
-    - Value optimization candidate
+    - Broad usage profile
   profile_emoji:
     Light / occasional user: "🌱"
     Streaming & data-heavy: "📺"
     Voice-centric: "📞"
     Roaming / travel-heavy: "✈️"
-    Value optimization candidate: "💤"
+    Broad usage profile: "💤"
   cluster_features:
     - data_gb_mean
     - voice_min_mean
@@ -30,7 +30,7 @@ model:
     Streaming & data-heavy: data_gb_mean
     Voice-centric: voice_min_mean
     Roaming / travel-heavy: roaming_intensity
-    Value optimization candidate: plan_usage_gap
+    Broad usage profile: plan_usage_gap
   fixed_centroids:
     Light / occasional user:
       data_gb_mean: 4.97
@@ -76,7 +76,7 @@ model:
       data_per_active_line: 39.74
       session_intensity: 8081.28
       plan_usage_gap: 1.72
-    Value optimization candidate:
+    Broad usage profile:
       data_gb_mean: 64.89
       voice_min_mean: 623.17
       sms_count_mean: 90.78

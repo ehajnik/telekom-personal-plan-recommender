@@ -121,7 +121,7 @@ _ML_PROFILE_CONTEXT: dict[str, str] = {
     "Streaming & data-heavy": "High data and session intensity; unlimited or large buckets.",
     "Voice-centric": "Voice-first; moderate data; flat domestic voice important.",
     "Roaming / travel-heavy": "Frequent international travel; roaming packs essential.",
-    "Value optimization candidate": "Broad engagement suggests plan-fit optimization opportunity.",
+    "Broad usage profile": "Broad engagement across services with mixed usage intensity.",
 }
 
 
