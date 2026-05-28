@@ -198,7 +198,14 @@ footer {
   margin: 0 !important;
   font-size: 0.9rem !important;
   font-weight: 600 !important;
-  color: var(--dt-text) !important;
+  color: var(--dt-magenta) !important;
+}
+
+.gradio-container .block.dt-section-title,
+.gradio-container .block.dt-section-title .md *,
+.gradio-container .block.dt-section-title .prose * {
+  color: var(--dt-magenta) !important;
+  border-bottom-color: var(--dt-magenta) !important;
 }
 
 /* ── Individual sliders (bordered, spaced) ────────────────────────────────── */
@@ -427,6 +434,11 @@ footer {
 
 .gradio-container .gr-column.dt-result-col {
   gap: 0.5rem !important;
+}
+
+.gradio-container .gr-column.dt-result-col .block.dt-section-title {
+  color: var(--dt-magenta) !important;
+  border-bottom-color: var(--dt-magenta) !important;
 }
 
 .gradio-container .gr-column.dt-result-col .block.dt-section-title .md,
