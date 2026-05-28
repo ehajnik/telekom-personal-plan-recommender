@@ -32,6 +32,17 @@ def _missing_headings(content: str, required_headings: tuple[str, ...]) -> list[
     return [heading for heading in required_headings if heading not in content]
 
 
+def _looks_like_prompt_echo(content: str) -> bool:
+    text = content.lower()
+    return (
+        "## your task" in text
+        and "## input:" in text
+        or "{customer_profile}" in text
+        or "{tariffs_and_options}" in text
+        or "{slider_features}" in text
+    )
+
+
 def chat_completion(
     user_prompt: str,
     *,
@@ -137,6 +148,23 @@ def chat_completion(
             tail_kwargs["messages"] = tail_messages
             tail_kwargs["max_tokens"] = tail_tokens
             response = completion(**tail_kwargs)
+            content = response.choices[0].message.content
+        if _looks_like_prompt_echo(str(content or "")):
+            echo_tokens = min(max(int(OLLAMA_NUM_PREDICT * 1.5), OLLAMA_NUM_PREDICT + 1024), 6144)
+            echo_messages = [
+                {
+                    "role": "user",
+                    "content": (
+                        f"{user_prompt}\n\n"
+                        "IMPORTANT: Do not repeat or quote the prompt/template. "
+                        "Return only the final completed report content."
+                    ),
+                }
+            ]
+            echo_kwargs = dict(completion_kwargs)
+            echo_kwargs["messages"] = echo_messages
+            echo_kwargs["max_tokens"] = echo_tokens
+            response = completion(**echo_kwargs)
             content = response.choices[0].message.content
         if not content or not str(content).strip():
             raise RuntimeError("LLM returned an empty response.")
