@@ -58,6 +58,17 @@ Coverage limits, **EU fair-use** on unlimited tiers, **Roaming-Ländergruppen** 
 ### 6. Next steps for the agent
 2–3 concrete actions (e.g. check current contract end date, offer app tariff change, schedule shop appointment for device upgrade).
 
+**Formatting requirement (strict):** Use the exact numbered section headings below, in this exact order, each as a Markdown heading:
+
+- `### 1. Recommended main tariff`
+- `### 2. Recommended add-ons and options`
+- `### 3. Contract and channel notes`
+- `### 4. Indicative pricing`
+- `### 5. Important caveats`
+- `### 6. Next steps for the agent`
+
+Do not omit any section. Do not stop mid-sentence.
+
 ---
 
 **Language:** Write the entire report in **English** (product names and SKUs may stay as in the catalog; prices may use “brutto” where shown).
