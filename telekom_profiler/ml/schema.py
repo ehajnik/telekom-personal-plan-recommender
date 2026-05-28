@@ -30,19 +30,14 @@ RAW_NUMERIC_COLS: Final[tuple[str, ...]] = (
     "lines_active",
 )
 
-# Seven seed archetypes used only in synthetic generation. The trainer chooses
-# k via elbow + silhouette over ``[k_min, k_max]`` (default ``[2, 10]``); on the
-# standard panel auto-selection settles around k = 5-6 depending on size and
-# seed, and the named ``PROFILE_LABELS`` are mapped to clusters via
-# ``train.assign_labels`` regardless of the chosen k.
+# Seed archetypes used only for synthetic panel generation.
+# Keep this aligned with the fixed five-profile runtime setup.
 SEED_ARCHETYPES: Final[tuple[str, ...]] = (
     "light_user",
     "streaming_heavy",
-    "international_traveler",
-    "voice_senior",
-    "family_multiline",
-    "price_sensitive",
-    "power_user_5g",
+    "voice_centric",
+    "travel_heavy",
+    "underutilized_overspending",
 )
 
 # Human-readable cluster labels assigned post-training via Hungarian matching

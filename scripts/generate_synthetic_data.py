@@ -17,13 +17,8 @@ if str(_REPO) not in sys.path:
 from telekom_profiler.ml.schema import MONTH_COL, SEED_ARCHETYPES, SUBSCRIBER_ID_COL
 from telekom_profiler.paths import RAW_DATA_DIR
 
-# Seven well-separated seed archetypes keyed by ``SEED_ARCHETYPES``. K-Means with
-# a fixed lower ``k`` still produces a usable silhouette by collapsing related
-# archetypes, but the elbow / silhouette diagnostic (``--clusters auto``) recovers
-# the underlying k ≈ 5-7 structure. The named ``PROFILE_LABELS`` are then matched
-# to clusters via Hungarian assignment in
-# ``telekom_profiler.ml.train.assign_labels``; any remaining clusters receive
-# auto-generated ``Profile N`` labels.
+# Fixed five seed archetypes keyed by ``SEED_ARCHETYPES``.
+# These ranges intentionally mirror the active five-profile taxonomy.
 ARCHETYPE_PARAMS: dict[str, dict[str, tuple[float, float]]] = {
     "light_user": {
         "data_gb": (0.5, 2.5),
@@ -36,64 +31,44 @@ ARCHETYPE_PARAMS: dict[str, dict[str, tuple[float, float]]] = {
         "plan_tier": (1.0, 1.0),
     },
     "streaming_heavy": {
-        "data_gb": (95.0, 125.0),
-        "voice_min": (150.0, 320.0),
-        "sms_count": (15.0, 45.0),
-        "roaming_days": (0.0, 2.0),
-        "countries_visited": (0.0, 1.5),
-        "lines_total": (1.0, 2.0),
-        "lines_active": (1.0, 2.0),
-        "plan_tier": (3.0, 4.0),
+        "data_gb": (100.0, 130.0),
+        "voice_min": (250.0, 420.0),
+        "sms_count": (20.0, 55.0),
+        "roaming_days": (1.0, 5.0),
+        "countries_visited": (0.5, 2.5),
+        "lines_total": (1.0, 1.0),
+        "lines_active": (1.0, 1.0),
+        "plan_tier": (3.5, 4.5),
     },
-    "international_traveler": {
-        "data_gb": (30.0, 50.0),
-        "voice_min": (200.0, 400.0),
-        "sms_count": (30.0, 65.0),
-        "roaming_days": (10.0, 16.0),
-        "countries_visited": (5.0, 9.0),
-        "lines_total": (1.0, 2.0),
-        "lines_active": (1.0, 2.0),
-        "plan_tier": (2.0, 3.0),
-    },
-    "voice_senior": {
-        "data_gb": (1.0, 10.0),
+    "voice_centric": {
+        "data_gb": (3.0, 9.0),
         "voice_min": (1200.0, 1800.0),
-        "sms_count": (40.0, 80.0),
+        "sms_count": (45.0, 80.0),
         "roaming_days": (0.0, 3.0),
         "countries_visited": (0.0, 1.5),
         "lines_total": (1.0, 1.0),
         "lines_active": (1.0, 1.0),
         "plan_tier": (1.0, 2.0),
     },
-    "family_multiline": {
-        "data_gb": (50.0, 80.0),
+    "travel_heavy": {
+        "data_gb": (30.0, 52.0),
+        "voice_min": (210.0, 420.0),
+        "sms_count": (30.0, 65.0),
+        "roaming_days": (10.0, 16.0),
+        "countries_visited": (5.0, 9.0),
+        "lines_total": (1.0, 1.0),
+        "lines_active": (1.0, 1.0),
+        "plan_tier": (2.0, 3.0),
+    },
+    "underutilized_overspending": {
+        "data_gb": (50.0, 82.0),
         "voice_min": (450.0, 800.0),
         "sms_count": (60.0, 120.0),
         "roaming_days": (2.0, 5.0),
         "countries_visited": (1.5, 3.5),
-        "lines_total": (3.0, 5.0),
-        "lines_active": (2.5, 3.5),
+        "lines_total": (1.0, 1.0),
+        "lines_active": (1.0, 1.0),
         "plan_tier": (3.0, 4.0),
-    },
-    "price_sensitive": {
-        "data_gb": (2.0, 12.0),
-        "voice_min": (70.0, 160.0),
-        "sms_count": (15.0, 45.0),
-        "roaming_days": (0.0, 2.0),
-        "countries_visited": (0.0, 1.0),
-        "lines_total": (1.0, 2.0),
-        "lines_active": (0.5, 1.0),
-        "plan_tier": (1.0, 1.0),
-    },
-    "power_user_5g": {
-        "data_gb": (110.0, 140.0),
-        "voice_min": (300.0, 550.0),
-        "sms_count": (30.0, 55.0),
-        "roaming_days": (3.0, 7.0),
-        "countries_visited": (2.0, 4.0),
-        "lines_total": (1.0, 2.0),
-        "lines_active": (1.0, 2.0),
-        "plan_tier": (4.0, 5.0),
     },
 }
 
