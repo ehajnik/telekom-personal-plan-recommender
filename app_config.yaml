@@ -115,7 +115,7 @@ training:
   random_state: 42
   offline_only: true
 llm:
-  default_model: ollama/qwen2.5:7b
+  default_model: ollama/llama3.2:3b
   models:
     - ollama/llama3.2:3b
     - ollama/qwen2.5:7b
