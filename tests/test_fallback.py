@@ -54,7 +54,7 @@ class FallbackProviderTests(unittest.TestCase):
         )
         usage = CustomerUsage.from_mapping(HEAVY_DATA)
         result = provider.profile(usage)
-        self.assertEqual(result.source, "ollama")
+        self.assertEqual(result.source, "litellm/ollama")
         self.assertIn("LLM", result.markdown)
 
     @patch(

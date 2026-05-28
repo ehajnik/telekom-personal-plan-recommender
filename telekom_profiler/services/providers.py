@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from telekom_profiler.config.ollama_settings import fallback_on_error, llm_enabled
+from telekom_profiler.config.ollama_settings import fallback_on_error, llm_enabled, model_provider
 from telekom_profiler.config.profiler_settings import effective_profiler_mode
 from telekom_profiler.domain.models import CustomerUsage, ProfileResult
 from telekom_profiler.domain.offers import render_offer_report
@@ -63,9 +63,10 @@ class RuleBasedProfileProvider:
 class LiteLLMProfileProvider:
     """Profile via LiteLLM; scoring metadata still computed deterministically."""
 
-    source = "ollama"
+    source = "litellm"
 
     def profile(self, usage: CustomerUsage) -> ProfileResult:
+        provider = model_provider()
         scoring = build_scoring_result(usage)
         metrics_block = format_distance_table(scoring) if scoring.all_distances else ""
         markdown = chat_completion(
@@ -78,7 +79,7 @@ class LiteLLMProfileProvider:
             markdown=markdown,
             usage=usage,
             scoring=scoring,
-            source=self.source,
+            source=f"{self.source}/{provider}",
         )
 
 
@@ -98,7 +99,7 @@ class RuleBasedOfferProvider:
 class LiteLLMOfferProvider:
     """Offer via LiteLLM using profile markdown and tariff reference data."""
 
-    source = "ollama"
+    source = "litellm"
 
     def recommend(self, profile: ProfileResult, usage: CustomerUsage) -> str:
         markdown = chat_completion(
