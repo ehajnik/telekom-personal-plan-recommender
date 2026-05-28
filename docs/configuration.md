@@ -15,9 +15,9 @@ cp .env.example .env
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API base URL (no trailing slash) |
-| `OLLAMA_MODEL` | `llama3.2:3b` | Model tag; must exist on the host (`ollama pull`) |
+| `OLLAMA_MODEL` | `ollama/llama3.2:3b` | Startup model id for LiteLLM (provider prefix required); must exist on the host (`ollama pull`) |
 | `OLLAMA_ENABLED` | `true` | When `false`, selects rule-based profile and offer providers |
-| `OLLAMA_TIMEOUT` | `180` | HTTP client timeout (seconds); raise for larger models on CPU |
+| `OLLAMA_TIMEOUT` | `180` | LiteLLM request timeout (seconds); raise for larger models on CPU |
 | `OLLAMA_NUM_PREDICT` | `2048` | Maximum completion tokens per request |
 | `OLLAMA_FALLBACK_ON_ERROR` | `true` | On LLM failure, delegate to rule-based providers |
 | `LOG_LEVEL` | `INFO` | Root log level (`DEBUG`, `WARNING`, `ERROR`, …) |
@@ -44,13 +44,13 @@ Failures surface in the UI instead of silently falling back. Use only when valid
 
 ### 1.3 CPU-only workstations (no dedicated GPU)
 
-The repository defaults assume **CPU inference** via local Ollama. Archetype scoring remains deterministic in code or ML; the LLM only generates narrative markdown.
+The repository defaults assume **LiteLLM routed to local Ollama**. Archetype scoring remains deterministic in code or ML; the LLM only generates narrative markdown.
 
 | Goal | Suggested `OLLAMA_MODEL` | Notes |
 |------|--------------------------|-------|
-| Default balance | `llama3.2:3b` | Matches `.env.example`; `ollama pull llama3.2:3b` |
-| Even less RAM | `llama3.2:1b`, `phi3:mini` | Faster cold start; lower narrative quality |
-| Higher quality (more RAM) | `qwen2.5:3b`, `mistral-nemo:12b` | Raise `OLLAMA_TIMEOUT` accordingly; `mistral-nemo:12b` needs ~16 GB RAM |
+| Default balance | `ollama/llama3.2:3b` | Matches `.env.example`; `ollama pull llama3.2:3b` |
+| Even less RAM | `ollama/llama3.2:1b`, `ollama/phi3:mini` | Faster cold start; lower narrative quality |
+| Higher quality (more RAM) | `ollama/qwen2.5:3b`, `ollama/mistral-nemo:12b` | Raise `OLLAMA_TIMEOUT` accordingly; `mistral-nemo:12b` needs ~16 GB RAM |
 | No local LLM | — | `OLLAMA_ENABLED=false` (recommended for CI) |
 
 Keep `OLLAMA_FALLBACK_ON_ERROR=true` on laptops so timeouts fall back to rule-based providers. Avoid 7B+ models (for example `llama3:latest`, `mistral-nemo:12b`) on CPU-only hosts unless you also raise `OLLAMA_TIMEOUT` and have the RAM headroom.
@@ -68,6 +68,7 @@ Primary runtime configuration is defined in the repository-root `app_config.yaml
 | `model` | Fixed profile count (`n_profiles`), labels, features, and canonical/frozen profile centroids |
 | `runtime` | Slider-to-feature defaults and ML overlay thresholds |
 | `training` | One-time training defaults (`min_silhouette`, random seed, offline flag) |
+| `llm` | Hardcoded UI model dropdown options and default model |
 | `ui` | UI title, slider bounds/defaults, and template presets |
 
 `telekom_profiler/config/sliders.py` now resolves slider and template values from `app_config.yaml`.

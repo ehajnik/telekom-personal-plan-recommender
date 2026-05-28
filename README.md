@@ -25,7 +25,7 @@ The solution is delivered as an installable Python package (`telekom_profiler`) 
 | Offer recommendation | Tariff and add-on suggestion against prototype catalogue |
 | Demo personas | Profile templates from ML training or legacy archetype presets |
 | ML segmentation | One-time K-Means training on 12-month usage with fixed `k=5`, Hungarian label matching, and frozen-centroid runtime inference |
-| Inference modes | Local Ollama (optional) with rule-based / ML fallback |
+| Inference modes | LiteLLM (Ollama endpoint by default) with runtime model dropdown and rule-based / ML fallback |
 
 ### Out of scope (current release)
 
@@ -137,7 +137,7 @@ Full detail: [docs/architecture.md](docs/architecture.md).
 
 | Area | Location |
 |------|----------|
-| Ollama / logging | `.env` (see `.env.example`) |
+| LiteLLM/Ollama runtime and logging | `.env` (see `.env.example`) |
 | Core model/runtime/UI knobs | `app_config.yaml` (repo root) |
 | Sliders and presets (resolved from root config) | `telekom_profiler/config/sliders.py` |
 | Business thresholds | `telekom_profiler/config/thresholds.py` |
@@ -145,6 +145,8 @@ Full detail: [docs/architecture.md](docs/architecture.md).
 | Reference catalogues | `telekom_profiler/data/` |
 
 Reference: [docs/configuration.md](docs/configuration.md). LLM operations: [docs/runbook-ollama.md](docs/runbook-ollama.md).
+
+The model list for the UI dropdown is centrally managed in `app_config.yaml` under `llm.models` with `llm.default_model`.
 
 ---
 

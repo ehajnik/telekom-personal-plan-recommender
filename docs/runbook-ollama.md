@@ -1,6 +1,6 @@
-# Ollama operations runbook
+# LiteLLM + Ollama operations runbook
 
-Operational procedures for local LLM inference in the Private Customer Profiler. For environment variable definitions, see [Configuration](configuration.md). For architecture context, see [Architecture](architecture.md).
+Operational procedures for local LLM inference in the Private Customer Profiler. Runtime requests are issued through LiteLLM, with local Ollama as the default provider endpoint. For environment variable definitions, see [Configuration](configuration.md). For architecture context, see [Architecture](architecture.md).
 
 **Audience:** developers, workshop facilitators, platform support.
 
@@ -28,7 +28,7 @@ Ensure `ollama serve` is running when `OLLAMA_ENABLED=true`.
 | Variable | Default | If misconfigured |
 |----------|---------|------------------|
 | `OLLAMA_HOST` | `http://localhost:11434` | Start Ollama or correct service URL |
-| `OLLAMA_MODEL` | `llama3.2:3b` | `ollama pull <model>` |
+| `OLLAMA_MODEL` | `ollama/llama3.2:3b` | `ollama pull <model-without-prefix>` |
 | `OLLAMA_ENABLED` | `true` | Set `false` for rule-based-only operation |
 | `OLLAMA_TIMEOUT` | `180` | Raise if a larger model still times out on CPU |
 | `OLLAMA_NUM_PREDICT` | `2048` | Increase for longer narratives; decrease to shorten latency |
@@ -87,7 +87,7 @@ Use to validate gateway connectivity and prompt behaviour without masking errors
 With `LOG_LEVEL=INFO`, successful completions log:
 
 ```
-INFO telekom_profiler.llm.client: Ollama completion ok model=llama3.2:3b duration_ms=...
+INFO telekom_profiler.llm.client: LiteLLM completion ok model=ollama/llama3.2:3b duration_ms=...
 ```
 
 Fallback activation logs warnings from `telekom_profiler.services.fallback`.
@@ -129,7 +129,7 @@ ollama pull llama3.2:3b
 Default `.env` values:
 
 ```env
-OLLAMA_MODEL=llama3.2:3b
+OLLAMA_MODEL=ollama/llama3.2:3b
 OLLAMA_TIMEOUT=180
 OLLAMA_NUM_PREDICT=2048
 OLLAMA_FALLBACK_ON_ERROR=true
@@ -139,13 +139,13 @@ Each full UI flow runs **two** sequential LLM calls (profile, then offer). On CP
 
 ### 8.2 Model selection
 
-| Model tag | When to use |
+| Model id | When to use |
 |-----------|-------------|
-| `llama3.2:3b` | Default; CPU-friendly (~2 GB on disk, fits in 8 GB RAM); default `OLLAMA_TIMEOUT=180` |
-| `llama3.2:1b` | Tighter RAM or faster workshops; shorter / more generic narratives |
-| `qwen2.5:3b`, `phi3:mini` | Alternatives with similar size class |
-| `mistral-nemo:12b` | Strongest narrative quality, but needs ~16 GB RAM; raise `OLLAMA_TIMEOUT` (e.g. 600) and pre-warm with `ollama run mistral-nemo:12b ""` to avoid runner-start timeouts |
-| `llama3:latest` (8B+) | **Not recommended** on CPU-only — timeouts and RAM pressure |
+| `ollama/llama3.2:3b` | Default; CPU-friendly (~2 GB on disk, fits in 8 GB RAM); default `OLLAMA_TIMEOUT=180` |
+| `ollama/llama3.2:1b` | Tighter RAM or faster workshops; shorter / more generic narratives |
+| `ollama/qwen2.5:3b`, `ollama/phi3:mini` | Alternatives with similar size class |
+| `ollama/mistral-nemo:12b` | Strongest narrative quality, but needs ~16 GB RAM; raise `OLLAMA_TIMEOUT` (e.g. 600) and pre-warm with `ollama run mistral-nemo:12b ""` to avoid runner-start timeouts |
+| `ollama/llama3:latest` (8B+) | **Not recommended** on CPU-only — timeouts and RAM pressure |
 
 Deterministic archetype labels always come from `ScoringResult` in code/ML, not from the LLM ([ADR 001](adr/001-scoring-in-code.md)).
 
