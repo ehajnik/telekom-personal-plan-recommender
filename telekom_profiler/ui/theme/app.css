@@ -456,12 +456,12 @@ footer {
   word-break: break-word !important;
 }
 
-.gradio-container .prose strong,
-.gradio-container .md strong {
+/* ── LLM output highlights ───────────────────────────────────────────────── */
+
+.gradio-container .block.dt-result-body .prose strong,
+.gradio-container .block.dt-result-body .md strong {
   color: var(--dt-magenta) !important;
 }
-
-/* ── LLM output highlights ───────────────────────────────────────────────── */
 
 /* Headings inside the LLM/result body use Telekom magenta */
 .gradio-container .block.dt-result-body .md h1,
