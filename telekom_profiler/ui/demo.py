@@ -234,13 +234,13 @@ def create_demo() -> gr.Blocks:
             run_profile,
             inputs=all_inputs,
             outputs=[profile_out, offer_out, profile_state, scoring_out],
-            show_progress="full",
+            show_progress="hidden",
         )
         offer_btn.click(
             generate_offer,
             inputs=[profile_state, *all_inputs],
             outputs=offer_out,
-            show_progress="full",
+            show_progress="hidden",
         )
 
     return demo
