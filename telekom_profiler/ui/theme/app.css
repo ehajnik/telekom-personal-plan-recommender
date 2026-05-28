@@ -420,12 +420,22 @@ footer {
   color: var(--dt-text) !important;
 }
 
+.gradio-container .block.dt-scoring-summary .md strong,
+.gradio-container .block.dt-scoring-summary .prose strong {
+  color: var(--dt-magenta) !important;
+}
+
 .gradio-container .gr-column.dt-result-col {
   gap: 0.5rem !important;
 }
 
 .gradio-container .gr-column.dt-result-col .block.dt-section-title .md,
 .gradio-container .gr-column.dt-result-col .block.dt-section-title .prose {
+  color: var(--dt-magenta) !important;
+}
+
+.gradio-container .gr-column.dt-result-col .block.dt-section-title .md strong,
+.gradio-container .gr-column.dt-result-col .block.dt-section-title .prose strong {
   color: var(--dt-magenta) !important;
 }
 
