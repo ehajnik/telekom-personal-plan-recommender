@@ -304,6 +304,11 @@ footer {
   color: var(--dt-muted) !important;
 }
 
+.gradio-container .block.dt-inference-mode .md strong,
+.gradio-container .block.dt-inference-mode .prose strong {
+  color: var(--dt-magenta) !important;
+}
+
 /* ── Profile template dropdown: panel border only (not around input text) ─ */
 
 .gradio-container .block.dt-template-dropdown {
@@ -419,6 +424,11 @@ footer {
   gap: 0.5rem !important;
 }
 
+.gradio-container .gr-column.dt-result-col .block.dt-section-title .md,
+.gradio-container .gr-column.dt-result-col .block.dt-section-title .prose {
+  color: var(--dt-magenta) !important;
+}
+
 .gradio-container .block.dt-result-body {
   min-height: 40rem !important;
   height: auto !important;
@@ -512,9 +522,9 @@ footer {
 
 .dark .gradio-container .block.dt-result-body .md :not(pre) > code,
 .dark .gradio-container .block.dt-result-body .prose :not(pre) > code {
-  color: #f48bbf !important;
-  background: rgba(244, 139, 191, 0.12) !important;
-  border-color: rgba(244, 139, 191, 0.25) !important;
+  color: var(--dt-magenta) !important;
+  background: rgba(226, 0, 116, 0.12) !important;
+  border-color: rgba(226, 0, 116, 0.25) !important;
 }
 
 .dark .gradio-container .block.dt-result-body .md mark,
@@ -522,7 +532,7 @@ footer {
 .dark .gradio-container .prose mark,
 .dark .gradio-container .md mark {
   background: transparent !important;
-  color: #f48bbf !important;
+  color: var(--dt-magenta) !important;
 }
 
 /* Table header cells in results use a magenta accent */
