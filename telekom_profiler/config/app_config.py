@@ -35,6 +35,10 @@ def training_config() -> dict[str, Any]:
     return dict(load_app_config().get("training", {}))
 
 
+def llm_config() -> dict[str, Any]:
+    return dict(load_app_config().get("llm", {}))
+
+
 def ui_config() -> dict[str, Any]:
     return dict(load_app_config().get("ui", {}))
 

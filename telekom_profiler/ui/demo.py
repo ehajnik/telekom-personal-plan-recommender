@@ -17,7 +17,13 @@ from telekom_profiler.config import (
     profile_template_choices,
 )
 from telekom_profiler.config.app_config import ui_config
-from telekom_profiler.config.ollama_settings import fallback_on_error, llm_enabled
+from telekom_profiler.config.ollama_settings import (
+    available_models,
+    fallback_on_error,
+    llm_enabled,
+    selected_model,
+    set_selected_model,
+)
 from telekom_profiler.domain.models import CustomerUsage, ProfileResult
 from telekom_profiler.logging_config import configure_logging
 from telekom_profiler.paths import ASSETS_DIR
@@ -94,6 +100,13 @@ def load_profile_preset(profile_name: str, *current_values: float) -> list[float
     return [float(preset.get(key, current)) for key, current in zip(SLIDER_KEYS, current_values)]
 
 
+def set_ui_model(model_name: str) -> str:
+    if not llm_enabled():
+        return inference_mode_label()
+    set_selected_model(model_name)
+    return inference_mode_label()
+
+
 def run_profile(*values: float) -> tuple[str, str, dict | None, str]:
     usage = _slider_data(*values)
     try:
@@ -134,6 +147,7 @@ def generate_offer(
 def create_demo() -> gr.Blocks:
     title = str(ui_config().get("title", "Private Customer Profiler"))
     template_choices = profile_template_choices()
+    llm_models = list(available_models())
 
     with gr.Blocks(title=title, fill_width=True) as demo:
         profile_state = gr.State(value=None)
@@ -151,6 +165,13 @@ def create_demo() -> gr.Blocks:
                     value=CUSTOM_PROFILE,
                     label="Profile template",
                     elem_classes=["dt-template-dropdown"],
+                )
+                model_pick = gr.Dropdown(
+                    choices=llm_models,
+                    value=selected_model(),
+                    label="LLM model",
+                    elem_classes=["dt-template-dropdown"],
+                    interactive=llm_enabled(),
                 )
 
             with gr.Row(elem_classes=["dt-grid-row", "dt-sliders-row"]):
@@ -203,6 +224,11 @@ def create_demo() -> gr.Blocks:
             load_profile_preset,
             inputs=[profile_pick, *all_inputs],
             outputs=all_inputs,
+        )
+        model_pick.change(
+            set_ui_model,
+            inputs=[model_pick],
+            outputs=[scoring_out],
         )
         profile_btn.click(
             run_profile,

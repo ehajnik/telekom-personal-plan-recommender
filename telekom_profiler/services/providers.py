@@ -1,4 +1,4 @@
-"""Concrete profile and offer providers (Ollama LLM and rule-based fallback)."""
+"""Concrete profile and offer providers (LiteLLM and rule-based fallback)."""
 
 from __future__ import annotations
 
@@ -35,8 +35,8 @@ class RuleBasedProfileProvider:
         )
 
 
-class OllamaProfileProvider:
-    """Profile via local Ollama; scoring metadata still computed deterministically."""
+class LiteLLMProfileProvider:
+    """Profile via LiteLLM; scoring metadata still computed deterministically."""
 
     source = "ollama"
 
@@ -67,8 +67,8 @@ class RuleBasedOfferProvider:
         )
 
 
-class OllamaOfferProvider:
-    """Offer via local Ollama using profile markdown and tariff reference data."""
+class LiteLLMOfferProvider:
+    """Offer via LiteLLM using profile markdown and tariff reference data."""
 
     source = "ollama"
 
@@ -84,29 +84,34 @@ def _base_profile_provider() -> ProfileProvider:
 
 
 def _profile_fallback_provider() -> ProfileProvider:
-    """Deterministic fallback when Ollama fails (matches active profiler mode)."""
+    """Deterministic fallback when LLM fails (matches active profiler mode)."""
     if effective_profiler_mode() == "ml":
         return MlProfileProvider()
     return RuleBasedProfileProvider()
 
 
 def default_profile_provider() -> ProfileProvider:
-    """Factory: ML or rules base; Ollama wraps when enabled."""
+    """Factory: ML or rules base; LiteLLM wraps when enabled."""
     base = _base_profile_provider()
     if not llm_enabled():
         return base
-    ollama = OllamaProfileProvider()
+    llm = LiteLLMProfileProvider()
     if fallback_on_error():
-        return FallbackProfileProvider(ollama, _profile_fallback_provider())
-    return ollama
+        return FallbackProfileProvider(llm, _profile_fallback_provider())
+    return llm
 
 
 def default_offer_provider() -> OfferProvider:
-    """Factory: Ollama (optionally wrapped) when enabled, otherwise rule-based."""
+    """Factory: LiteLLM (optionally wrapped) when enabled, otherwise rule-based."""
     rules = RuleBasedOfferProvider()
     if not llm_enabled():
         return rules
-    ollama = OllamaOfferProvider()
+    llm = LiteLLMOfferProvider()
     if fallback_on_error():
-        return FallbackOfferProvider(ollama, rules)
-    return ollama
+        return FallbackOfferProvider(llm, rules)
+    return llm
+
+
+# Backward-compatible aliases used in legacy tests/imports.
+OllamaProfileProvider = LiteLLMProfileProvider
+OllamaOfferProvider = LiteLLMOfferProvider

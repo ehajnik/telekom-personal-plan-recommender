@@ -12,7 +12,7 @@ def profile_customer(data: Mapping[str, float], *, engine: ProfilerEngine | None
     """
     Build a customer profile markdown string.
 
-    Uses Ollama when ``OLLAMA_ENABLED`` is true; otherwise rule-based rendering.
+    Uses LiteLLM when ``OLLAMA_ENABLED`` is true; otherwise rule-based rendering.
     For structured output (scoring metadata), use ``engine.profile()`` instead.
     """
     result = (engine or get_engine()).profile(data)

@@ -114,6 +114,13 @@ training:
   min_silhouette: 0.5
   random_state: 42
   offline_only: true
+llm:
+  default_model: ollama/llama3.2:3b
+  models:
+    - ollama/llama3.2:3b
+    - ollama/llama3.2:1b
+    - ollama/qwen2.5:3b
+    - ollama/phi3:mini
 ui:
   title: Private Customer Profiler
   usage_sliders:

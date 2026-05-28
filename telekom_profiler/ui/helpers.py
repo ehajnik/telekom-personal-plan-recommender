@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from telekom_profiler.config.ollama_settings import (
     OLLAMA_FALLBACK_ON_ERROR,
-    OLLAMA_MODEL,
     llm_enabled,
+    selected_model,
 )
 from telekom_profiler.config.profiler_settings import effective_profiler_mode
 from telekom_profiler.domain.models import ProfileResult
@@ -17,9 +17,9 @@ def inference_mode_label() -> str:
     if mode == "ml":
         base += " (K-Means artifacts)"
     if not llm_enabled():
-        return f"{base} · Inference: **rule-based** (Ollama disabled)"
+        return f"{base} · Inference: **rule-based** (LLM disabled)"
     fallback = "with rule-based fallback" if OLLAMA_FALLBACK_ON_ERROR else "no fallback"
-    return f"{base} · Inference: **Ollama** (`{OLLAMA_MODEL}`, {fallback})"
+    return f"{base} · Inference: **LiteLLM** (`{selected_model()}`, {fallback})"
 
 
 def format_scoring_summary(profile: ProfileResult | None) -> str:
