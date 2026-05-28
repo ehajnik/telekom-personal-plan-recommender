@@ -498,15 +498,15 @@ footer {
   font-size: 0.8em !important;
 }
 
-/* <mark> tags act as an explicit magenta highlighter */
+/* <mark> tags render as plain magenta text (no highlight box) */
 .gradio-container .block.dt-result-body .md mark,
 .gradio-container .block.dt-result-body .prose mark,
 .gradio-container .prose mark,
 .gradio-container .md mark {
-  background: rgba(226, 0, 116, 0.18) !important;
+  background: transparent !important;
   color: var(--dt-magenta) !important;
-  padding: 0 0.25rem !important;
-  border-radius: 3px !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
   font-weight: 600 !important;
 }
 
@@ -521,7 +521,7 @@ footer {
 .dark .gradio-container .block.dt-result-body .prose mark,
 .dark .gradio-container .prose mark,
 .dark .gradio-container .md mark {
-  background: rgba(244, 139, 191, 0.22) !important;
+  background: transparent !important;
   color: #f48bbf !important;
 }
 
