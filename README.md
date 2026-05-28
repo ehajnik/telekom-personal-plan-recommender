@@ -24,7 +24,7 @@ The solution is delivered as an installable Python package (`telekom_profiler`) 
 | Customer profiling | Markdown profile with archetype, overlays, narrative, and risks |
 | Offer recommendation | Tariff and add-on suggestion against prototype catalogue |
 | Demo personas | Profile templates from ML training or legacy archetype presets |
-| ML segmentation | K-Means on 12-month usage with elbow + silhouette `k`-selection and Hungarian label matching; trends drive overlays only |
+| ML segmentation | One-time K-Means training on 12-month usage with fixed `k=5`, Hungarian label matching, and frozen-centroid runtime inference |
 | Inference modes | Local Ollama (optional) with rule-based / ML fallback |
 
 ### Out of scope (current release)
@@ -55,13 +55,13 @@ cd telekom-personal-plan-recommender
 
 source .venv/bin/activate
 
-# ML PoC: generate 12-month panel and train K-Means (artifacts/ gitignored)
+# ML PoC: generate 12-month panel and train once (artifacts/ gitignored)
 python scripts/generate_synthetic_data.py --subscribers 1000
 # Optional: MOSTLY AI-backed generator (requires requirements-mostlyai.txt)
 # python scripts/generate_synthetic_data_mostlyai.py --subscribers 1000
-python scripts/subscriber_profiling.py            # auto-selects k via elbow + silhouette
-# python scripts/subscriber_profiling.py --clusters 5   # fixed-k override
-# writes artifacts/ (K-Means model, scaler, cluster map, k_selection.json, profile_characteristics.json)
+python scripts/subscriber_profiling.py
+# writes artifacts/ (frozen centroids, label map, cluster map, profile_characteristics.json)
+# runtime uses frozen centroids and does not retrain
 
 # Optional LLM (CPU-friendly defaults in .env.example):
 # ollama serve && ollama pull llama3.2:3b
@@ -132,7 +132,8 @@ Full detail: [docs/architecture.md](docs/architecture.md).
 | Area | Location |
 |------|----------|
 | Ollama / logging | `.env` (see `.env.example`) |
-| Sliders and presets | `telekom_profiler/config/sliders.py` |
+| Core model/runtime/UI knobs | `app_config.yaml` (repo root) |
+| Sliders and presets (resolved from root config) | `telekom_profiler/config/sliders.py` |
 | Business thresholds | `telekom_profiler/config/thresholds.py` |
 | Prompt templates | `telekom_profiler/prompts/templates/` |
 | Reference catalogues | `telekom_profiler/data/` |

@@ -64,32 +64,31 @@ Upstream systems should document aggregation rules (e.g. three-month average for
 
 ---
 
-## 3. Consumer archetypes
+## 3. ML profile taxonomy
 
-Five B2C usage archetypes are defined by centroids in `ARCHETYPE_CENTROIDS` (`domain/archetypes.py`). Each centroid is `(data_gb, voice_min, sms_count, roaming_days)`.
+Runtime ML mode uses five fixed labels from `app_config.yaml`:
 
-| Archetype | Typical signature |
-|-----------|-------------------|
-| **Streamer** | Very high data, moderate voice, low roaming |
-| **Chatterbox** | Low data, very high voice |
-| **Essential** | Low usage across dimensions |
-| **Roamer** | Elevated roaming days |
-| **Messenger** | High SMS, moderate data |
+| Label | Typical signature |
+|-------|-------------------|
+| **Light / occasional user** | Low baseline data/voice with minimal roaming |
+| **Streaming & data-heavy** | Very high data and session intensity |
+| **Voice-centric** | High voice minutes with low-to-moderate data |
+| **Roaming / travel-heavy** | Frequent roaming and multiple countries visited |
+| **Underutilized / overspending** | High overall engagement and elevated plan gap signals |
+
+Centroids and profile metadata are hardcoded in root configuration and profile characteristics modules, then mapped once during training.
 
 ### 3.1 Distance metric
 
-Usage values are normalised by slider maxima (`usage_slider_maxima()`), then compared to each centroid using **Manhattan (L1) distance**. The archetype with the lowest distance is the nearest match.
+ML inference (`ml/inference.py`) computes nearest-centroid distance over configured cluster features in scaled space:
 
-```python
-from telekom_profiler.domain import compute_archetype_distances
-
-ranked = compute_archetype_distances(usage.as_dict())
-primary_name, primary_distance = ranked[0]
-```
+- uses `artifacts/frozen_centroids.json` + `artifacts/cluster_features.json`
+- normalises by stored `scaler_scale`
+- picks nearest and second-nearest labels for confidence
 
 ### 3.2 Confidence
 
-`confidence_label(primary, secondary)` returns `High`, `Medium`, or `Low` based on the separation between the first and second ranked archetypes. Exposed on `ScoringResult.confidence` and injected into LLM prompts as `required_confidence`.
+`_confidence(primary, secondary)` in ML inference returns `High`, `Medium`, or `Low` from the primary/secondary distance ratio.
 
 ---
 
@@ -163,7 +162,7 @@ Rule-based `render_profile_report()` always uses `distances[0]` as the stated pr
 
 ## 8. UI profile templates
 
-`PROFILES` in `config/sliders.py` maps template names to partial slider overrides for workshops and UAT. Presets are aligned with archetype centroids for demonstration; production feeds should populate `CustomerUsage` directly from systems of record.
+UI templates are defined under `ui.profiles` in root `app_config.yaml` and resolved through `config/sliders.py`. Presets are aligned with fixed profile behavior for demonstration; production feeds should populate `CustomerUsage` directly from systems of record.
 
 ---
 

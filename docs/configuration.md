@@ -59,11 +59,22 @@ Operational detail: [Ollama runbook — CPU-only](runbook-ollama.md#8-cpu-only-w
 
 ---
 
-## 2. Slider and preset configuration
+## 2. Root YAML configuration
 
-Defined in `telekom_profiler/config/sliders.py`. Changes to maxima propagate to archetype normalisation via `usage_slider_maxima()`.
+Primary runtime configuration is defined in the repository-root `app_config.yaml` and loaded through `telekom_profiler/config/app_config.py`.
 
-### 2.1 Usage sliders
+| Section | Purpose |
+|---------|---------|
+| `model` | Fixed profile count (`n_profiles`), labels, features, and canonical/frozen profile centroids |
+| `runtime` | Slider-to-feature defaults and ML overlay thresholds |
+| `training` | One-time training defaults (`min_silhouette`, random seed, offline flag) |
+| `ui` | UI title, slider bounds/defaults, and template presets |
+
+`telekom_profiler/config/sliders.py` now resolves slider and template values from `app_config.yaml`.
+
+## 3. Slider and preset configuration
+
+### 3.1 Usage sliders
 
 | Key | Label | Min | Max | Default |
 |-----|-------|-----|-----|---------|
@@ -72,7 +83,7 @@ Defined in `telekom_profiler/config/sliders.py`. Changes to maxima propagate to 
 | `sms_count` | SMS count | 0 | 500 | 50 |
 | `roaming_days` | Roaming days / month | 0 | 30 | 2 |
 
-### 2.2 Trend sliders
+### 3.2 Trend sliders
 
 | Key | Label | Min | Max | Default |
 |-----|-------|-----|-----|---------|
@@ -81,7 +92,7 @@ Defined in `telekom_profiler/config/sliders.py`. Changes to maxima propagate to 
 
 Trends influence overlay flags and narrative context; they are not archetype clustering inputs unless a downstream model defines otherwise (see [Domain model](domain-model.md)).
 
-### 2.3 UI messages and guards
+### 3.3 UI messages and guards
 
 | Constant | Purpose |
 |----------|---------|
@@ -91,7 +102,7 @@ Trends influence overlay flags and narrative context; they are not archetype clu
 | `MSG_RUN_PROFILE_FIRST` | Error when offer is requested without profile |
 | `PLACEHOLDER_PREFIX` | `_` — marks non-result content; offer step is blocked |
 
-### 2.4 Profile templates (presets)
+### 3.4 Profile templates (presets)
 
 `PROFILES` maps template names to partial slider overrides. Keys must be a subset of `SLIDER_KEYS`. The `— Custom —` entry applies no override.
 
@@ -103,11 +114,11 @@ PROFILES["Workshop — Streamer"] = {
 }
 ```
 
-For production, consider loading presets from configuration management (YAML/JSON) rather than hard-coding in source.
+Presets are already YAML-backed through `app_config.yaml`.
 
 ---
 
-## 3. Business thresholds
+## 4. Business thresholds
 
 Centralised in `telekom_profiler/config/thresholds.py`:
 
@@ -118,7 +129,7 @@ Modify thresholds in one place to keep rule-based profiling, scoring overlays, a
 
 ---
 
-## 4. Gradio launch parameters
+## 5. Gradio launch parameters
 
 Configured in `telekom_profiler/ui/demo.py` → `main()`:
 
@@ -142,7 +153,7 @@ Production hosting requirements: [Deployment](deployment.md).
 
 ---
 
-## 5. Packaged assets
+## 6. Packaged assets
 
 Declared in `pyproject.toml` under `[tool.setuptools.package-data]`:
 
@@ -157,7 +168,7 @@ Runtime resolution uses `telekom_profiler.paths` (`PACKAGE_ROOT`, `DATA_DIR`, `P
 
 ---
 
-## 6. Configuration ownership (recommended)
+## 7. Configuration ownership (recommended)
 
 | Area | Suggested owner | Change frequency |
 |------|-----------------|------------------|

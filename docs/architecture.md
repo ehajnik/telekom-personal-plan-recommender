@@ -18,7 +18,7 @@ This document describes the logical architecture, request flows, and scalability
 | Pluggable backends | `ProfileProvider` and `OfferProvider` protocols |
 | Auditable segmentation | Deterministic `ScoringResult` computed in code for every profile |
 | Stable contracts | `CustomerUsage` (input) and `ProfileResult` (profile output) |
-| Configuration externalisation | Sliders, thresholds, and Ollama settings in `config/` |
+| Configuration externalisation | Root `app_config.yaml` plus env bindings in `config/` |
 | Fail-safe inference | Optional fallback from Ollama to rule-based providers |
 
 Design rationale for deterministic scoring: [ADR 001](adr/001-scoring-in-code.md).
@@ -72,7 +72,7 @@ flowchart TB
 | Application | `telekom_profiler.services` | Provider selection, orchestration, public API |
 | Domain | `telekom_profiler.domain` | Business rules, archetype mathematics, typed models |
 | Integration | `prompts`, `llm`, `data` | Prompt construction, HTTP client, static reference data |
-| Configuration | `telekom_profiler.config` | Slider definitions, thresholds, environment bindings |
+| Configuration | `telekom_profiler.config` | Root YAML loader, slider resolution, thresholds, environment bindings |
 
 **Dependency rule:** Presentation and Application depend on Domain; Domain does not depend on UI or Gradio. Integration adapters are invoked from Application providers only.
 
@@ -162,7 +162,7 @@ sequenceDiagram
 | Segmentation API | Replace or wrap `RuleBasedProfileProvider` | Data science / CRM |
 | Live PCM catalogue | Custom `OfferProvider` + API client | Product / BSS |
 | CRM-fed usage | Upstream builds `CustomerUsage` JSON | Integration team |
-| Presets from CMDB | Externalise `PROFILES` (YAML/JSON loader) | Configuration management |
+| Presets from CMDB | Sync `app_config.yaml` with external config source | Configuration management |
 | Headless API | FastAPI layer over `ProfilerEngine` | Application team |
 | Multi-brand | Per-tenant `ProfilerEngine(custom_providers)` | Platform team |
 
@@ -174,7 +174,8 @@ Detailed integration patterns: [Integration](integration.md).
 
 | Concern | Location |
 |---------|----------|
-| Slider bounds and UI copy | `config/sliders.py` |
+| Core model/runtime/UI knobs | `app_config.yaml` |
+| Slider bounds and UI copy | `config/sliders.py` (resolved from root YAML) |
 | Overlay and offer thresholds | `config/thresholds.py` |
 | Ollama and logging | `config/ollama_settings.py`, `.env` |
 | Archetype narratives | `data/consumer_archetypes.md` |

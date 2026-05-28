@@ -67,8 +67,7 @@ Generate synthetic billing history and train K-Means profiles (writes to `artifa
 ```bash
 python scripts/generate_synthetic_data.py --subscribers 1000 --seed 42
 python scripts/subscriber_profiling.py --min-silhouette 0.5
-# Defaults to --clusters auto (sweep k ∈ [2, 10], pick silhouette argmax).
-# Override with --clusters 5 (or another int) plus --k-min / --k-max if needed.
+# Uses fixed k=5 from app_config.yaml (model.n_profiles).
 ```
 
 Alternative generator path via MOSTLY AI:
@@ -85,18 +84,19 @@ The MOSTLY AI workflow is optional and writes an engine workspace under `artifac
 | Output | Purpose |
 |--------|---------|
 | `data/raw/private_mobile_usage_*_subscribers_12_months.csv` | Monthly panel input |
-| `artifacts/kmeans.pkl`, `scaler.pkl` | Trained K-Means model and feature scaler |
+| `artifacts/kmeans.pkl`, `scaler.pkl` | Training artifacts (kept for compatibility/debugging) |
 | `artifacts/label_map.json` | Cluster-index → profile-label map (required by `PROFILER_MODE=auto`) |
 | `artifacts/profile_characteristics.json` | Profile labels and slider presets |
-| `artifacts/cluster_features.json` | Per-cluster centroid summary in original feature units |
-| `artifacts/k_selection.json` | Inertia + silhouette per `k`, chosen value (auto-mode only) |
+| `artifacts/cluster_features.json` | Ordered feature list used for scoring |
+| `artifacts/frozen_centroids.json` | Runtime centroid/scaler data for fixed nearest-centroid inference |
 | `artifacts/subscriber_features.csv` | Engineered subscriber-level features used for training |
 | `artifacts/subscriber_cluster_map.csv` | Subscriber dropdown + per-cluster distances |
 
 **Design rules:**
 
 - Trend columns are excluded from `CLUSTER_FEATURES`; they feed overlays only.
-- Named `PROFILE_LABELS` are mapped to clusters via Hungarian assignment against `LABEL_CANONICAL_CENTROIDS`. When the chosen `k` exceeds the number of named labels, the extra clusters receive auto-generated `Profile N` labels with a rules-based signature.
+- Named `PROFILE_LABELS` are mapped to clusters via Hungarian assignment against `LABEL_CANONICAL_CENTROIDS`.
+- Profile text/signatures/defaults are curated and hardcoded; they are not generated dynamically from cluster members.
 
 Set `PROFILER_MODE=rules` to force legacy L1 archetypes (used in unit tests). Default `auto` selects ML when artifacts exist.
 
@@ -135,7 +135,7 @@ CI configuration: `.github/workflows/ci.yml`.
 | Typing | Type hints on public APIs; `from __future__ import annotations` in new modules |
 | Imports | Absolute imports from `telekom_profiler` |
 | Paths | `telekom_profiler.paths` — no hard-coded relative paths from CWD |
-| Configuration | Environment in `config/ollama_settings.py`; UI bounds in `config/sliders.py`; business rules in `config/thresholds.py` |
+| Configuration | Root config in `app_config.yaml`; env in `config/ollama_settings.py`; business rules in `config/thresholds.py` |
 | UI styling | Semantic `elem_classes` in `ui/theme/app.css` |
 | Logging | `logging_config.configure_logging()` at startup; module loggers |
 
@@ -202,7 +202,7 @@ Templates use `{placeholder}` syntax. After edits, run the sanity script to dete
 ## 9. Modifying archetypes and presets
 
 1. Update `ARCHETYPE_CENTROIDS` in `domain/archetypes.py`.
-2. Align `PROFILES` presets in `config/sliders.py` for demo consistency.
+2. Align `ui.profiles` in `app_config.yaml` for demo consistency.
 3. Update `data/consumer_archetypes.md` narrative content.
 4. Adjust overlay thresholds in `config/thresholds.py` if business rules change.
 5. Extend `tests/test_domain.py` and run the full quality gate.
