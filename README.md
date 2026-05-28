@@ -55,13 +55,17 @@ cd telekom-personal-plan-recommender
 
 source .venv/bin/activate
 
-# ML PoC: generate 12-month panel and train once (artifacts/ gitignored)
+# ML PoC: train once on your committed dataset
+# If the source dataset changes, you MUST refresh:
+#   1) model.fixed_centroids in app_config.yaml
+#   2) curated profile definitions in telekom_profiler/ml/profile_characteristics.py
+# Keep runtime inference frozen between dataset refreshes (no continuous retraining).
 python scripts/generate_synthetic_data.py --subscribers 1000
 # Optional: MOSTLY AI-backed generator (requires requirements-mostlyai.txt)
 # python scripts/generate_synthetic_data_mostlyai.py --subscribers 1000
-python scripts/subscriber_profiling.py
-# writes artifacts/ (frozen centroids, label map, cluster map, profile_characteristics.json)
-# runtime uses frozen centroids and does not retrain
+python scripts/subscriber_profiling.py --input data/raw/private_mobile_usage_1000_subscribers_12_months.csv
+# writes frozen runtime artifacts (frozen_centroids.json, label_map.json, profile_characteristics.json)
+# no runtime retraining
 
 # Optional LLM (CPU-friendly defaults in .env.example):
 # ollama serve && ollama pull llama3.2:3b

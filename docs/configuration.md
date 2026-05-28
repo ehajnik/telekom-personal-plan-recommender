@@ -72,6 +72,13 @@ Primary runtime configuration is defined in the repository-root `app_config.yaml
 
 `telekom_profiler/config/sliders.py` now resolves slider and template values from `app_config.yaml`.
 
+If you change the underlying training dataset, update both config and profile definitions together:
+
+- `app_config.yaml` → `model.fixed_centroids`
+- `telekom_profiler/ml/profile_characteristics.py` → curated signatures/examples/slider defaults
+
+This project is designed for frozen runtime inference, not continuous retraining.
+
 ## 3. Slider and preset configuration
 
 ### 3.1 Usage sliders

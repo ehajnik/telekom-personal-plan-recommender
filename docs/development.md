@@ -62,13 +62,21 @@ The process prints the Gradio URL (typically `http://127.0.0.1:7860`). Port assi
 
 ## 4. ML profiling pipeline (PoC)
 
-Generate synthetic billing history and train K-Means profiles (writes to `artifacts/`, gitignored):
+Train once on a committed dataset and freeze runtime artifacts:
 
 ```bash
-python scripts/generate_synthetic_data.py --subscribers 1000 --seed 42
-python scripts/subscriber_profiling.py --min-silhouette 0.5
+python scripts/subscriber_profiling.py \
+  --input data/raw/private_mobile_usage_1000_subscribers_12_months.csv \
+  --min-silhouette 0.5
 # Uses fixed k=5 from app_config.yaml (model.n_profiles).
 ```
+
+When the input dataset changes, you must intentionally refresh both:
+
+1. `model.fixed_centroids` in `app_config.yaml`
+2. Curated profile text/defaults in `telekom_profiler/ml/profile_characteristics.py`
+
+Do not continuously retrain at runtime.
 
 Alternative generator path via MOSTLY AI:
 
