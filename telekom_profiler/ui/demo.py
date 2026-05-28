@@ -184,7 +184,7 @@ def create_demo() -> gr.Blocks:
                 model_pick = gr.Dropdown(
                     choices=llm_models,
                     value=selected_model(),
-                    label="LLM model",
+                    label="Model",
                     elem_classes=["dt-template-dropdown"],
                     interactive=llm_enabled(),
                 )
