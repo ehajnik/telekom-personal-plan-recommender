@@ -169,7 +169,10 @@ def create_demo() -> gr.Blocks:
                 gr.HTML(_header_html(), elem_classes=["dt-header-block"])
 
             with gr.Row(elem_classes=["dt-grid-row", "dt-info-row"]):
-                gr.Markdown(inference_mode_label(), elem_classes=["dt-inference-mode"])
+                inference_out = gr.Markdown(
+                    inference_mode_label(),
+                    elem_classes=["dt-inference-mode"],
+                )
 
             with gr.Row(elem_classes=["dt-grid-row", "dt-template-row"]):
                 profile_pick = gr.Dropdown(
@@ -240,7 +243,7 @@ def create_demo() -> gr.Blocks:
         model_pick.change(
             set_ui_model,
             inputs=[model_pick],
-            outputs=[scoring_out],
+            outputs=[inference_out],
         )
         profile_btn.click(
             run_profile,
