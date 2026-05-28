@@ -8,9 +8,11 @@ from typing import Any
 from telekom_profiler.ml.schema import (
     DATA_TREND_GROWING_MIN,
     DATA_TREND_SHRINKING_MAX,
+    LABEL_CANONICAL_CENTROIDS,
     LINES_TREND_GROWING_MIN,
     MIXED_PROFILE_RATIO,
     PROFILE_EMOJI,
+    PROFILE_LABELS,
     ROAMING_TREND_GROWING_MIN,
     VOICE_TREND_DECLINING_MAX,
 )
@@ -39,10 +41,10 @@ PROFILE_SIGNATURES: dict[str, list[str]] = {
         "Mix of data and voice while abroad",
     ],
     "Underutilized / overspending": [
-        "High proportion of idle lines",
-        "Plan tier above actual usage",
-        "Low data per active line",
-        "Downgrade / rightsizing opportunity",
+        "High engagement across data, voice, and messaging",
+        "Upper-mid plan tier with strong regular usage",
+        "Notably high session intensity and app activity",
+        "Value optimization via bundled options",
     ],
 }
 
@@ -68,10 +70,53 @@ PROFILE_EXAMPLES: dict[str, list[str]] = {
         "International sales rep",
     ],
     "Underutilized / overspending": [
-        "Family plan with unused lines",
-        "Legacy tier after usage drop",
-        "Multi-SIM with idle secondary lines",
+        "Always-connected digital-heavy user",
+        "Power communicator using data plus voice daily",
+        "Premium-plan customer with broad service usage",
     ],
+}
+
+HARD_CODED_SLIDER_DEFAULTS: dict[str, dict[str, int]] = {
+    "Light / occasional user": {
+        "data_gb": 3,
+        "voice_min": 80,
+        "sms_count": 20,
+        "roaming_days": 1,
+        "data_trend": 0,
+        "voice_trend": 0,
+    },
+    "Streaming & data-heavy": {
+        "data_gb": 110,
+        "voice_min": 180,
+        "sms_count": 25,
+        "roaming_days": 1,
+        "data_trend": 10,
+        "voice_trend": -3,
+    },
+    "Voice-centric": {
+        "data_gb": 6,
+        "voice_min": 1700,
+        "sms_count": 45,
+        "roaming_days": 1,
+        "data_trend": -2,
+        "voice_trend": 4,
+    },
+    "Roaming / travel-heavy": {
+        "data_gb": 35,
+        "voice_min": 250,
+        "sms_count": 35,
+        "roaming_days": 14,
+        "data_trend": 6,
+        "voice_trend": 0,
+    },
+    "Underutilized / overspending": {
+        "data_gb": 65,
+        "voice_min": 620,
+        "sms_count": 90,
+        "roaming_days": 3,
+        "data_trend": 4,
+        "voice_trend": 2,
+    },
 }
 
 
@@ -220,6 +265,27 @@ def build_profile_characteristics_document(
         "profiles": profiles_by_label,
         "overlays": overlay_thresholds(),
     }
+
+
+def build_hardcoded_profiles_document(label_map: dict[int, str]) -> dict[str, Any]:
+    """Build fixed profile characteristics from curated profile definitions."""
+    cluster_by_label = {label: idx for idx, label in label_map.items()}
+    profiles: dict[str, dict[str, Any]] = {}
+    for label in PROFILE_LABELS:
+        canonical = dict(LABEL_CANONICAL_CENTROIDS.get(label, {}))
+        canonical.setdefault("data_trend", 0.0)
+        canonical.setdefault("voice_trend", 0.0)
+        canonical.setdefault("roaming_trend", 0.0)
+        canonical.setdefault("lines_trend", 0.0)
+        profiles[label] = {
+            "emoji": PROFILE_EMOJI.get(label, "📱"),
+            "cluster_idx": int(cluster_by_label.get(label, -1)),
+            "signature": list(PROFILE_SIGNATURES.get(label, ["Fixed profile definition"])),
+            "examples": list(PROFILE_EXAMPLES.get(label, ["Reference synthetic profile"])),
+            "centroid": build_centroid(canonical),
+            "slider_defaults": dict(HARD_CODED_SLIDER_DEFAULTS.get(label, {})),
+        }
+    return {"profiles": profiles, "overlays": overlay_thresholds()}
 
 
 def load_profiles_document(raw: dict[str, Any] | None = None) -> dict[str, Any]:
