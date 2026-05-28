@@ -44,11 +44,10 @@ def _normalize_model_id(model: str) -> str:
 
 
 _MODEL_LIST = [str(item) for item in _LLM.get("models", []) if str(item).strip()]
+OLLAMA_MODEL: Final[str] = _normalize_model_id(os.getenv("OLLAMA_MODEL", _DEFAULT_MODEL))
 AVAILABLE_LLM_MODELS: Final[tuple[str, ...]] = tuple(
     _normalize_model_id(item) for item in (_MODEL_LIST or [_DEFAULT_MODEL])
 )
-
-OLLAMA_MODEL: Final[str] = _normalize_model_id(os.getenv("OLLAMA_MODEL", _DEFAULT_MODEL))
 _selected_model = (
     OLLAMA_MODEL if OLLAMA_MODEL in AVAILABLE_LLM_MODELS else AVAILABLE_LLM_MODELS[0]
 )

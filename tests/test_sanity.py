@@ -1,5 +1,6 @@
 """Automated sanity checks (same coverage as scripts/sanity_check.py)."""
 
+import asyncio
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -46,8 +47,22 @@ class SanityTests(unittest.TestCase):
         self.assertIn("MagentaMobil", offer)
 
     def test_demo_instantiates(self) -> None:
-        demo = create_demo()
-        self.assertEqual(demo.__class__.__name__, "Blocks")
+        created_loops: list[asyncio.AbstractEventLoop] = []
+        original_new_event_loop = asyncio.new_event_loop
+
+        def _tracking_new_event_loop() -> asyncio.AbstractEventLoop:
+            loop = original_new_event_loop()
+            created_loops.append(loop)
+            return loop
+
+        with patch("asyncio.new_event_loop", side_effect=_tracking_new_event_loop):
+            demo = create_demo()
+            self.assertEqual(demo.__class__.__name__, "Blocks")
+
+        demo.close()
+        for loop in created_loops:
+            if not loop.is_closed():
+                loop.close()
 
     def test_app_entry_exists(self) -> None:
         root = Path(__file__).resolve().parents[1]

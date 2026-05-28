@@ -62,7 +62,12 @@ Generate a **private customer profile report** with the following sections.
 The primary archetype **must** be **{required_primary}** (deterministic scoring from proximity). Assign confidence **{required_confidence}** unless the feature snapshot strongly contradicts the distances—in that case explain briefly and still name **{required_primary}** as primary.
 
 ### 2. Overlay characteristics
-If any overlays are active (e.g. data growth, roaming-heavy, voice decline), explain what they mean for this subscriber. If none are active, state: *No overlays active — clear dominant archetype.*
+Use the overlay list from **Input: Overlay signals** as a strict source of truth.
+
+- If the list is non-empty, you **must** include each listed overlay in this section (same meaning; minor wording polish allowed), and explain its implication for the subscriber.
+- If the list says `None active`, you **must** state exactly: *No overlays active — clear dominant archetype.*
+- Do **not** claim "No overlays active" when any overlay signal is present.
+- Do **not** invent overlays that are not present in the input.
 
 ### 3. Secondary archetype influence
 If the second-closest score is within ~30% of the best match, describe the blend and what it implies (e.g. “mostly streamer, but voice minutes suggest occasional caller habits”).

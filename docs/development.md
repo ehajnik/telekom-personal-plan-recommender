@@ -12,8 +12,6 @@ Engineering handbook for contributing to the Private Customer Profiler. For syst
 | Git | Access to the corporate repository |
 | Ollama | Optional; required only when `OLLAMA_ENABLED=true` |
 
-On Fedora, install the venv module if needed: `sudo dnf install python3-venv`.
-
 ---
 
 ## 2. Environment setup
@@ -62,13 +60,18 @@ The process prints the Gradio URL (typically `http://127.0.0.1:7860`). Port assi
 
 ## 4. ML profiling pipeline (PoC)
 
-Train once on a committed dataset and freeze runtime artifacts:
+Pipeline is intentionally staged and not dynamic at runtime:
+
+1. Generate synthetic panel data.
+2. Train segmentation/archetypes from that panel.
+3. Curate archetype characteristics (AI-assisted or centroid-based).
+4. Freeze and commit runtime artifacts for inference.
 
 ```bash
 python scripts/subscriber_profiling.py \
   --input data/raw/private_mobile_usage_1000_subscribers_12_months.csv \
   --min-silhouette 0.5
-# Uses fixed k=5 from app_config.yaml (model.n_profiles).
+# Uses n_profiles from app_config.yaml (currently 5).
 ```
 
 When the input dataset changes, you must intentionally refresh both:
@@ -78,7 +81,7 @@ When the input dataset changes, you must intentionally refresh both:
 3. Regenerated runtime artifacts (`frozen_centroids.json`, `profile_characteristics.json`)
 
 Warning: retraining without updating the hardcoded profile layer causes profile/config drift.
-Do not continuously retrain at runtime.
+Inference is frozen between data refreshes (no dynamic runtime retraining).
 
 Alternative generator path via MOSTLY AI:
 
@@ -112,16 +115,16 @@ Set `PROFILER_MODE=rules` to force legacy L1 archetypes (used in unit tests). De
 
 ---
 
-## 4.1 Why ML is operated as "train then freeze"
+## 4.1 Why ML is operated as "generate -> define archetypes -> freeze"
 
-The project intentionally does **not** retrain in normal runtime:
+The project intentionally avoids dynamic runtime retraining:
 
-- Teams need consistent archetype assignment during demos, QA, and stakeholder review.
-- Unit tests and sanity checks must stay deterministic even when local environments differ.
-- Regulated enterprise rollouts require explicit promotion of model/data updates rather than implicit runtime learning.
-- Profile wording and UX defaults are curated by humans; auto-refreshing clusters without curation creates business-language drift.
+- Synthetic data generation is a required first step for this PoC pipeline.
+- Archetypes are then defined from that generated dataset (AI-assisted and/or centroid-driven curation).
+- Runtime inference uses frozen artifacts produced by that training pass.
+- If synthetic data changes, clustering outcomes can change (including effective profile boundaries, and potentially profile count if `model.n_profiles` is revised), so archetype definitions and artifacts must be refreshed together.
 
-Treat retraining as a controlled maintenance event, then commit refreshed artifacts/config together.
+Treat data refresh + archetype curation + artifact regeneration as one controlled maintenance event.
 
 ---
 

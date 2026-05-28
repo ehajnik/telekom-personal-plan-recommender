@@ -24,7 +24,7 @@ This repository is in a **stabilized prototype** phase: the core profiling and r
 |------|---------------|--------------------|
 | Core domain scoring | Stable and deterministic | Sales workflows need explainable, repeatable outputs; deterministic scoring prevents narrative drift from changing profile assignments. |
 | UI workflow | Stable for workshops and internal demos | Product validation and stakeholder feedback are faster with a runnable end-to-end UI than with backend-only prototypes. |
-| ML segmentation runtime | Frozen-centroid inference from committed artifacts | Runtime retraining was excluded to avoid environment-dependent behavior and to keep CI/unit assertions predictable. |
+| ML segmentation runtime | Frozen-centroid inference from committed artifacts | Pipeline is staged: generate synthetic data, define/curate archetypes, then freeze artifacts for runtime inference. |
 | LLM narrative layer | Optional enhancement with rule-based fallback | Narrative quality improves user experience, but business decisions must not depend on external model availability or latency. |
 | External integration (CRM/BSS/SSO/audit) | Not production-complete | Integration and governance requirements are organization-specific and are separated from the prototype to reduce coupling early. |
 
@@ -40,7 +40,7 @@ This repository is in a **stabilized prototype** phase: the core profiling and r
 | Customer profiling | Markdown profile with archetype, overlays, narrative, and risks |
 | Offer recommendation | Tariff and add-on suggestion against prototype catalogue |
 | Demo personas | Profile templates from ML training or legacy archetype presets |
-| ML segmentation | One-time K-Means training on 12-month usage with fixed `k=5`, Hungarian label matching, and frozen-centroid runtime inference |
+| ML segmentation | Staged K-Means workflow on 12-month synthetic usage (`n_profiles` from config, currently 5), Hungarian label matching, and frozen-centroid runtime inference |
 | Inference modes | LiteLLM (Ollama endpoint by default) with runtime model dropdown and rule-based / ML fallback |
 
 ### Out of scope (current release)
@@ -71,19 +71,22 @@ cd telekom-personal-plan-recommender
 
 source .venv/bin/activate
 
-# ML PoC: train once on your committed dataset
-# If the source dataset changes, you MUST refresh:
+# ML PoC pipeline:
+#   1) generate synthetic data
+#   2) train/update archetypes + centroids
+#   3) freeze runtime artifacts
+# If the synthetic dataset changes, you MUST refresh:
 #   1) model.fixed_centroids in app_config.yaml
 #   2) curated profile definitions in telekom_profiler/ml/profile_characteristics.py
 #   3) regenerate artifacts/profile_characteristics.json + frozen_centroids.json via one training run
 # WARNING: retraining without updating the hardcoded profile layer creates config/profile drift.
-# Keep runtime inference frozen between dataset refreshes (no continuous retraining).
+# Keep runtime inference frozen between dataset refreshes (no dynamic runtime retraining).
 python scripts/generate_synthetic_data.py --subscribers 1000
 # Optional: MOSTLY AI-backed generator (requires requirements-mostlyai.txt)
 # python scripts/generate_synthetic_data_mostlyai.py --subscribers 1000
 python scripts/subscriber_profiling.py --input data/raw/private_mobile_usage_1000_subscribers_12_months.csv
 # writes frozen runtime artifacts (frozen_centroids.json, label_map.json, profile_characteristics.json)
-# no runtime retraining
+# if synthetic data changes, clustering/archetype mapping can shift and must be re-curated
 
 # Optional LLM (CPU-friendly defaults in .env.example):
 # ollama serve && ollama pull qwen2.5:7b

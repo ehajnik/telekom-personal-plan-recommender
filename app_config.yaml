@@ -117,6 +117,7 @@ training:
 llm:
   default_model: ollama/qwen2.5:7b
   models:
+    - ollama/llama3.2:3b
     - ollama/qwen2.5:7b
     - ollama/llama3.1:8b
     - ollama/mistral-nemo:12b
