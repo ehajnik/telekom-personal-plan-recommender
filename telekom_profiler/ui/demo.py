@@ -107,12 +107,24 @@ def set_ui_model(model_name: str) -> str:
     return inference_mode_label()
 
 
+def _profile_with_fallback_notice(result: ProfileResult) -> str:
+    reason = str(result.metadata.get("fallback_reason", "")).strip()
+    if result.source != "rule_based_fallback" or not reason:
+        return result.markdown
+    return (
+        "### Profile fallback applied\n\n"
+        "LLM profiling failed, so a rule-based profile was generated instead.\n\n"
+        f"Reason: `{reason}`\n\n"
+        f"{result.markdown}"
+    )
+
+
 def run_profile(*values: float) -> tuple[str, str, dict | None, str]:
     usage = _slider_data(*values)
     try:
         result = profile_customer_structured(usage.as_dict())
         return (
-            result.markdown,
+            _profile_with_fallback_notice(result),
             MSG_AFTER_PROFILE,
             result.to_state_dict(),
             format_scoring_summary(result),

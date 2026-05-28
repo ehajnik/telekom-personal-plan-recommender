@@ -66,4 +66,10 @@ class FallbackOfferProvider:
             return self._primary.recommend(profile, usage)
         except RuntimeError as exc:
             _logger.warning("Offer primary failed, using rule-based fallback: %s", exc)
-            return self._fallback.recommend(profile, usage)
+            fallback_offer = self._fallback.recommend(profile, usage)
+            return (
+                "### Offer fallback applied\n\n"
+                "LLM offer generation failed, so a rule-based offer was generated instead.\n\n"
+                f"Reason: `{exc}`\n\n"
+                f"{fallback_offer}"
+            )
