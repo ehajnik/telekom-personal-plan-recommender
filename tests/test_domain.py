@@ -43,13 +43,13 @@ class DomainTests(unittest.TestCase):
         self.assertNotIn("ADD-TS-WEEK-001", offer)
         self.assertIn("ADD-SPEC-001", offer)
 
-    def test_family_label_selects_postpaid_and_pluskarte(self) -> None:
+    def test_streaming_label_selects_postpaid_and_pluskarte(self) -> None:
         scoring = ScoringResult(
-            primary=ArchetypeScore("Family / multi-line", 0.5),
+            primary=ArchetypeScore("Streaming & data-heavy", 0.5),
             secondary=None,
         )
         data = {
-            "data_gb": 25,
+            "data_gb": 50,
             "voice_min": 300,
             "sms_count": 50,
             "roaming_days": 2,
@@ -57,7 +57,7 @@ class DomainTests(unittest.TestCase):
             "voice_trend": 0,
         }
         offer = render_offer_report("", data, scoring=scoring)
-        self.assertIn("MagentaMobil M (MM-M-001)", offer)
+        self.assertIn("MagentaMobil XL (MM-XL-001)", offer)
         self.assertIn("PlusKarte", offer)
 
     def test_profile_prompt_substitutes_placeholders(self) -> None:

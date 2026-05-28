@@ -24,7 +24,6 @@ _ML_STREAMING = "Streaming & data-heavy"
 _ML_VOICE = "Voice-centric"
 _ML_ROAMING = "Roaming / travel-heavy"
 _ML_UNDER = "Underutilized / overspending"
-_ML_FAMILY = "Family / multi-line"
 
 _TARIFF_XL = (
     "MagentaMobil XL (MM-XL-001)",
@@ -98,13 +97,6 @@ def _select_tariff(
         if data["data_gb"] < OFFER_DATA_PREPAID_MAX_GB:
             return _TARIFF_PREPAID_M
         return _TARIFF_XS if data["data_gb"] < OFFER_DATA_M_GB else _TARIFF_S
-    if primary == _ML_FAMILY:
-        if data["data_gb"] >= OFFER_DATA_L_GB:
-            return _TARIFF_L
-        if data["data_gb"] >= OFFER_DATA_M_GB:
-            return _TARIFF_M
-        return _TARIFF_S
-
     if primary == ARCHETYPE_ESSENTIAL and data["data_gb"] < OFFER_DATA_M_GB:
         return _TARIFF_PREPAID_M if data["data_gb"] < OFFER_DATA_PREPAID_MAX_GB else _TARIFF_XS
     if primary == ARCHETYPE_CHATTERBOX and data["data_gb"] < OFFER_DATA_L_GB:
@@ -174,10 +166,7 @@ def render_offer_report(
                 "10 GB plus 100 GB Datendepot (24 months) for domestic usage peaks.",
             )
         )
-    family_multiline = primary_name in (_ML_FAMILY,)
     multisim_threshold = OFFER_MULTISIM_DATA_GB
-    if family_multiline:
-        multisim_threshold = min(multisim_threshold, OFFER_DATA_M_GB)
     if data["data_gb"] >= multisim_threshold and "PlusKarte" not in tariff[0]:
         addons.append(
             (
