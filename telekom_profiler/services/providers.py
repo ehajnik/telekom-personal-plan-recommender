@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+from telekom_profiler.config.app_config import model_config
 from telekom_profiler.config.ollama_settings import fallback_on_error, llm_enabled, model_provider
 from telekom_profiler.config.profiler_settings import effective_profiler_mode
 from telekom_profiler.domain.models import CustomerUsage, ProfileResult
@@ -47,6 +48,25 @@ def _strip_end_marker(markdown: str) -> str:
     return cleaned.strip()
 
 
+def _inject_primary_emoji(markdown: str, primary_name: str) -> str:
+    profile_emoji = model_config().get("profile_emoji", {})
+    emoji = str(profile_emoji.get(primary_name, "")).strip()
+    if not emoji or emoji in markdown:
+        return markdown
+    section_match = re.search(
+        r"(### 1\. Primary archetype\s*)(.*?)(\n### 2\. Overlay characteristics|\Z)",
+        markdown,
+        flags=re.DOTALL,
+    )
+    if not section_match:
+        return markdown
+    section_body = section_match.group(2)
+    if primary_name not in section_body:
+        return markdown
+    updated_body = section_body.replace(primary_name, f"{emoji} {primary_name}", 1)
+    return f"{markdown[:section_match.start(2)]}{updated_body}{markdown[section_match.end(2):]}"
+
+
 class RuleBasedProfileProvider:
     """Deterministic profile from archetype math and template sections."""
 
@@ -78,6 +98,7 @@ class LiteLLMProfileProvider:
             required_tail=END_MARKER,
         )
         markdown = _strip_end_marker(markdown)
+        markdown = _inject_primary_emoji(markdown, scoring.primary_name)
         return ProfileResult(
             markdown=markdown,
             usage=usage,
