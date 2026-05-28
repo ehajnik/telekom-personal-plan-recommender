@@ -28,8 +28,16 @@ def _is_truncated(finish_reason: object) -> bool:
     return reason in {"length", "max_tokens"}
 
 
+def _missing_headings(content: str, required_headings: tuple[str, ...]) -> list[str]:
+    return [heading for heading in required_headings if heading not in content]
+
+
 def chat_completion(
-    user_prompt: str, *, temperature: float = 0.3, model: str | None = None
+    user_prompt: str,
+    *,
+    temperature: float = 0.3,
+    model: str | None = None,
+    required_headings: tuple[str, ...] = (),
 ) -> str:
     """
     Run a single-turn chat completion via LiteLLM.
@@ -83,6 +91,32 @@ def chat_completion(
             retry_kwargs["max_tokens"] = retry_tokens
             response = completion(**retry_kwargs)
             content = response.choices[0].message.content
+        if required_headings:
+            missing = _missing_headings(str(content or ""), required_headings)
+            if missing:
+                repair_tokens = min(
+                    max(int(OLLAMA_NUM_PREDICT * 1.5), OLLAMA_NUM_PREDICT + 512),
+                    4096,
+                )
+                headings_list = "\n".join(f"- {h}" for h in required_headings)
+                repair_messages = [
+                    {
+                        "role": "user",
+                        "content": (
+                            f"{user_prompt}\n\n"
+                            "IMPORTANT: Your previous answer was incomplete. "
+                            "Return a complete response with all required sections "
+                            "and headings, in order:\n"
+                            f"{headings_list}\n\n"
+                            "Do not stop mid-sentence."
+                        ),
+                    }
+                ]
+                repair_kwargs = dict(completion_kwargs)
+                repair_kwargs["messages"] = repair_messages
+                repair_kwargs["max_tokens"] = repair_tokens
+                response = completion(**repair_kwargs)
+                content = response.choices[0].message.content
         if not content or not str(content).strip():
             raise RuntimeError("LLM returned an empty response.")
         elapsed_ms = (time.perf_counter() - started) * 1000

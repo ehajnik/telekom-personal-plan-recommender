@@ -24,7 +24,7 @@ OLLAMA_ENABLED: Final[bool] = os.getenv("OLLAMA_ENABLED", "true").lower() in (
 
 # Defaults tuned for llama3.2:3b on CPU-only workstations (no dedicated GPU).
 OLLAMA_TIMEOUT: Final[float] = float(os.getenv("OLLAMA_TIMEOUT", "180"))
-OLLAMA_NUM_PREDICT: Final[int] = int(os.getenv("OLLAMA_NUM_PREDICT", "2048"))
+OLLAMA_NUM_PREDICT: Final[int] = int(os.getenv("OLLAMA_NUM_PREDICT", "4096"))
 
 OLLAMA_FALLBACK_ON_ERROR: Final[bool] = os.getenv(
     "OLLAMA_FALLBACK_ON_ERROR", "true"

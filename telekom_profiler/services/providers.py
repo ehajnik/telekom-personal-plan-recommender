@@ -18,6 +18,25 @@ from telekom_profiler.services.fallback import FallbackOfferProvider, FallbackPr
 from telekom_profiler.services.ml_profile_provider import MlProfileProvider
 from telekom_profiler.services.protocols import OfferProvider, ProfileProvider
 
+PROFILE_HEADINGS: tuple[str, ...] = (
+    "### 1. Primary archetype",
+    "### 2. Overlay characteristics",
+    "### 3. Secondary archetype influence",
+    "### 4. Lifestyle narrative",
+    "### 5. Likely customer context",
+    "### 6. Pain points & risks",
+    "### 7. Upsell & retention signals",
+)
+
+OFFER_HEADINGS: tuple[str, ...] = (
+    "### 1. Recommended main tariff",
+    "### 2. Recommended add-ons and options",
+    "### 3. Contract and channel notes",
+    "### 4. Indicative pricing",
+    "### 5. Important caveats",
+    "### 6. Next steps for the agent",
+)
+
 
 class RuleBasedProfileProvider:
     """Deterministic profile from archetype math and template sections."""
@@ -44,7 +63,8 @@ class LiteLLMProfileProvider:
         scoring = build_scoring_result(usage)
         metrics_block = format_distance_table(scoring) if scoring.all_distances else ""
         markdown = chat_completion(
-            build_profile_prompt(usage.as_dict(), metrics_block=metrics_block)
+            build_profile_prompt(usage.as_dict(), metrics_block=metrics_block),
+            required_headings=PROFILE_HEADINGS,
         )
         return ProfileResult(
             markdown=markdown,
@@ -73,7 +93,10 @@ class LiteLLMOfferProvider:
     source = "ollama"
 
     def recommend(self, profile: ProfileResult, usage: CustomerUsage) -> str:
-        return chat_completion(build_offer_prompt(profile.markdown, scoring=profile.scoring))
+        return chat_completion(
+            build_offer_prompt(profile.markdown, scoring=profile.scoring),
+            required_headings=OFFER_HEADINGS,
+        )
 
 
 def _base_profile_provider() -> ProfileProvider:
