@@ -17,6 +17,8 @@ from telekom_profiler.config.ollama_settings import (
 
 _logger = logging.getLogger(__name__)
 
+_NO_SAMPLING_PROVIDERS = frozenset({"anthropic"})
+
 
 def reset_client() -> None:
     """No-op shim for compatibility with existing reset hooks."""
@@ -26,6 +28,11 @@ def reset_client() -> None:
 def _is_truncated(finish_reason: object) -> bool:
     reason = str(finish_reason or "").strip().lower()
     return reason in {"length", "max_tokens"}
+
+
+def _retry_token_budget() -> int:
+    """Completion budget for repair retries: always larger than the first attempt."""
+    return int(OLLAMA_NUM_PREDICT * 1.5)
 
 
 def _missing_headings(content: str, required_headings: tuple[str, ...]) -> list[str]:
@@ -74,98 +81,52 @@ def chat_completion(
             "model": active_model,
             "messages": [{"role": "user", "content": user_prompt}],
             "timeout": OLLAMA_TIMEOUT,
-            "temperature": temperature,
             "max_tokens": OLLAMA_NUM_PREDICT,
         }
+        # Current Claude models reject sampling parameters (HTTP 400); others accept them.
+        if provider not in _NO_SAMPLING_PROVIDERS:
+            completion_kwargs["temperature"] = temperature
         if provider == "ollama":
             completion_kwargs["api_base"] = OLLAMA_HOST
         elif LITELLM_API_BASE:
             completion_kwargs["api_base"] = LITELLM_API_BASE
 
+        def _retry(instruction: str) -> object:
+            """Re-ask with an explicit instruction and a larger completion budget."""
+            retry_kwargs = dict(completion_kwargs)
+            retry_kwargs["messages"] = [
+                {"role": "user", "content": f"{user_prompt}\n\nIMPORTANT: {instruction}"}
+            ]
+            retry_kwargs["max_tokens"] = _retry_token_budget()
+            return completion(**retry_kwargs).choices[0].message.content
+
         response = completion(**completion_kwargs)
         choice = response.choices[0]
         content = choice.message.content
-        finish_reason = getattr(choice, "finish_reason", None)
-        if _is_truncated(finish_reason):
-            retry_tokens = min(max(int(OLLAMA_NUM_PREDICT * 1.5), OLLAMA_NUM_PREDICT + 512), 4096)
-            retry_messages = [
-                {
-                    "role": "user",
-                    "content": (
-                        f"{user_prompt}\n\n"
-                        "IMPORTANT: Return a complete response with all required sections. "
-                        "Do not stop mid-sentence."
-                    ),
-                }
-            ]
-            retry_kwargs = dict(completion_kwargs)
-            retry_kwargs["messages"] = retry_messages
-            retry_kwargs["max_tokens"] = retry_tokens
-            response = completion(**retry_kwargs)
-            content = response.choices[0].message.content
+        if _is_truncated(getattr(choice, "finish_reason", None)):
+            content = _retry(
+                "Return a complete response with all required sections. "
+                "Do not stop mid-sentence."
+            )
         if required_headings:
             missing = _missing_headings(str(content or ""), required_headings)
             if missing:
-                repair_tokens = min(
-                    max(int(OLLAMA_NUM_PREDICT * 1.5), OLLAMA_NUM_PREDICT + 512),
-                    4096,
-                )
                 headings_list = "\n".join(f"- {h}" for h in required_headings)
-                repair_messages = [
-                    {
-                        "role": "user",
-                        "content": (
-                            f"{user_prompt}\n\n"
-                            "IMPORTANT: Your previous answer was incomplete. "
-                            "Return a complete response with all required sections "
-                            "and headings, in order:\n"
-                            f"{headings_list}\n\n"
-                            "Do not stop mid-sentence."
-                        ),
-                    }
-                ]
-                repair_kwargs = dict(completion_kwargs)
-                repair_kwargs["messages"] = repair_messages
-                repair_kwargs["max_tokens"] = repair_tokens
-                response = completion(**repair_kwargs)
-                content = response.choices[0].message.content
+                content = _retry(
+                    "Your previous answer was incomplete. Return a complete response with "
+                    f"all required sections and headings, in order:\n{headings_list}\n\n"
+                    "Do not stop mid-sentence."
+                )
         if required_tail and not str(content or "").rstrip().endswith(required_tail):
-            tail_tokens = min(
-                max(int(OLLAMA_NUM_PREDICT * 1.75), OLLAMA_NUM_PREDICT + 1024),
-                6144,
+            content = _retry(
+                "Your previous answer was cut off. "
+                f"Regenerate the full answer and end exactly with `{required_tail}`."
             )
-            tail_messages = [
-                {
-                    "role": "user",
-                    "content": (
-                        f"{user_prompt}\n\n"
-                        "IMPORTANT: Your previous answer was cut off. "
-                        f"Regenerate the full answer and end exactly with `{required_tail}`."
-                    ),
-                }
-            ]
-            tail_kwargs = dict(completion_kwargs)
-            tail_kwargs["messages"] = tail_messages
-            tail_kwargs["max_tokens"] = tail_tokens
-            response = completion(**tail_kwargs)
-            content = response.choices[0].message.content
         if _looks_like_prompt_echo(str(content or "")):
-            echo_tokens = min(max(int(OLLAMA_NUM_PREDICT * 1.5), OLLAMA_NUM_PREDICT + 1024), 6144)
-            echo_messages = [
-                {
-                    "role": "user",
-                    "content": (
-                        f"{user_prompt}\n\n"
-                        "IMPORTANT: Do not repeat or quote the prompt/template. "
-                        "Return only the final completed report content."
-                    ),
-                }
-            ]
-            echo_kwargs = dict(completion_kwargs)
-            echo_kwargs["messages"] = echo_messages
-            echo_kwargs["max_tokens"] = echo_tokens
-            response = completion(**echo_kwargs)
-            content = response.choices[0].message.content
+            content = _retry(
+                "Do not repeat or quote the prompt/template. "
+                "Return only the final completed report content."
+            )
         if not content or not str(content).strip():
             raise RuntimeError("LLM returned an empty response.")
         elapsed_ms = (time.perf_counter() - started) * 1000
