@@ -30,8 +30,8 @@ def format_slider_features(data: dict[str, float]) -> str:
             f"voice_min: {data['voice_min']:.0f} minutes / month",
             f"sms_count: {data['sms_count']:.0f} SMS / month",
             f"roaming_days: {data['roaming_days']:.0f} days abroad / month",
-            f"data_trend: {data['data_trend']:+.0f} (trajectory, not clustering input)",
-            f"voice_trend: {data['voice_trend']:+.0f} (trajectory, not clustering input)",
+            f"data_trend: {data['data_trend']:+.0f} % / year (trajectory, not clustering input)",
+            f"voice_trend: {data['voice_trend']:+.0f} % / year (trajectory, not clustering input)",
         ]
     )
 
@@ -93,15 +93,46 @@ def build_profile_prompt(
             "profile_characteristics": profile_chars_text,
             "required_primary": scoring.primary_name,
             "required_confidence": scoring.confidence,
-            "metrics_block": metrics_block or "_No extended metrics._",
+            "metrics_block": metrics_block or format_usage_signals(data, scoring),
         },
     )
+
+
+def format_usage_signals(data: dict[str, float], scoring: object | None = None) -> str:
+    """Deterministic pain points and upsell signals for the profile prompt."""
+    from telekom_profiler.domain.models import ScoringResult
+    from telekom_profiler.domain.profiling import usage_pains_and_upsells
+
+    pains, upsells = usage_pains_and_upsells(
+        data, scoring if isinstance(scoring, ScoringResult) else None
+    )
+    return "\n".join(
+        ["**Risks:**", *(f"- {p}" for p in pains), "**Signals:**", *(f"- {u}" for u in upsells)]
+    )
+
+
+def format_rule_recommendation(data: dict[str, float], scoring: object | None = None) -> str:
+    """Rule-engine tariff sizing, given to the LLM as a grounded starting point."""
+    from telekom_profiler.domain.models import ScoringResult
+    from telekom_profiler.domain.offers import recommend
+
+    rec = recommend(data, scoring if isinstance(scoring, ScoringResult) else None)
+    lines = [
+        f"- Projected data need: ~{rec.data_need_gb:.0f} GB / month",
+        f"- Main tariff: {rec.tariff.display} — {rec.tariff.data_label}, {rec.tariff.price_label}",
+    ]
+    if rec.alternative is not None:
+        alt = rec.alternative
+        lines.append(f"- Alternative: {alt.display} — {alt.data_label}, {alt.price_label}")
+    lines.extend(f"- Add-on: {a.display} ({a.price_label})" for a in rec.addons)
+    return "\n".join(lines)
 
 
 def build_offer_prompt(
     customer_profile: str,
     *,
     scoring: object | None = None,
+    usage: dict[str, float] | None = None,
 ) -> str:
     catalog = DATA_DIR / "plans_and_options.md"
     if not catalog.is_file():
@@ -116,5 +147,9 @@ def build_offer_prompt(
             "tariffs_and_options": _read_text(str(catalog)),
             "overlay_signals": overlay_line or "None",
             "primary_profile": getattr(scoring, "primary_name", "Unknown"),
+            "usage_features": format_slider_features(usage) if usage else "Not provided",
+            "rule_recommendation": (
+                format_rule_recommendation(usage, scoring) if usage else "Not available"
+            ),
         },
     )

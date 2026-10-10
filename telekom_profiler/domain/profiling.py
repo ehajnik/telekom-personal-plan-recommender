@@ -1,6 +1,9 @@
-"""Rule-based B2C customer profile generation."""
+"""Rule-based B2C customer profile generation (legacy archetypes and ML profiles)."""
 
 from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from telekom_profiler.config.thresholds import (
     DATA_TREND_GROWTH_MIN,
@@ -11,7 +14,6 @@ from telekom_profiler.config.thresholds import (
     PAIN_DATA_GB,
     PAIN_LOW_VOICE_MIN,
     SECONDARY_BLEND_SCORE_FACTOR,
-    UPSELL_DATA_GB,
     UPSELL_SMS,
     UPSELL_VOICE_MIN,
     VOICE_TREND_DECLINE_MAX,
@@ -21,6 +23,9 @@ from telekom_profiler.domain.archetypes import (
     compute_overlays,
     confidence_label,
 )
+from telekom_profiler.domain.catalog import MAGENTA_EINS, PLUSKARTE
+from telekom_profiler.domain.models import ScoringResult
+from telekom_profiler.domain.offers import recommend
 
 _ARCHETYPE_CONTEXT: dict[str, str] = {
     "Streamer": "Young professional or household streaming on mobile.",
@@ -30,14 +35,96 @@ _ARCHETYPE_CONTEXT: dict[str, str] = {
     "Messenger": "Messaging-centric, social and chat app usage.",
 }
 
+_ML_PROFILE_CONTEXT: dict[str, str] = {
+    "Light / occasional user": "Low-intensity mobile user; prepaid or entry postpaid fit.",
+    "Streaming & data-heavy": "High data volume; large or unlimited allowance needed.",
+    "Voice-centric": "Voice-first; moderate data; German voice flat is essential.",
+    "Roaming / travel-heavy": "Frequent international travel; non-EU data allowance matters.",
+    "Broad usage profile": "Above-average data, voice and SMS without one dominant dimension.",
+}
 
-def render_profile_report(data: dict[str, float]) -> str:
-    """Build profile markdown aligned with ``prompts/templates/run_profile.md``."""
-    distances = compute_archetype_distances(data)
+
+def usage_pains_and_upsells(
+    data: Mapping[str, float],
+    scoring: ScoringResult | None = None,
+) -> tuple[list[str], list[str]]:
+    """Pain points and upsell signals from concrete usage (shared by all report types).
+
+    Product references come from the catalogue via the offer engine, so the profile
+    never mentions a product that the offer step cannot recommend.
+    """
+    rec = recommend(data, scoring)
+    pains: list[str] = []
+    if data["data_gb"] > PAIN_DATA_GB and data["data_trend"] > DATA_TREND_GROWTH_MIN:
+        pains.append(
+            f"Data growing {data['data_trend']:+.0f} %/year — a tier sized for today may "
+            "throttle within 12 months."
+        )
+    if data["voice_min"] < PAIN_LOW_VOICE_MIN and data["voice_trend"] < VOICE_TREND_DECLINE_MAX:
+        pains.append(
+            f"Voice falling {data['voice_trend']:+.0f} %/year — legacy minute bundles may be "
+            "oversized; value shifts to data."
+        )
+    if data["roaming_days"] >= NARRATIVE_ROAMING_DAYS:
+        pains.append(
+            "Non-EU roaming costs if trips exceed the tariff's annual LG 2/3 data volume."
+        )
+    if rec.intent == "light" and rec.tariff.family == "prepaid":
+        pains.append("A postpaid contract would likely be oversized for this usage.")
+    if not pains:
+        pains.append("Main risk is plan–usage mismatch at contract renewal.")
+
+    upsells: list[str] = [
+        f"Tariff fit → **{rec.tariff.name}** ({rec.tariff.data_label}) for a projected "
+        f"need of ~{rec.data_need_gb:.0f} GB/month."
+    ]
+    if data["data_trend"] > DATA_TREND_GROWTH_MIN:
+        upsells.append("Growing data → schedule a proactive tier review before throttling.")
+    if rec.travel_relevant:
+        upsells.append(
+            "Frequent roaming → MagentaMobil L/XL annual non-EU volume; "
+            "Travel & Surf passes only beyond it."
+        )
+    if data["voice_min"] >= UPSELL_VOICE_MIN:
+        upsells.append(
+            "Voice-heavy → German voice flat in every MagentaMobil tier; "
+            "L/XL add calls to EU/CH/GB/TR."
+        )
+    if data["sms_count"] >= UPSELL_SMS:
+        upsells.append(
+            f"{data['sms_count']:.0f} SMS/month → confirm the current plan has an SMS flat "
+            "(included in all MagentaMobil tiers)."
+        )
+    upsells.append(
+        f"Household check → **{PLUSKARTE.name}** for extra devices, "
+        f"**{MAGENTA_EINS.name}** with fixed line / TV."
+    )
+    return pains[:3], upsells[:5]
+
+
+def render_profile_report(
+    data: dict[str, float],
+    *,
+    scoring: ScoringResult | None = None,
+) -> str:
+    """Build profile markdown aligned with ``prompts/templates/run_profile.md``.
+
+    When ``scoring`` is omitted, legacy L1 archetype distances are computed here.
+    """
+    if scoring is not None:
+        distances = [(s.name, s.distance) for s in scoring.all_distances] or [
+            (scoring.primary.name, scoring.primary.distance)
+        ]
+        overlays = list(scoring.overlays)
+        confidence = scoring.confidence
+    else:
+        distances = compute_archetype_distances(data)
+        overlays = compute_overlays(data)
+        confidence = ""
     primary, primary_score = distances[0]
     secondary, secondary_score = distances[1] if len(distances) > 1 else ("", 0.0)
-    overlays = compute_overlays(data)
-    confidence = confidence_label(primary_score, secondary_score)
+    if not confidence:
+        confidence = confidence_label(primary_score, secondary_score)
 
     overlay_text = (
         "\n".join(f"- {o}" for o in overlays)
@@ -70,27 +157,7 @@ def render_profile_report(data: dict[str, float]) -> str:
         ", ".join(narrative_bits) if narrative_bits else "moderate, balanced mobile usage"
     )
 
-    pains: list[str] = []
-    if data["data_gb"] > PAIN_DATA_GB and data["data_trend"] > DATA_TREND_GROWTH_MIN:
-        pains.append("Risk of out-of-bundle data charges if tier is too small.")
-    if data["voice_min"] < PAIN_LOW_VOICE_MIN and data["voice_trend"] < VOICE_TREND_DECLINE_MAX:
-        pains.append("Paying for unused inclusive voice minutes.")
-    if data["roaming_days"] >= NARRATIVE_ROAMING_DAYS:
-        pains.append("Roaming surcharges if EU/world packs are missing.")
-    if not pains:
-        pains.append("Main risk is plan–usage mismatch at contract renewal.")
-
-    upsells: list[str] = []
-    if data["data_gb"] >= UPSELL_DATA_GB:
-        upsells.append("High data → consider **MagentaMobil L/XL** or **Data Boost**.")
-    if data["roaming_days"] >= NARRATIVE_ROAMING_DAYS:
-        upsells.append("Frequent roaming → **EU Roaming Plus** or **World Roaming Pack**.")
-    if data["voice_min"] >= UPSELL_VOICE_MIN:
-        upsells.append("Voice-heavy → ensure flat voice in **MagentaMobil M+**.")
-    if data["data_trend"] > DATA_TREND_GROWTH_MIN:
-        upsells.append("Growing data → proactive tier upgrade before bill shock.")
-    if data["sms_count"] >= UPSELL_SMS:
-        upsells.append("Messaging-heavy → unlimited SMS bundles in postpaid tiers.")
+    pains, upsells = usage_pains_and_upsells(data, scoring)
 
     return f"""### 1. Primary archetype
 <mark>{primary}</mark> (proximity {primary_score:.3f}) — confidence: <mark>{confidence}</mark>.
@@ -101,61 +168,51 @@ def render_profile_report(data: dict[str, float]) -> str:
 ### 4. Lifestyle narrative
 This subscriber shows **{behaviour}**. They use about <mark>{data["data_gb"]:.0f} GB</mark> data,
 <mark>{data["voice_min"]:.0f}</mark> voice minutes, <mark>{data["sms_count"]:.0f}</mark> SMS, and
-<mark>{data["roaming_days"]:.0f}</mark> roaming days per month. Data trend **{data["data_trend"]:+.0f}**,
-voice trend **{data["voice_trend"]:+.0f}** (trajectory only).
+<mark>{data["roaming_days"]:.0f}</mark> roaming days per month. Data trend **{data["data_trend"]:+.0f} %/year**,
+voice trend **{data["voice_trend"]:+.0f} %/year** (trajectory only).
 
 ### 5. Likely customer context
-- {_ARCHETYPE_CONTEXT.get(primary, "Typical consumer mobile user.")}
+- {_ARCHETYPE_CONTEXT.get(primary, _ML_PROFILE_CONTEXT.get(primary, "Typical consumer mobile user."))}
 - Contract review relevant if usage has shifted vs current plan.
 
 ### 6. Pain points & risks
-{chr(10).join(f"- {p}" for p in pains[:3])}
+{chr(10).join(f"- {p}" for p in pains)}
 
 ### 7. Upsell & retention signals
-{chr(10).join(f"- {u}" for u in upsells[:5])}
+{chr(10).join(f"- {u}" for u in upsells)}
 """
 
 
-_ML_PROFILE_CONTEXT: dict[str, str] = {
-    "Light / occasional user": "Low-intensity mobile user; prepaid or entry postpaid fit.",
-    "Streaming & data-heavy": "High data and session intensity; unlimited or large buckets.",
-    "Voice-centric": "Voice-first; moderate data; flat domestic voice important.",
-    "Roaming / travel-heavy": "Frequent international travel; roaming packs essential.",
-    "Broad usage profile": "Broad engagement across services with mixed usage intensity.",
-}
-
-
-def _format_centroid_table(centroid: dict[str, float]) -> str:
+def _usage_comparison_table(
+    usage: Mapping[str, float],
+    reference: Mapping[str, Any],
+) -> str:
+    """Customer's own usage next to the profile reference (centroid)."""
     rows = [
-        ("Lines (total / active)", f"{centroid.get('lines_total', 0):.0f} / {centroid.get('lines_active', 0):.0f}"),
-        ("Active line ratio", f"{centroid.get('active_line_ratio', 0):.3f}"),
-        ("Data (GB / month)", f"{centroid.get('avg_monthly_data_gb', 0):.1f}"),
-        ("Voice (min / month)", f"{centroid.get('avg_monthly_voice_min', 0):.0f}"),
-        ("SMS / month", f"{centroid.get('avg_monthly_sms', 0):.0f}"),
-        ("Idle line share", f"{centroid.get('pct_idle_lines', 0):.1%}"),
-        ("Roaming days / month", f"{centroid.get('avg_roaming_days', 0):.1f}"),
-        ("Roaming days ratio", f"{centroid.get('roaming_days_ratio', 0):.3f}"),
-        ("Countries visited", f"{centroid.get('countries_visited', 0):.1f}"),
-        ("Roaming intensity", f"{centroid.get('roaming_intensity', 0):.2f}"),
-        ("Session intensity", f"{centroid.get('session_intensity', 0):.0f}"),
-        ("Data per active line (GB)", f"{centroid.get('data_per_active_line', 0):.1f}"),
-        ("Plan tier / usage gap", f"{centroid.get('plan_tier', 0):.1f} / {centroid.get('plan_usage_gap', 0):.2f}"),
-        ("Data trend / month", f"{centroid.get('mean_data_trend_per_month', 0):+.1f}"),
-        ("Voice trend / month", f"{centroid.get('mean_voice_trend_per_month', 0):+.1f}"),
-        ("Roaming trend / month", f"{centroid.get('mean_roaming_trend_per_month', 0):+.2f}"),
+        ("Data (GB / month)", f"{usage['data_gb']:.0f}",
+         f"{float(reference.get('avg_monthly_data_gb', 0)):.0f}"),
+        ("Voice (min / month)", f"{usage['voice_min']:.0f}",
+         f"{float(reference.get('avg_monthly_voice_min', 0)):.0f}"),
+        ("SMS / month", f"{usage['sms_count']:.0f}",
+         f"{float(reference.get('avg_monthly_sms', 0)):.0f}"),
+        ("Roaming days / month", f"{usage['roaming_days']:.0f}",
+         f"{float(reference.get('avg_roaming_days', 0)):.1f}"),
+        ("Data trend (% / year)", f"{usage['data_trend']:+.0f}", "—"),
+        ("Voice trend (% / year)", f"{usage['voice_trend']:+.0f}", "—"),
     ]
-    body = "\n".join(f"| {name} | {val} |" for name, val in rows)
-    return f"| Metric | Value |\n|--------|-------|\n{body}"
+    body = "\n".join(f"| {name} | {cust} | {ref} |" for name, cust, ref in rows)
+    return f"| Metric | This customer | Profile reference |\n|--------|---------------|-------------------|\n{body}"
 
 
 def render_ml_profile_report(
     primary_label: str,
-    metrics: dict[str, float],
-    overlays: tuple[str, ...] | list[str],
+    usage: Mapping[str, float],
+    overlays: Sequence[str],
     *,
-    profile: dict | None = None,
+    profile: dict[str, Any] | None = None,
+    scoring: ScoringResult | None = None,
 ) -> str:
-    """Profile markdown with concrete 12-month metrics (ML path)."""
+    """Profile markdown for the ML path: the customer's own numbers vs the profile reference."""
     overlay_text = (
         "\n".join(f"- {o}" for o in overlays)
         if overlays
@@ -165,14 +222,27 @@ def render_ml_profile_report(
     emoji = prof.get("emoji", "")
     signatures = prof.get("signature") or []
     examples = prof.get("examples") or []
-    centroid = prof.get("centroid") or metrics
+    reference = prof.get("centroid") or {}
 
-    sig_block = "\n".join(f"- {s}" for s in signatures) if signatures else f"- {_ML_PROFILE_CONTEXT.get(primary_label, '')}"
+    sig_block = (
+        "\n".join(f"- {s}" for s in signatures)
+        if signatures
+        else f"- {_ML_PROFILE_CONTEXT.get(primary_label, '')}"
+    )
     ex_block = "\n".join(f"- {e}" for e in examples) if examples else "- —"
     title = f"{emoji} {primary_label}".strip() if emoji else primary_label
+    confidence = f" — confidence: <mark>{scoring.confidence}</mark>" if scoring else ""
+    secondary = ""
+    if scoring and scoring.secondary:
+        secondary = (
+            f" Next closest: {scoring.secondary.name} "
+            f"(distance {scoring.secondary.distance:.2f} vs {scoring.primary.distance:.2f})."
+        )
+
+    pains, upsells = usage_pains_and_upsells(usage, scoring)
 
     return f"""### 1. Primary usage profile
-**{title}** (K-Means segmentation on 12-month baseline features).
+<mark>{title}</mark>{confidence} (K-Means segmentation, frozen centroids).{secondary}
 
 ### 2. Profile signature
 {sig_block}
@@ -180,16 +250,15 @@ def render_ml_profile_report(
 ### 3. Overlay characteristics
 {overlay_text}
 
-### 4. Example customer situations
+### 4. Customer usage vs profile reference
+{_usage_comparison_table(usage, reference)}
+
+### 5. Example customer situations
 {ex_block}
 
-### 5. Centroid metrics (12-month baseline)
-{_format_centroid_table(centroid)}
-
 ### 6. Pain points & risks
-- Plan–usage mismatch if current tier diverges from centroid metrics.
-- Review roaming packs if travel-heavy overlay is active.
+{chr(10).join(f"- {p}" for p in pains)}
 
 ### 7. Upsell & retention signals
-- Align catalog SKU to primary profile and active overlays (see offer step).
+{chr(10).join(f"- {u}" for u in upsells)}
 """

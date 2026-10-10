@@ -12,11 +12,7 @@ from telekom_profiler.domain.offers import render_offer_report
 from telekom_profiler.domain.profiling import render_profile_report
 from telekom_profiler.domain.scoring import build_scoring_result
 from telekom_profiler.llm.client import chat_completion
-from telekom_profiler.prompts.builder import (
-    build_offer_prompt,
-    build_profile_prompt,
-    format_distance_table,
-)
+from telekom_profiler.prompts.builder import build_offer_prompt, build_profile_prompt
 from telekom_profiler.services.fallback import FallbackOfferProvider, FallbackProfileProvider
 from telekom_profiler.services.ml_profile_provider import MlProfileProvider
 from telekom_profiler.services.protocols import OfferProvider, ProfileProvider
@@ -74,7 +70,7 @@ class RuleBasedProfileProvider:
 
     def profile(self, usage: CustomerUsage) -> ProfileResult:
         scoring = build_scoring_result(usage)
-        markdown = render_profile_report(usage.as_dict())
+        markdown = render_profile_report(usage.as_dict(), scoring=scoring)
         return ProfileResult(
             markdown=markdown,
             usage=usage,
@@ -91,9 +87,8 @@ class LiteLLMProfileProvider:
     def profile(self, usage: CustomerUsage) -> ProfileResult:
         provider = model_provider()
         scoring = build_scoring_result(usage)
-        metrics_block = format_distance_table(scoring) if scoring.all_distances else ""
         markdown = chat_completion(
-            build_profile_prompt(usage.as_dict(), metrics_block=metrics_block),
+            build_profile_prompt(usage.as_dict()),
             required_headings=PROFILE_HEADINGS,
             required_tail=END_MARKER,
         )
@@ -127,7 +122,7 @@ class LiteLLMOfferProvider:
 
     def recommend(self, profile: ProfileResult, usage: CustomerUsage) -> str:
         markdown = chat_completion(
-            build_offer_prompt(profile.markdown, scoring=profile.scoring),
+            build_offer_prompt(profile.markdown, scoring=profile.scoring, usage=usage.as_dict()),
             required_headings=OFFER_HEADINGS,
             required_tail=END_MARKER,
         )

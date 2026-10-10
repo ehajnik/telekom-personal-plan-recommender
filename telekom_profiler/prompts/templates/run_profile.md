@@ -28,7 +28,7 @@ Distance to each of the 5 core **consumer usage archetypes** (lower = closer mat
 |---------|----------|
 {distance_table}
 
-### Extended metrics
+### Usage-derived signals (deterministic, from code)
 
 {metrics_block}
 
@@ -82,9 +82,9 @@ List 2–3 plausible life situations (e.g. commuter with daily roaming, student 
 Identify 2–3 issues this subscriber may face: bill shock, out-of-bundle data, unused inclusive minutes, roaming surprises, contract mismatch, etc.
 
 ### 7. Upsell & retention signals
-List 3–5 observable signals and the **consumer** product direction each suggests (tariff tier up/down, data pack, EU roaming option, MultiSIM, family card, loyalty benefit)—not B2B add-ons.
+List 3–5 observable signals and the **consumer** product direction each suggests (tariff tier up/down, prepaid vs postpaid, Travel & Surf pass, PlusKarte, MagentaEINS)—not B2B add-ons. Use only product names from the usage-derived signals above.
 
-**Important:** Usage **trends** (data/voice trajectory) describe direction only; they do not by themselves change archetype assignment unless your analysis explicitly treats them as overlays.
+**Important:** Usage **trends** are relative changes in **% per year** and describe direction only; they do not by themselves change archetype assignment unless your analysis explicitly treats them as overlays.
 
 **Formatting requirement (strict):** Use the exact numbered section headings below, in this exact order, each as a Markdown heading:
 

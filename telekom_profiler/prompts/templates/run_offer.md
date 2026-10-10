@@ -16,6 +16,18 @@ Profile produced by the usage analytics step:
 
 **Active overlays:** {overlay_signals}
 
+**Usage snapshot (monthly):**
+
+```
+{usage_features}
+```
+
+**Deterministic tariff sizing (code, from the catalog):**
+
+{rule_recommendation}
+
+Recommend this main tariff unless the profile gives a concrete reason not to; if you deviate, say why in section 1.
+
 ---
 
 ## Input: Available consumer tariffs and options
@@ -36,7 +48,7 @@ Produce a **personalised plan recommendation** in **Markdown**, structured as fo
 Name the single best-fitting **consumer** base plan from the catalog. Cite the **SKU** from the catalog table. Justify in 2–3 sentences using specific profile signals (data volume, voice, roaming days, trends).
 
 ### 2. Recommended add-ons and options
-List up to 3 add-ons (e.g. extra data, EU/all-world roaming pack, MultiSIM, streaming partner option, insurance). For each:
+List up to 3 add-ons **from the catalog only** (e.g. Travel & Surf pass, PlusKarte / PlusKarte Data, MagentaEINS). Recommend none if no profile signal supports one. For each:
 - Product name (from catalog)
 - Profile signal that triggers it
 - Customer benefit in plain language
@@ -45,10 +57,10 @@ List up to 3 add-ons (e.g. extra data, EU/all-world roaming pack, MultiSIM, stre
 State whether **postpaid (MagentaMobil)** or **prepaid** is a better fit and why. Mention binding period or flexibility only if listed in the catalog.
 
 ### 4. Indicative pricing
-Table using catalog prices (prefer **monthly brutto** as shown in DE consumer marketing):
+Table using catalog prices (brutto). State the billing period (month, 4 weeks, per pass):
 
-| Product | Monthly price (brutto) | Notes |
-|---------|------------------------|-------|
+| Product | Price (brutto) | Notes |
+|---------|----------------|-------|
 
 Flag introductory discounts, young tariffs, or hardware bundles only if in the catalog.
 

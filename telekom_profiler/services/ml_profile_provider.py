@@ -32,9 +32,10 @@ class MlProfileProvider:
         profile = get_profile(bundle.profile_characteristics, pred.primary_label)
         markdown = render_ml_profile_report(
             pred.primary_label,
-            pred.metrics,
+            usage.as_dict(),
             pred.overlays,
             profile=profile,
+            scoring=scoring,
         )
         return ProfileResult(
             markdown=markdown,
