@@ -8,10 +8,31 @@ Version bumps are driven by [Commitizen](https://commitizen-tools.github.io/comm
 
 ---
 
+## Unreleased
 
-### Added
+### Fix
 
-- Baseline Gradio application with rule-based and Ollama providers, five B2C archetypes, and Telekom branding
+- **offers**: size tariffs by allowance — cheapest tariff covering usage × (1 + growth) × 1.1. Broad usage customers (~59 GB) were offered MagentaMobil S (30 GB); Prepaid S (1 GB) was offered for up to 3 GB; streaming users at 50 GB were pushed to XL although L (100 GB) fits
+- **offers**: remove "MagentaMobil Special" as a €10 add-on (it is a standalone €19.95 tariff), data-volume-triggered PlusKarte, and the unverified Travel Mobil Basic
+- **profile**: upsells no longer cite non-existent products ("Data Boost", "EU Roaming Plus", "World Roaming Pack", "MagentaMobil M+"); ML profile shows the customer's own usage next to the profile reference instead of only the cluster centroid
+- **catalog**: update to Telekom 2026 facts — prepaid M/L/XL now 20/40/80 GB (since 25.02.2026), prepaid M voice flat to all German networks, postpaid annual non-EU data volume 2–50 GB (since 04.02.2026), PlusKarte+ €14.95, current Travel & Surf passes
+- **ml**: committed dataset, centroids and artifacts were produced by an older 7-archetype generator (incl. a "Value optimization candidate" label in the cluster map); regenerated consistently
+- **ml**: cluster on slider-observable log usage levels — the 12-feature space classified only 76.8 % of slider-entered subscribers correctly (now 100 %)
+- **ml**: trends use one unit everywhere (% per year); previously GB/month slope × 50 in ML and an undefined scale in rules mode
+- **llm**: repair retries were capped at 4096 tokens, below the 6144 first-attempt budget; now 1.5× the budget
+- **llm**: do not send `temperature` to Anthropic models (current Claude models reject it); replace retired `claude-3-5-sonnet-latest` with `claude-opus-5-5`
+- **ui**: block offer generation when sliders changed after profiling; fix "Run profile" placeholder copy
+- **deps**: add missing `pyyaml` to `requirements.txt`
+- **docs**: correct `OLLAMA_NUM_PREDICT` default (6144), provider source tags, `ollama` → `litellm` dependency, default model consistency (`qwen2.5:7b`)
+
+### Feat
+
+- **ml**: synthetic generator with per-subscriber baselines, relative trends, roaming seasonality and ground-truth sidecar labels
+- **ml**: `scripts/evaluate_model.py` — batch and slider-path accuracy, template round-trip, anchor drift, k-selection; wired into CI and `make ml-train`
+- **catalog**: structured `domain/catalog.py` with tests that keep it identical to the LLM reference markdown
+- **offers**: `recommend()` returns a structured `OfferRecommendation`; offer reports show the sizing calculation and a prepaid/postpaid alternative
+- **prompts**: offer prompt receives usage figures and the deterministic sizing as grounding
+- **config**: `PROFILER_CONFIG` override and clear error when `app_config.yaml` is missing
 
 ## v0.4.0 (2026-05-28)
 

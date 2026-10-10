@@ -24,7 +24,8 @@ This repository is in a **stabilized prototype** phase: the core profiling and r
 |------|---------------|--------------------|
 | Core domain scoring | Stable and deterministic | Sales workflows need explainable, repeatable outputs; deterministic scoring prevents narrative drift from changing profile assignments. |
 | UI workflow | Stable for workshops and internal demos | Product validation and stakeholder feedback are faster with a runnable end-to-end UI than with backend-only prototypes. |
-| ML segmentation runtime | Frozen-centroid inference from committed artifacts | Pipeline is staged: generate synthetic data, define/curate archetypes, then freeze artifacts for runtime inference. |
+| ML segmentation runtime | Frozen-centroid inference from committed artifacts; evaluated against synthetic ground truth | Pipeline is staged: generate synthetic data, curate anchors, train, evaluate, then freeze artifacts for runtime inference. |
+| Tariff catalogue | Structured catalogue (`domain/catalog.py`) checked against the LLM reference markdown; Stand Feb 2026 | Offers must only cite real products and current prices; one source of truth prevents drift. |
 | LLM narrative layer | Optional enhancement with rule-based fallback | Narrative quality improves user experience, but business decisions must not depend on external model availability or latency. |
 | External integration (CRM/BSS/SSO/audit) | Not production-complete | Integration and governance requirements are organization-specific and are separated from the prototype to reduce coupling early. |
 
@@ -38,9 +39,9 @@ This repository is in a **stabilized prototype** phase: the core profiling and r
 |------------|-------------|
 | Usage capture | Six standardised signals (four usage levels, two trends) via UI or API |
 | Customer profiling | Markdown profile with archetype, overlays, narrative, and risks |
-| Offer recommendation | Tariff and add-on suggestion against prototype catalogue |
+| Offer recommendation | Cheapest tariff whose allowance covers projected usage (trend + 10 % headroom), with prepaid/postpaid alternative and catalogue-only add-ons |
 | Demo personas | Profile templates from ML training or legacy archetype presets |
-| ML segmentation | Staged K-Means workflow on 12-month synthetic usage (`n_profiles` from config, currently 5), Hungarian label matching, and frozen-centroid runtime inference |
+| ML segmentation | K-Means (k = 5) on log-scaled usage levels from a 12-month synthetic panel, Hungarian label matching against curated anchors, frozen-centroid runtime inference, and an evaluation script with ground-truth accuracy |
 | Inference modes | LiteLLM (Ollama endpoint by default) with runtime model dropdown and rule-based / ML fallback |
 
 ### Out of scope (current release)
@@ -71,22 +72,18 @@ cd telekom-personal-plan-recommender
 
 source .venv/bin/activate
 
-# ML PoC pipeline:
-#   1) generate synthetic data
-#   2) train/update archetypes + centroids
-#   3) freeze runtime artifacts
-# If the synthetic dataset changes, you MUST refresh:
-#   1) model.fixed_centroids in app_config.yaml
-#   2) curated profile definitions in telekom_profiler/ml/profile_characteristics.py
-#   3) regenerate artifacts/profile_characteristics.json + frozen_centroids.json via one training run
-# WARNING: retraining without updating the hardcoded profile layer creates config/profile drift.
-# Keep runtime inference frozen between dataset refreshes (no dynamic runtime retraining).
-python scripts/generate_synthetic_data.py --subscribers 1000
+# ML PoC pipeline (artifacts for seed 42 / 1000 subscribers are committed):
+#   1) generate synthetic data (+ ground-truth sidecar *.labels.csv)
+#   2) train K-Means and freeze runtime artifacts
+#   3) evaluate against ground truth (fails if accuracy < 90 % or anchors drift)
+# If the generator changes: refresh model.fixed_centroids in app_config.yaml
+#   (python scripts/evaluate_model.py --print-anchors) and the template slider
+#   positions in telekom_profiler/ml/profile_characteristics.py, then retrain + evaluate.
+python scripts/generate_synthetic_data.py --subscribers 1000 --seed 42
 # Optional: MOSTLY AI-backed generator (requires requirements-mostlyai.txt)
 # python scripts/generate_synthetic_data_mostlyai.py --subscribers 1000
 python scripts/subscriber_profiling.py --input data/raw/private_mobile_usage_1000_subscribers_12_months.csv
-# writes frozen runtime artifacts (frozen_centroids.json, label_map.json, profile_characteristics.json)
-# if synthetic data changes, clustering/archetype mapping can shift and must be re-curated
+python scripts/evaluate_model.py        # or: make ml-train (all three steps)
 
 # Optional LLM (CPU-friendly defaults in .env.example):
 # ollama serve && ollama pull qwen2.5:7b
@@ -121,11 +118,29 @@ The MOSTLY AI path keeps the existing deterministic generator as a fallback and 
 ```bash
 OLLAMA_ENABLED=false PROFILER_MODE=rules python -m unittest discover -s tests -v
 OLLAMA_ENABLED=false PROFILER_MODE=rules python scripts/sanity_check.py
+python scripts/evaluate_model.py
 ruff check telekom_profiler tests scripts
 mypy telekom_profiler
 ```
 
 `PROFILER_MODE=rules` pins the legacy archetype scoring so unit-test assertions about archetype names (e.g. `Streamer`) are independent of any locally-trained `artifacts/`.
+
+---
+
+## Accuracy and data quality
+
+| Check | Result (committed artifacts) | How to reproduce |
+|-------|------------------------------|------------------|
+| Segment accuracy, batch path (12-month features) | 100 % (1000/1000) | `python scripts/evaluate_model.py` |
+| Segment accuracy, slider/API path | 100 % (1000/1000); hold-out panel (seed 7, 2000 subs) also 100 % | `--input <other panel>` |
+| Silhouette (k = 5) | 0.56; k = 5 is also the silhouette optimum over k = 2…9 | `--k-selection` |
+| Profile templates classified as themselves | 5/5 | evaluation + unit tests |
+| Recommended tariff covers projected usage | All 3,600 grid cases | `tests/test_offers.py` |
+| Catalogue markdown matches structured catalogue | Every SKU, price, allowance | `tests/test_catalog.py` |
+
+**Read these numbers honestly:** the synthetic archetypes are well separated by construction, so 100 % shows the pipeline is wired correctly end to end — it is *not* an estimate of accuracy on real subscribers. Real CDR/billing data will have overlapping segments; re-run the evaluation with labelled real data before relying on segment labels.
+
+Catalogue facts were checked against Telekom press releases (postpaid 04.02.2026, prepaid 25.02.2026, Travel & Surf 17.02.2025); sources are linked in `telekom_profiler/data/plans_and_options.md`. MagentaMobil Young volumes could not be re-confirmed for 2026 and are flagged.
 
 ---
 
@@ -137,8 +152,8 @@ The application follows a **layered, provider-based** design:
 |-------|---------|----------------|
 | Presentation | `telekom_profiler.ui` | Gradio UI, Telekom theme, session state |
 | Application | `telekom_profiler.services` | `ProfilerEngine`, provider orchestration |
-| Domain | `telekom_profiler.domain` | Models, archetype scoring, rule engines |
-| Integration | `prompts`, `llm`, `data` | Prompt assembly, Ollama client, reference data |
+| Domain | `telekom_profiler.domain` | Models, archetype scoring, tariff catalogue, rule engines |
+| Integration | `prompts`, `llm`, `data` | Prompt assembly, LiteLLM client (Ollama by default), reference data |
 | ML pipeline | `telekom_profiler.ml`, `scripts/` | Synthetic data, feature engineering, K-Means training |
 | Configuration | `telekom_profiler.config` | Sliders, thresholds, environment, profiler mode |
 
@@ -178,14 +193,14 @@ telekom-personal-plan-recommender/
 ├── pyproject.toml            # Package metadata, dev tools, CI dependencies
 ├── requirements.txt          # Runtime dependencies
 ├── docs/                     # Technical documentation
-├── scripts/sanity_check.py   # Smoke tests (no Ollama required)
+├── scripts/                  # Data generation, training, evaluation, sanity check
 ├── tests/                    # Unit test suite
 └── telekom_profiler/         # Application package
     ├── config/               # Sliders, thresholds, Ollama settings
-    ├── domain/               # Models, scoring, rule-based engines
+    ├── domain/               # Models, scoring, catalogue, rule-based engines
     ├── services/             # Engine, providers, public API
     ├── prompts/              # Template builder
-    ├── llm/                  # Ollama client
+    ├── llm/                  # LiteLLM client
     ├── data/                 # Archetype and tariff reference (markdown)
     ├── ui/                   # Gradio application and theme
     └── assets/               # Brand assets
@@ -197,7 +212,7 @@ telekom-personal-plan-recommender/
 
 **Usage features** (monthly levels — input to archetype distance): `data_gb`, `voice_min`, `sms_count`, `roaming_days`.
 
-**Trends** (trajectory indicators, −50…+50): `data_trend`, `voice_trend`. Trends drive overlay flags and narrative context; they are not clustering inputs unless a downstream model defines otherwise.
+**Trends** (relative change in **% per year**, −50…+50): `data_trend`, `voice_trend`. Trends drive overlay flags, narrative context and offer sizing (a growing data trend raises the projected need); they are not clustering inputs.
 
 Complete specification: [docs/domain-model.md](docs/domain-model.md).
 

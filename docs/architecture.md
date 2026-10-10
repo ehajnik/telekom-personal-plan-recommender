@@ -19,7 +19,8 @@ This document describes the logical architecture, request flows, and scalability
 | Auditable segmentation | Deterministic `ScoringResult` computed in code for every profile |
 | Stable contracts | `CustomerUsage` (input) and `ProfileResult` (profile output) |
 | Configuration externalisation | Root `app_config.yaml` plus env bindings in `config/` |
-| Fail-safe inference | Optional fallback from Ollama to rule-based providers |
+| Fail-safe inference | Optional fallback from LiteLLM to rule-based / ML providers |
+| Single catalogue source | `domain/catalog.py` for rules; markdown for LLM; consistency enforced by tests |
 
 Design rationale for deterministic scoring: [ADR 001](adr/001-scoring-in-code.md).
 
@@ -113,18 +114,19 @@ Built-in implementations:
 
 | Implementation | `source` tag | Use case |
 |----------------|--------------|----------|
-| `RuleBasedProfileProvider` | `rule_based` | Deterministic demo, CI, fallback |
-| `OllamaProfileProvider` | `ollama` | Local LLM narrative |
-| `FallbackProfileProvider` | `rule_based_fallback` | Ollama failure handling |
-| `RuleBasedOfferProvider` | `rule_based` | Threshold-based catalogue |
-| `OllamaOfferProvider` | `ollama` | LLM offer narrative |
-| `FallbackOfferProvider` | (via rules) | Ollama failure handling |
+| `RuleBasedProfileProvider` | `rule_based` | Deterministic legacy archetypes (rules mode), CI |
+| `MlProfileProvider` | `ml_kmeans` | Frozen K-Means profile (ML mode) |
+| `LiteLLMProfileProvider` (alias `OllamaProfileProvider`) | `litellm/<provider>` | LLM narrative |
+| `FallbackProfileProvider` | `rule_based_fallback` | LLM failure → ML or rules provider |
+| `RuleBasedOfferProvider` | `rule_based` | Allowance-based sizing against `domain/catalog.py` |
+| `LiteLLMOfferProvider` (alias `OllamaOfferProvider`) | `litellm/<provider>` | LLM offer narrative grounded with the rule sizing |
+| `FallbackOfferProvider` | (via rules) | LLM failure handling |
 
 ### 4.3 Scoring pipeline
 
 For every profile request—regardless of provider—`build_scoring_result()` computes:
 
-- Ranked archetype distances (L1 on normalised usage)
+- Ranked profile distances (ML: Euclidean on standardised log usage vs frozen centroids; rules: L1 on slider-normalised usage)
 - Primary and secondary archetype
 - Overlay flags (trend and usage thresholds)
 - Confidence label (`High` / `Medium` / `Low`)
@@ -156,14 +158,14 @@ sequenceDiagram
 
 1. UI collects six slider values; values are clamped to configured bounds.  
 2. `profile_customer_structured()` invokes `ProfilerEngine.profile()`.  
-3. Active provider generates profile markdown (rules or Ollama).  
+3. Active provider generates profile markdown (rules, ML or LiteLLM).  
 4. Scoring metadata is attached and persisted in `gr.State` for the offer step.
 
 ### 5.2 Offer generation
 
-1. UI reads `ProfileResult` from session state (placeholder profiles are rejected).  
-2. `ProfilerEngine.recommend()` invokes the active `OfferProvider`.  
-3. Rule-based offers may use `profile.scoring` to bias tariff selection.  
+1. UI reads `ProfileResult` from session state (placeholder profiles are rejected; if the sliders changed since profiling the user is asked to re-run the profile).  
+2. `ProfilerEngine.recommend()` re-scores the usage and invokes the active `OfferProvider`.  
+3. Rule-based offers size the tariff by allowance; `scoring.primary` sets channel and minimum tier.  
 4. Offer markdown is rendered in the results panel.
 
 ---
@@ -192,8 +194,8 @@ Detailed integration patterns: [Integration](integration.md).
 | Slider bounds and UI copy | `config/sliders.py` (resolved from root YAML) |
 | Overlay and offer thresholds | `config/thresholds.py` |
 | Ollama and logging | `config/ollama_settings.py`, `.env` |
-| Archetype narratives | `data/consumer_archetypes.md` |
-| Tariff reference | `data/tariffs_private.md` |
+| Profile narratives | `data/consumer_archetypes.md`, `ml/profile_characteristics.py` |
+| Tariff reference | `domain/catalog.py` (rules), `data/plans_and_options.md` (LLM) |
 | Prompt templates | `prompts/templates/*.md` |
 
 Path resolution is centralised in `telekom_profiler.paths` to support packaging and testing.
@@ -205,8 +207,9 @@ Path resolution is centralised in `telekom_profiler.paths` to support packaging 
 | Dependency | Role in architecture |
 |------------|---------------------|
 | `gradio` | Presentation framework |
-| `ollama` | HTTP client for local LLM (optional) |
-| `python-dotenv` | Environment loading at startup |
+| `litellm` | LLM client (local Ollama by default; OpenAI / Anthropic / Gemini optional) |
+| `python-dotenv`, `pyyaml` | Environment and `app_config.yaml` loading |
+| `scikit-learn`, `pandas`, `numpy`, `scipy` (extra `ml`) | Training, evaluation and ML inference |
 
 No database, message broker, or external service is required for baseline operation.
 
@@ -220,7 +223,8 @@ The following are explicitly **not** implemented; plan via [Deployment](deployme
 - Horizontal autoscaling and health endpoints
 - Centralised secret management
 - PII encryption, retention policies, and audit trails
-- Automated model evaluation and prompt governance pipelines
+- Prompt governance pipelines and LLM output evaluation (segmentation is evaluated by `scripts/evaluate_model.py`)
+- Per-session LLM model selection (the UI model dropdown changes a process-wide setting shared by all users)
 
 ---
 

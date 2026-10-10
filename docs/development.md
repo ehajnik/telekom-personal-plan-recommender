@@ -33,7 +33,7 @@ For CPU-only hosts without a dedicated GPU, see [Ollama runbook § 8](runbook-ol
 
 The editable install (`pip install -e .`) registers the `telekom-profiler` console script and ensures imports resolve as `telekom_profiler`.
 
-**Makefile shortcuts** (after `make setup`): `make run`, `make test`, `make lint`, `make typecheck`, `make sanity`, `make ml-train`.
+**Makefile shortcuts** (after `make setup`): `make run`, `make test`, `make lint`, `make typecheck`, `make sanity`, `make ml-train`, `make ml-evaluate`.
 
 VS Code picks up `.venv` automatically via `.vscode/settings.json`.
 
@@ -62,25 +62,28 @@ The process prints the Gradio URL (typically `http://127.0.0.1:7860`). Port assi
 
 Pipeline is intentionally staged and not dynamic at runtime:
 
-1. Generate synthetic panel data.
-2. Train segmentation/archetypes from that panel.
-3. Curate archetype characteristics (AI-assisted or centroid-based).
-4. Freeze and commit runtime artifacts for inference.
+1. Generate a synthetic panel (+ ground-truth sidecar `<panel>.labels.csv`).
+2. Train K-Means and freeze runtime artifacts.
+3. Evaluate against the ground truth.
+4. Commit data, labels and artifacts together.
 
 ```bash
+python scripts/generate_synthetic_data.py --subscribers 1000 --seed 42
 python scripts/subscriber_profiling.py \
   --input data/raw/private_mobile_usage_1000_subscribers_12_months.csv \
   --min-silhouette 0.5
-# Uses n_profiles from app_config.yaml (currently 5).
+python scripts/evaluate_model.py            # add --k-selection for the elbow/silhouette sweep
+# or all three: make ml-train
 ```
 
-When the input dataset changes, you must intentionally refresh both:
+**Synthetic generator.** Each subscriber draws a persistent personal baseline from its seed archetype's ranges (`ARCHETYPE_PARAMS` in `scripts/generate_synthetic_data.py`); months vary around it with log-normal noise, a personal relative trend (data −30…+45 %/year, voice −40…+15 %/year) and summer roaming seasonality. All subscribers are single-line B2C accounts.
 
-1. `model.fixed_centroids` in `app_config.yaml`
-2. Curated profile text/defaults in `telekom_profiler/ml/profile_characteristics.py`
-3. Regenerated runtime artifacts (`frozen_centroids.json`, `profile_characteristics.json`)
+When the generator or dataset changes, refresh the curated layer before committing:
 
-Warning: retraining without updating the hardcoded profile layer causes profile/config drift.
+1. `python scripts/evaluate_model.py --print-anchors` → `model.fixed_centroids` in `app_config.yaml`
+2. Template slider positions and signatures in `telekom_profiler/ml/profile_characteristics.py`
+3. Retrain and re-run the evaluation (it fails on accuracy < 90 %, a misclassified template or anchor drift > 25 %).
+
 Inference is frozen between data refreshes (no dynamic runtime retraining).
 
 Alternative generator path via MOSTLY AI:
@@ -97,25 +100,42 @@ The MOSTLY AI workflow is optional and writes an engine workspace under `artifac
 | Output | Purpose |
 |--------|---------|
 | `data/raw/private_mobile_usage_*_subscribers_12_months.csv` | Monthly panel input |
+| `data/raw/private_mobile_usage_*_subscribers_12_months.labels.csv` | Ground-truth seed archetype per subscriber (evaluation only; kept out of the training CSV) |
 | `artifacts/kmeans.pkl`, `scaler.pkl` | Training artifacts (kept for compatibility/debugging) |
 | `artifacts/label_map.json` | Cluster-index → profile-label map (required by `PROFILER_MODE=auto`) |
 | `artifacts/profile_characteristics.json` | Profile labels and slider presets |
 | `artifacts/cluster_features.json` | Ordered feature list used for scoring |
-| `artifacts/frozen_centroids.json` | Runtime centroid/scaler data for fixed nearest-centroid inference |
+| `artifacts/frozen_centroids.json` | Runtime centroid/scaler data, per-cluster member means and training metadata |
 | `artifacts/subscriber_features.csv` | Engineered subscriber-level features used for training |
 | `artifacts/subscriber_cluster_map.csv` | Subscriber dropdown + per-cluster distances |
 
 **Design rules:**
 
-- Trend columns are excluded from `CLUSTER_FEATURES`; they feed overlays only.
-- Named `PROFILE_LABELS` are mapped to clusters via Hungarian assignment against `LABEL_CANONICAL_CENTROIDS`.
+- `CLUSTER_FEATURES` contain only features computable from the six-slider input (`log_data_gb`, `log_voice_min`, `log_sms_count`, `log_roaming_days`), so batch and UI inference agree.
+- Trend columns are excluded from `CLUSTER_FEATURES`; they feed overlays and offer sizing only. Units: data/voice in % per year.
+- Named `PROFILE_LABELS` are mapped to clusters via Hungarian assignment against `LABEL_CANONICAL_CENTROIDS` (anchors in human units, mapped into the clustering space; an anchor with no clustering feature raises).
 - Profile text/signatures/defaults are curated and hardcoded; they are not generated dynamically from cluster members.
 
 Set `PROFILER_MODE=rules` to force legacy L1 archetypes (used in unit tests). Default `auto` selects ML when artifacts exist.
 
 ---
 
-## 4.1 Why ML is operated as "generate -> define archetypes -> freeze"
+## 4.1 Measured accuracy
+
+| Metric | Value |
+|--------|-------|
+| Batch accuracy (1000 subscribers) | 100 % |
+| Slider/API-path accuracy | 100 % (previous 12-feature space: 76.8 %) |
+| Hold-out panel (seed 7, 2000 subscribers) | 100 % |
+| Silhouette, k = 5 (optimum over k = 2…9) | 0.56 |
+
+The synthetic archetypes barely overlap, so these numbers validate the pipeline, not real-world accuracy. Evaluate on labelled production data before using segments for targeting.
+
+## 4.2 Why the clustering space changed
+
+The earlier feature set (12 features incl. session size, active days, plan tier, countries, session intensity) required imputing eight values from the sliders with hand-tuned formulas. `active_days_mean` was pure noise in the generator yet had a tiny scaler σ, so an imputation error of a few days dominated the distance. Restricting clustering to the observable usage levels (log-scaled) fixed slider-path accuracy without losing batch accuracy.
+
+## 4.3 Why ML is operated as "generate -> define archetypes -> freeze"
 
 The project intentionally avoids dynamic runtime retraining:
 
@@ -138,13 +158,15 @@ export PROFILER_MODE=rules   # pin legacy archetypes so unit-test assertions sta
 
 python -m unittest discover -s tests -v
 python scripts/sanity_check.py
+python scripts/evaluate_model.py
 ruff check telekom_profiler tests scripts
 mypy telekom_profiler
 ```
 
 | Check | Purpose |
 |-------|---------|
-| Unit tests | Domain logic, providers, prompts, models |
+| Unit tests | Domain logic, catalogue consistency, offer coverage, ML artifacts, providers, LLM client, prompts, models |
+| `scripts/evaluate_model.py` | Segment accuracy vs synthetic ground truth, template round-trip, anchor drift |
 | `scripts/sanity_check.py` | Import graph, template placeholders, UI construction |
 | Ruff | Style and import order |
 | Mypy | Static typing on `telekom_profiler` |
@@ -218,14 +240,18 @@ Further integration patterns: [Integration guide](integration.md).
 | Profile template | `prompts/templates/run_profile.md` | `scripts/sanity_check.py` |
 | Offer template | `prompts/templates/run_offer.md` | same |
 | Placeholder binding | `prompts/builder.py` | same |
-| Archetype narratives | `data/consumer_archetypes.md` | Manual review |
-| Tariff catalogue | `data/tariffs_private.md` | Manual review |
+| Profile narratives | `data/consumer_archetypes.md` | Manual review |
+| Tariff catalogue | `domain/catalog.py` + `data/plans_and_options.md` + `data/tariffs_private.md` | `tests/test_catalog.py` (SKUs, prices, allowances must match) |
+
+**Updating prices or tariffs:** edit `domain/catalog.py` and both markdown files in the same change, update the "Stand" table and source links in `plans_and_options.md`, and run the unit tests.
 
 Templates use `{placeholder}` syntax. After edits, run the sanity script to detect unfilled tokens.
 
 ---
 
 ## 9. Modifying archetypes and presets
+
+ML profiles: see §4 (anchors, templates, retrain, evaluate). Legacy rules-mode archetypes:
 
 1. Update `ARCHETYPE_CENTROIDS` in `domain/archetypes.py`.
 2. Align `ui.profiles` in `app_config.yaml` for demo consistency.

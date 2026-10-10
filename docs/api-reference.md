@@ -9,7 +9,7 @@ Stable Python surface for programmatic integration, automated tests, and headles
 ```python
 import telekom_profiler
 
-telekom_profiler.__version__   # e.g. "0.3.0" (from pyproject.toml / install metadata)
+telekom_profiler.__version__   # e.g. "0.4.0" (from pyproject.toml / install metadata)
 telekom_profiler.create_demo() # gradio.Blocks
 telekom_profiler.main()        # configure logging, reset engine, launch UI
 ```
@@ -22,7 +22,7 @@ telekom_profiler.main()        # configure logging, reset engine, launch UI
 
 #### `profile_customer(data, *, engine=None) -> str`
 
-Returns profile markdown. Delegates to `ProfilerEngine.profile()`. Uses Ollama when enabled.
+Returns profile markdown. Delegates to `ProfilerEngine.profile()`. Uses LiteLLM when `OLLAMA_ENABLED=true`.
 
 For scoring metadata and `source`, use `profile_customer_structured`.
 
@@ -90,12 +90,13 @@ def recommend(self, profile: ProfileResult, usage: CustomerUsage) -> str: ...
 
 | Class | `source` (typical) | Description |
 |-------|-------------------|-------------|
-| `RuleBasedProfileProvider` | `rule_based` | Deterministic report + scoring |
-| `OllamaProfileProvider` | `ollama` | LLM narrative + scoring |
-| `FallbackProfileProvider` | `rule_based_fallback` | Ollama with rule fallback |
-| `RuleBasedOfferProvider` | `rule_based` | Threshold catalogue |
-| `OllamaOfferProvider` | `ollama` | LLM offer narrative |
-| `FallbackOfferProvider` | (via rules) | Ollama with rule fallback |
+| `RuleBasedProfileProvider` | `rule_based` | Deterministic legacy-archetype report + scoring |
+| `MlProfileProvider` | `ml_kmeans` | Frozen K-Means profile; customer usage vs profile reference |
+| `LiteLLMProfileProvider` (alias `OllamaProfileProvider`) | `litellm/<provider>` | LLM narrative + scoring |
+| `FallbackProfileProvider` | `rule_based_fallback` | LLM with ML/rules fallback |
+| `RuleBasedOfferProvider` | `rule_based` | Allowance-based catalogue sizing |
+| `LiteLLMOfferProvider` (alias `OllamaOfferProvider`) | `litellm/<provider>` | LLM offer narrative |
+| `FallbackOfferProvider` | (via rules) | LLM with rule fallback |
 
 Factory functions `default_profile_provider()` and `default_offer_provider()` honour `OLLAMA_ENABLED` and `OLLAMA_FALLBACK_ON_ERROR`.
 
@@ -119,8 +120,10 @@ Factory functions `default_profile_provider()` and `default_offer_provider()` ho
 | `compute_archetype_distances(data)` | `list[tuple[str, float]]` ascending by distance |
 | `compute_overlays(data)` | `list[str]` |
 | `build_scoring_result(usage)` | `ScoringResult` |
-| `render_profile_report(data)` | Profile markdown (rule-based) |
+| `render_profile_report(data, *, scoring=None)` | Profile markdown (rule-based) |
 | `render_offer_report(profile_text, data, *, scoring=None)` | Offer markdown (rule-based) |
+| `domain.offers.recommend(data, scoring=None)` | `OfferRecommendation` (tariff, alternative, data need, reasons, add-ons) — structured offer for integrations |
+| `domain.catalog` | `Tariff`, `AddOn`, `POSTPAID`, `PREPAID`, `YOUNG`, `ALL_ADDONS`, `cheapest_covering()`, `tariff_by_sku()` |
 | `usage_slider_maxima()` | `dict[str, float]` |
 
 ### 3.3 Constants
@@ -135,7 +138,7 @@ Factory functions `default_profile_provider()` and `default_offer_provider()` ho
 | Function | Description |
 |----------|-------------|
 | `build_profile_prompt(data)` | Filled profile-generation prompt |
-| `build_offer_prompt(customer_profile)` | Filled offer-generation prompt |
+| `build_offer_prompt(customer_profile, *, scoring=None, usage=None)` | Filled offer-generation prompt (usage + rule sizing included when `usage` is given) |
 | `format_slider_features(data)` | Human-readable feature block |
 | `format_centroid_distances(distances)` | Distance listing for prompts |
 | `format_overlay_signals(overlays)` | Overlay listing for prompts |
@@ -144,9 +147,9 @@ Factory functions `default_profile_provider()` and `default_offer_provider()` ho
 
 ## 5. LLM client (`telekom_profiler.llm.client`)
 
-#### `chat_completion(user_prompt, *, temperature=0.3) -> str`
+#### `chat_completion(user_prompt, *, temperature=0.3, model=None, required_headings=(), required_tail="") -> str`
 
-Single-turn completion against configured Ollama host and model. Raises `RuntimeError` on transport or API errors.
+Single-turn LiteLLM completion against the selected model (Ollama host for `ollama/*`). Retries with a 1.5× token budget when the answer is truncated, misses required headings or the tail marker, or echoes the prompt. `temperature` is not sent to `anthropic/*` models. Raises `RuntimeError` on transport or API errors.
 
 ---
 
@@ -154,7 +157,7 @@ Single-turn completion against configured Ollama host and model. Raises `Runtime
 
 ### `telekom_profiler.config` (sliders)
 
-`USAGE_SLIDERS`, `TREND_SLIDERS`, `SLIDER_KEYS`, `PROFILES`, message constants, `CUSTOM_PROFILE`.
+`USAGE_SLIDERS`, `TREND_SLIDERS`, `SLIDER_KEYS`, `PROFILES`, message constants (incl. `MSG_PROFILE_STALE`), `CUSTOM_PROFILE`.
 
 ### `telekom_profiler.config.ollama_settings`
 

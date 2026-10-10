@@ -1,6 +1,6 @@
 # Configuration reference
 
-Central reference for runtime settings, UI parameters, and packaged assets. Environment variables are loaded at import time from `.env` in the repository root via `python-dotenv` (`config/ollama_settings.py`).
+Central reference for runtime settings, UI parameters, and packaged assets. Environment variables are loaded at import time from `.env` in the repository root via `python-dotenv` (`config/ollama_settings.py`, `config/profiler_settings.py`).
 
 ---
 
@@ -15,16 +15,17 @@ cp .env.example .env
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API base URL (no trailing slash) |
-| `OLLAMA_MODEL` | `ollama/qwen2.5:7b` | Startup model id for LiteLLM (provider prefix required); must exist on the host (`ollama pull`) |
+| `OLLAMA_MODEL` | `ollama/qwen2.5:7b` (falls back to `llm.default_model` in `app_config.yaml`) | Startup model id for LiteLLM (`ollama/` prefix added if missing); must be listed in `llm.models`, otherwise the first listed model is used |
 | `LITELLM_API_BASE` | _(empty)_ | Optional custom base URL for non-Ollama LiteLLM providers/proxies |
 | `OLLAMA_ENABLED` | `true` | When `false`, selects rule-based profile and offer providers |
 | `OLLAMA_TIMEOUT` | `180` | LiteLLM request timeout (seconds); raise for larger models on CPU |
-| `OLLAMA_NUM_PREDICT` | `2048` | Maximum completion tokens per request |
+| `OLLAMA_NUM_PREDICT` | `6144` | Maximum completion tokens per request; repair retries use 1.5× this budget |
 | `OLLAMA_FALLBACK_ON_ERROR` | `true` | On LLM failure, delegate to rule-based providers |
 | `OPENAI_API_KEY` | _(empty)_ | Required for `openai/*` model ids (paid OpenAI account required) |
-| `ANTHROPIC_API_KEY` | _(empty)_ | Required for `anthropic/*` model ids (paid Anthropic account required) |
+| `ANTHROPIC_API_KEY` | _(empty)_ | Required for `anthropic/*` model ids (paid Anthropic account required). `temperature` is not sent for Anthropic models — current Claude models reject sampling parameters |
 | `GEMINI_API_KEY` / `GOOGLE_API_KEY` | _(empty)_ | Required for `gemini/*` model ids (Google AI Studio/Vertex billing may apply) |
 | `LOG_LEVEL` | `INFO` | Root log level (`DEBUG`, `WARNING`, `ERROR`, …) |
+| `PROFILER_CONFIG` | `<repo>/app_config.yaml` | Path to `app_config.yaml` (needed for non-editable installs; artifacts are still read from `<repo>/artifacts`) |
 | `PROFILER_MODE` | `auto` | `auto` uses trained K-Means when `artifacts/` is complete, otherwise rule-based archetypes; `ml` forces ML (errors if artifacts are missing); `rules` pins the legacy archetype scoring (used by CI and the unit-test gate) |
 
 Operational detail and troubleshooting: [Ollama runbook](runbook-ollama.md). ML pipeline outputs are detailed in [Development § 4](development.md#4-ml-profiling-pipeline-poc).
@@ -69,21 +70,20 @@ Primary runtime configuration is defined in the repository-root `app_config.yaml
 
 | Section | Purpose |
 |---------|---------|
-| `model` | Fixed profile count (`n_profiles`), labels, features, and canonical/frozen profile centroids |
-| `runtime` | Slider-to-feature defaults and ML overlay thresholds |
+| `model` | Fixed profile count (`n_profiles`), labels, emoji, clustering features (`log_*` usage levels) and curated anchors (`fixed_centroids`, human units) |
+| `runtime` | Descriptive slider-to-feature imputation (not used for clustering) and ML overlay thresholds (trend units: % per year) |
 | `training` | One-time training defaults (`min_silhouette`, random seed, offline flag) |
 | `llm` | Hardcoded UI model dropdown options and default model |
 | `ui` | UI title, slider bounds/defaults, and template presets |
 
 `telekom_profiler/config/sliders.py` now resolves slider and template values from `app_config.yaml`.
 
-If you change the underlying training dataset, update both config and profile definitions together:
+If you change the synthetic generator or training dataset:
 
-- `app_config.yaml` → `model.fixed_centroids`
-- `telekom_profiler/ml/profile_characteristics.py` → curated signatures/examples/slider defaults
-- retrained runtime artifacts (`artifacts/frozen_centroids.json`, `artifacts/profile_characteristics.json`)
+1. `python scripts/evaluate_model.py --print-anchors` → paste into `app_config.yaml` → `model.fixed_centroids`
+2. Update template slider positions (rounded anchors) and signatures in `telekom_profiler/ml/profile_characteristics.py`
+3. Retrain (`scripts/subscriber_profiling.py`) and run `scripts/evaluate_model.py` — it fails on accuracy < 90 %, a misclassified template, or anchor drift > 25 %.
 
-Warning: retraining without these hardcoded profile updates will produce inconsistent profile behavior.
 This project is designed for frozen runtime inference, not continuous retraining.
 
 ## 3. Slider and preset configuration
@@ -101,10 +101,10 @@ This project is designed for frozen runtime inference, not continuous retraining
 
 | Key | Label | Min | Max | Default |
 |-----|-------|-----|-----|---------|
-| `data_trend` | Data trend | −50 | 50 | 5 |
-| `voice_trend` | Voice trend | −50 | 50 | 0 |
+| `data_trend` | Data trend (% / year) | −50 | 50 | 5 |
+| `voice_trend` | Voice trend (% / year) | −50 | 50 | 0 |
 
-Trends influence overlay flags and narrative context; they are not archetype clustering inputs unless a downstream model defines otherwise (see [Domain model](domain-model.md)).
+Trends are relative changes in % per year. They influence overlay flags, narrative and offer sizing; they are not clustering inputs (see [Domain model](domain-model.md)).
 
 ### 3.3 UI messages and guards
 
@@ -136,8 +136,10 @@ Presets are already YAML-backed through `app_config.yaml`.
 
 Centralised in `telekom_profiler/config/thresholds.py`:
 
-- Overlay activation (data growth, voice decline, roaming-heavy, budget-sensitive)
-- Offer catalogue selection biases
+- Rules-mode overlay activation (data growth, voice decline, roaming-heavy, budget-sensitive)
+- Offer sizing: `OFFER_DATA_HEADROOM` (1.10), `OFFER_ROAMING_ADDON_DAYS` (8), `OFFER_LONG_STAY_ROAMING_DAYS` (14)
+
+Tariff prices and allowances live in `telekom_profiler/domain/catalog.py` (rules) and `telekom_profiler/data/plans_and_options.md` (LLM); `tests/test_catalog.py` keeps them identical.
 
 Modify thresholds in one place to keep rule-based profiling, scoring overlays, and offers aligned. Document changes in `CHANGELOG.md`.
 
@@ -148,7 +150,7 @@ Modify thresholds in one place to keep rule-based profiling, scoring overlays, a
 Configured in `telekom_profiler/ui/demo.py` → `main()`:
 
 ```python
-create_demo().launch(theme=DT_THEME, css=DT_CSS)
+create_demo().launch(theme=DT_THEME, css=DT_CSS, favicon_path=...)
 ```
 
 For shared or hosted demos (non-production):
@@ -174,7 +176,7 @@ Declared in `pyproject.toml` under `[tool.setuptools.package-data]`:
 | Pattern | Content |
 |---------|---------|
 | `prompts/templates/*.md` | LLM prompt templates |
-| `data/*.md` | Archetype and tariff reference |
+| `data/*.md` | Profile and tariff reference (`plans_and_options.md`, `tariffs_private.md`, `consumer_archetypes.md`) |
 | `ui/theme/*.css` | Telekom theme overrides |
 | `assets/*` | Brand assets (e.g. logo SVG) |
 

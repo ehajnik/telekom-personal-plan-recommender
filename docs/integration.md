@@ -46,7 +46,7 @@ Use `CustomerUsage` or equivalent JSON (six numeric fields). Values should be pr
 }
 ```
 
-**Suggested sources:** billing averages, CDR aggregation, CRM attributes, or propensity model outputs mapped to the slider scale.
+**Suggested sources:** billing averages, CDR aggregation, CRM attributes. Usage levels are monthly means; trends are relative changes in **% per year** (see [Domain model § 2.3](domain-model.md#23-json-contract-integration)).
 
 ### 3.2 Output: profile
 
@@ -71,7 +71,7 @@ from telekom_profiler.services import get_engine
 offer_markdown = get_engine().recommend(result, usage)
 ```
 
-For structured downstream systems, implement a custom `OfferProvider` returning JSON or a domain DTO, then format markdown at the edge if required.
+For structured downstream systems, call `telekom_profiler.domain.offers.recommend(usage.as_dict(), result.scoring)` — it returns an `OfferRecommendation` (tariff SKU, price, alternative, projected data need, reasons, add-ons) — or implement a custom `OfferProvider`.
 
 ---
 
@@ -105,7 +105,7 @@ Retain `build_scoring_result()` unless the enterprise segmentation service becom
 |--------------------|-------------------------|
 | `render_profile_report` | Segmentation API response formatter |
 | `render_offer_report` | PCM recommendation engine |
-| `data/tariffs_private.md` | Catalogue sync job or API cache |
+| `domain/catalog.py` + `data/plans_and_options.md` | Catalogue sync job or PCM API cache (one generator for both) |
 | `data/consumer_archetypes.md` | Segment definition service export |
 
 Inject providers at `ProfilerEngine` construction; avoid forking the Gradio layer.

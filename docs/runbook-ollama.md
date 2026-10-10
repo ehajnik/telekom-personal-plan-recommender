@@ -32,7 +32,7 @@ Ensure `ollama serve` is running when `OLLAMA_ENABLED=true`.
 | `LITELLM_API_BASE` | _(empty)_ | Optional custom endpoint for non-Ollama providers |
 | `OLLAMA_ENABLED` | `true` | Set `false` for rule-based-only operation |
 | `OLLAMA_TIMEOUT` | `180` | Raise if a larger model still times out on CPU |
-| `OLLAMA_NUM_PREDICT` | `2048` | Increase for longer narratives; decrease to shorten latency |
+| `OLLAMA_NUM_PREDICT` | `6144` | Increase for longer narratives; decrease to shorten latency |
 | `OLLAMA_FALLBACK_ON_ERROR` | `true` | Set `false` to surface errors to the UI |
 | `OPENAI_API_KEY` | _(empty)_ | Required for `openai/*` models |
 | `ANTHROPIC_API_KEY` | _(empty)_ | Required for `anthropic/*` models |
@@ -50,7 +50,7 @@ After changing `.env`, restart the application process.
 | Connection refused | Ollama not running | `ollama serve` or start platform service |
 | Model not found | Image not pulled | `ollama pull $OLLAMA_MODEL` |
 | Timeout / runner failed to start | Insufficient RAM or cold start | Smaller model, higher `OLLAMA_TIMEOUT`, or GPU |
-| Slow end-to-end flow | Two sequential LLM calls (profile + offer) | Lower `OLLAMA_NUM_PREDICT`; disable LLM for one step |
+| Slow end-to-end flow | Two sequential LLM calls (profile + offer), plus up to four repair retries per call when output is truncated or misses headings | Lower `OLLAMA_NUM_PREDICT`; use a stronger model; disable LLM |
 | UI error with stack trace | Fallback disabled | `OLLAMA_FALLBACK_ON_ERROR=true` or `OLLAMA_ENABLED=false` |
 | Inconsistent segments | LLM narrative drift | Use UI scoring panel and `ScoringResult` for ground truth |
 
@@ -135,7 +135,7 @@ Default `.env` values:
 ```env
 OLLAMA_MODEL=ollama/qwen2.5:7b
 OLLAMA_TIMEOUT=180
-OLLAMA_NUM_PREDICT=2048
+OLLAMA_NUM_PREDICT=6144
 OLLAMA_FALLBACK_ON_ERROR=true
 ```
 
@@ -149,7 +149,7 @@ Each full UI flow runs **two** sequential LLM calls (profile, then offer). On CP
 | `ollama/llama3.1:8b` | Similar quality tier alternative; good general-purpose instruction following |
 | `ollama/mistral-nemo:12b` | Strongest narrative quality, but needs ~16 GB RAM; raise `OLLAMA_TIMEOUT` (e.g. 600) and pre-warm with `ollama run mistral-nemo:12b ""` to avoid runner-start timeouts |
 | `openai/gpt-4.1-mini` | Cloud API model via OpenAI key; strong quality/latency tradeoff, paid usage |
-| `anthropic/claude-3-5-sonnet-latest` | Cloud API model via Anthropic key; high quality, paid usage |
+| `anthropic/claude-opus-5-5` | Cloud API model via Anthropic key; high quality, paid usage (no `temperature` sent) |
 | `gemini/gemini-2.5-flash` | Cloud API model via Gemini/Google key; billing may apply |
 | `ollama/llama3:latest` (8B+) | Feasible with enough RAM, but slower on CPU-only systems |
 

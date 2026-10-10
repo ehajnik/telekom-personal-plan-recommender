@@ -36,7 +36,7 @@ flowchart LR
 |-----------|----------------|
 | UI | Gradio behind nginx or OpenShift HTTP route |
 | LLM | Sidecar or shared cluster service; `OLLAMA_HOST` points to service DNS |
-| Application | Stateless container; session in browser (`gr.State`) |
+| Application | Stateless container; session in browser (`gr.State`). Note: the UI model dropdown is process-wide, not per session |
 | Data plane | Egress allow-list to LLM and BSS endpoints only |
 
 ---
@@ -50,7 +50,8 @@ FROM python:3.12-slim
 WORKDIR /app
 COPY requirements.txt pyproject.toml ./
 COPY telekom_profiler ./telekom_profiler
-COPY app.py README.md ./
+COPY app.py README.md app_config.yaml ./
+COPY artifacts ./artifacts
 RUN pip install --no-cache-dir -r requirements.txt && pip install .
 ENV OLLAMA_ENABLED=false
 EXPOSE 7860
@@ -126,7 +127,7 @@ AI governance: align prompt templates and model selection with corporate model c
 
 ## 8. Rollback and release management
 
-- Pin `gradio`, `ollama`, and model versions in deployment manifests.  
+- Pin `gradio`, `litellm`, and model versions in deployment manifests.  
 - Tag container images with application version (`pyproject.toml`).  
 - Maintain feature flag `OLLAMA_ENABLED` for rapid fallback.  
 - Document rollback in the team’s standard change process.

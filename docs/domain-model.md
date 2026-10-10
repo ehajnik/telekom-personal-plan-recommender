@@ -26,15 +26,15 @@ Scoring is always computed in application code ([ADR 001](adr/001-scoring-in-cod
 | `voice_min` | float | Voice minutes per month |
 | `sms_count` | float | SMS count per month |
 | `roaming_days` | float | Days abroad per month |
-| `data_trend` | float | Data trajectory (−50 … +50) |
-| `voice_trend` | float | Voice trajectory (−50 … +50) |
+| `data_trend` | float | Data trajectory, relative change in % per year (−50 … +50) |
+| `voice_trend` | float | Voice trajectory, relative change in % per year (−50 … +50) |
 
 ### 2.1 Feature classification
 
 | Group | Fields | Used for |
 |-------|--------|----------|
-| Usage levels | `data_gb`, `voice_min`, `sms_count`, `roaming_days` | Archetype distance (L1 on normalised values) |
-| Trends | `data_trend`, `voice_trend` | Overlay flags and narrative; not clustering inputs in the current model |
+| Usage levels | `data_gb`, `voice_min`, `sms_count`, `roaming_days` | ML: log1p-scaled clustering features; rules mode: L1 distance on slider-normalised values |
+| Trends | `data_trend`, `voice_trend` | Overlay flags, narrative, offer sizing (growth raises projected need); not clustering inputs |
 
 ### 2.2 Construction and validation
 
@@ -60,7 +60,7 @@ When `clamp=True`, values are bounded to slider minima/maxima from configuration
 }
 ```
 
-Upstream systems should document aggregation rules (e.g. three-month average for usage levels, month-over-month delta mapped to trend scale).
+Upstream systems should aggregate usage levels as monthly means (the ML model was trained on 12-month means) and compute trends as the annualised OLS slope relative to the mean: `slope_per_month × 12 / mean × 100`, clipped to ±50 (`ml/features.py` → `build_subscriber_features` is the reference implementation).
 
 ---
 
@@ -76,12 +76,13 @@ Runtime ML mode uses five fixed labels from `app_config.yaml`:
 | **Roaming / travel-heavy** | Frequent roaming and multiple countries visited |
 | **Broad usage profile** | High overall engagement with mixed usage intensity |
 
-Centroids and profile metadata are hardcoded in root configuration and profile characteristics modules, then mapped once during training.
-If you retrain on a new dataset, you must refresh both hardcoded layers and corresponding frozen artifacts to avoid drift.
+Curated anchors (`model.fixed_centroids`, human units) and profile text (`ml/profile_characteristics.py`) are mapped to trained clusters once during training. `scripts/evaluate_model.py` reports anchor drift and fails above 25 %; after a generator change, refresh anchors with `--print-anchors`.
 
-### 3.1 Distance metric
+### 3.1 Clustering features and distance metric
 
-ML inference (`ml/inference.py`) computes nearest-centroid distance over configured cluster features in scaled space:
+Clustering uses **only features computable from the six-slider input**: `log1p` of `data_gb`, `voice_min`, `sms_count`, `roaming_days` (12-month means at training time). An earlier 12-feature set mixed in imputed values (session size, active days, plan tier, countries) and classified only 76.8 % of slider-entered subscribers correctly versus 100 % now.
+
+ML inference (`ml/inference.py`) computes nearest-centroid Euclidean distance in standardised space:
 
 - uses `artifacts/frozen_centroids.json` + `artifacts/cluster_features.json`
 - normalises by stored `scaler_scale`
@@ -89,20 +90,24 @@ ML inference (`ml/inference.py`) computes nearest-centroid distance over configu
 
 ### 3.2 Confidence
 
-`_confidence(primary, secondary)` in ML inference returns `High`, `Medium`, or `Low` from the primary/secondary distance ratio.
+`ml_confidence(primary, secondary)` (`ml/overlays.py`) returns `High` (ratio < 0.75), `Medium` (< 0.9) or `Low` from the primary/secondary distance ratio.
 
 ---
 
 ## 4. Overlays
 
-Overlays are cross-cutting tags applied in addition to the primary archetype (`compute_overlays`, thresholds in `config/thresholds.py`):
+Overlays are cross-cutting tags applied in addition to the primary profile.
 
-| Condition (conceptual) | Overlay label |
-|------------------------|---------------|
-| Strong positive data trend | Data growth |
-| Strong negative voice trend | Voice decline |
-| Elevated roaming days | Roaming-heavy |
-| Low usage across key dimensions | Budget-sensitive |
+| Mode | Condition | Overlay label |
+|------|-----------|---------------|
+| ML (`ml/overlays.py`, thresholds in `app_config.yaml` → `runtime.overlay_thresholds`) | data trend ≥ +10 % / ≤ −10 % per year | Data appetite growing / shrinking |
+| ML | voice trend ≤ −10 % per year | Voice declining → data migration |
+| ML | roaming +2 days/month over the year | Roaming increasing |
+| ML | second distance < 1.3 × primary distance | Mixed profile |
+| Rules (`domain/archetypes.py`, thresholds in `config/thresholds.py`) | data trend > +10 % per year | Data growth |
+| Rules | voice trend < −10 % per year | Voice decline |
+| Rules | roaming ≥ 8 days/month | Roaming-heavy |
+| Rules | data < 12 GB, voice < 300 min, roaming ≤ 2 days | Budget-sensitive |
 
 Overlays appear in rule-based profile section 2, in prompt context, and in the UI scoring summary.
 
@@ -134,7 +139,7 @@ Built via `build_scoring_result(usage)` and attached to every `ProfileResult` fr
 
 | Field | Values / notes |
 |-------|----------------|
-| `source` | `rule_based`, `ollama`, `rule_based_fallback`, or custom provider tag |
+| `source` | `rule_based`, `ml_kmeans`, `litellm/<provider>` (e.g. `litellm/ollama`), `rule_based_fallback`, or custom provider tag |
 | `is_placeholder` | Derived from markdown prefix; blocks offer generation |
 | `to_state_dict()` / `from_state_dict()` | Gradio session serialisation |
 
@@ -142,8 +147,13 @@ Built via `build_scoring_result(usage)` and attached to every `ProfileResult` fr
 
 | Path | Profile | Offer |
 |------|---------|-------|
-| Rule-based | `render_profile_report()` | `render_offer_report()` (may use `scoring` for tariff bias) |
-| LLM | `build_profile_prompt()` → Ollama | `build_offer_prompt()` → Ollama |
+| Rules mode | `render_profile_report()` | `render_offer_report()` → `offers.recommend()` |
+| ML mode | `render_ml_profile_report()` (customer usage vs profile reference) | same rule engine |
+| LLM | `build_profile_prompt()` → LiteLLM | `build_offer_prompt()` (incl. usage + rule-engine sizing) → LiteLLM |
+
+### 6.3 Offer sizing rule
+
+`domain/offers.recommend()` picks the **cheapest tariff whose data allowance covers** `data_gb × (1 + max(0, data_trend)/100) × 1.10`. The primary profile sets the channel and floor: light profiles get prepaid when it fits (≤ 80 GB, < 8 roaming days); travel-heavy customers get at least MagentaMobil L for the 25 GB/year non-EU volume; everyone else gets postpaid with a prepaid alternative when one fits. Travel & Surf passes are only suggested from 8 roaming days/month. PlusKarte is an agent question, never inferred from data volume.
 
 ---
 
@@ -163,7 +173,7 @@ Rule-based `render_profile_report()` always uses `distances[0]` as the stated pr
 
 ## 8. UI profile templates
 
-UI templates are defined under `ui.profiles` in root `app_config.yaml` and resolved through `config/sliders.py`. Presets are aligned with fixed profile behavior for demonstration; production feeds should populate `CustomerUsage` directly from systems of record.
+In ML mode, templates come from `artifacts/profile_characteristics.json` (`slider_defaults` = rounded anchors; unit tests verify each template is classified as its own profile). In rules mode they come from `ui.profiles` in `app_config.yaml`. Production feeds should populate `CustomerUsage` directly from systems of record.
 
 Note: names like `Streamer`/`Chatterbox` are legacy rule-mode presets used when ML artifacts are unavailable or when `PROFILER_MODE=rules` is selected. They are not the canonical ML taxonomy.
 
@@ -173,7 +183,9 @@ Note: names like `Streamer`/`Chatterbox` are legacy rule-mode presets used when 
 
 | File | Consumed by |
 |------|-------------|
-| `data/consumer_archetypes.md` | Profile prompt — archetype descriptions |
-| `data/tariffs_private.md` | Offer prompt — prototype tariff catalogue |
+| `data/consumer_archetypes.md` | Profile prompt — profile descriptions (rules mode / no artifacts) |
+| `data/plans_and_options.md` | Offer prompt — full catalogue with SKUs and sources |
+| `data/tariffs_private.md` | Offer prompt fallback — catalogue summary |
+| `domain/catalog.py` | Rule-based offer engine (structured; kept in sync with the markdown by `tests/test_catalog.py`) |
 
 For production, replace static files with synchronised catalogue APIs or scheduled exports; keep the same semantic sections expected by prompt builders.
