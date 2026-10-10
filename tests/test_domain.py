@@ -33,17 +33,20 @@ class DomainTests(unittest.TestCase):
         offer = render_offer_report(profile, HEAVY_DATA)
         self.assertIn("MagentaMobil", offer)
 
-    def test_high_data_addon_uses_datendepot_not_travel_weekpass(self) -> None:
+    def test_high_data_user_gets_covering_tariff_not_special_addon(self) -> None:
         scoring = ScoringResult(
             primary=ArchetypeScore("Messenger", 1.0),
             secondary=None,
         )
-        data = {**HEAVY_DATA, "data_gb": 50, "roaming_days": 2}
+        data = {**HEAVY_DATA, "data_gb": 50, "data_trend": 0, "roaming_days": 2}
         offer = render_offer_report("", data, scoring=scoring)
-        self.assertNotIn("ADD-TS-WEEK-001", offer)
-        self.assertIn("ADD-SPEC-001", offer)
+        # 50 GB × 1.1 headroom = 55 GB → MagentaMobil L (100 GB), no travel pass.
+        self.assertIn("MagentaMobil L (MM-L-001)", offer)
+        self.assertNotIn("ADD-TS-", offer)
+        # MagentaMobil Special is a standalone tariff, never an add-on.
+        self.assertNotIn("SPEC", offer)
 
-    def test_streaming_label_selects_postpaid_and_pluskarte(self) -> None:
+    def test_streaming_label_sizes_by_allowance(self) -> None:
         scoring = ScoringResult(
             primary=ArchetypeScore("Streaming & data-heavy", 0.5),
             secondary=None,
@@ -57,7 +60,11 @@ class DomainTests(unittest.TestCase):
             "voice_trend": 0,
         }
         offer = render_offer_report("", data, scoring=scoring)
-        self.assertIn("MagentaMobil XL (MM-XL-001)", offer)
+        self.assertIn("MagentaMobil L (MM-L-001)", offer)
+        heavy = render_offer_report("", {**data, "data_gb": 110}, scoring=scoring)
+        self.assertIn("MagentaMobil XL (MM-XL-001)", heavy)
+        # PlusKarte is a question for the agent, not a data-volume-triggered add-on.
+        self.assertNotIn("| MagentaMobil PlusKarte", offer)
         self.assertIn("PlusKarte", offer)
 
     def test_profile_prompt_substitutes_placeholders(self) -> None:
