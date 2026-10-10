@@ -24,7 +24,7 @@ def inference_mode_label() -> str:
 
 def format_scoring_summary(profile: ProfileResult | None) -> str:
     if profile is None or profile.is_placeholder:
-        return "_Run **Run profile** to see profile scoring._"
+        return "_Click **Profile** to see profile scoring._"
     scoring = profile.scoring
     if scoring is None:
         return f"_Profile source: **{profile.source}** (no scoring metadata)._"

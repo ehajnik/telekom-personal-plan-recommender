@@ -64,6 +64,20 @@ class SanityTests(unittest.TestCase):
             if not loop.is_closed():
                 loop.close()
 
+    def test_offer_blocked_when_sliders_changed_after_profile(self) -> None:
+        from telekom_profiler.config import MSG_PROFILE_STALE, SLIDER_KEYS
+        from telekom_profiler.domain import CustomerUsage
+        from telekom_profiler.services.providers import RuleBasedProfileProvider
+        from telekom_profiler.ui.demo import generate_offer
+
+        profile = RuleBasedProfileProvider().profile(CustomerUsage.from_mapping(SAMPLE))
+        state = profile.to_state_dict()
+        same = [SAMPLE[k] for k in SLIDER_KEYS]
+        changed = [*same]
+        changed[0] = 10.0
+        self.assertEqual(generate_offer(state, *changed), MSG_PROFILE_STALE)
+        self.assertIn("MagentaMobil", generate_offer(state, *same))
+
     def test_app_entry_exists(self) -> None:
         root = Path(__file__).resolve().parents[1]
         self.assertTrue((root / "app.py").is_file())

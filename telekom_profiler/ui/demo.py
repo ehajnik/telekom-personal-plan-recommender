@@ -8,6 +8,7 @@ from telekom_profiler.config import (
     CUSTOM_PROFILE,
     MSG_AFTER_PROFILE,
     MSG_GENERATE_OFFER,
+    MSG_PROFILE_STALE,
     MSG_RUN_PROFILE,
     MSG_RUN_PROFILE_FIRST,
     SLIDER_KEYS,
@@ -148,6 +149,10 @@ def generate_offer(
     if profile is None or profile.is_placeholder:
         return MSG_RUN_PROFILE_FIRST
     usage = _slider_data(*values)
+    if usage != profile.usage:
+        # Offer must match the profile shown on screen; mixing a stale profile with new
+        # slider values produced recommendations that contradicted the profile text.
+        return MSG_PROFILE_STALE
     try:
         return get_engine().recommend(profile, usage)
     except RuntimeError as exc:

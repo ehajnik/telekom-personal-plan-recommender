@@ -15,6 +15,10 @@ MSG_RUN_PROFILE: Final[str] = "_Profile analysis appears here._"
 MSG_AFTER_PROFILE: Final[str] = "_Use **Generate offer** when ready._"
 MSG_RUN_PROFILE_FIRST: Final[str] = "_Complete profiling before generating an offer._"
 MSG_GENERATE_OFFER: Final[str] = "_Tariff recommendation appears here._"
+MSG_PROFILE_STALE: Final[str] = (
+    "_Usage sliders changed since the last profile — click **Profile** again before "
+    "generating an offer._"
+)
 
 SliderSpec = tuple[str, int, int, int]
 
