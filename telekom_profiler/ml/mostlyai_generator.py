@@ -65,7 +65,7 @@ def generate_panel_with_mostlyai(
     engine.init_logging()
     engine.split(
         workspace_dir=workspace_dir,
-        tgt_data=source_panel.copy(),
+        tgt_data=source_panel.loc[:, list(_REQUIRED_PANEL_COLS)].copy(),
         ctx_data=context,
         tgt_context_key=SUBSCRIBER_ID_COL,
         ctx_primary_key=SUBSCRIBER_ID_COL,

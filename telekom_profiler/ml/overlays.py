@@ -14,6 +14,18 @@ from telekom_profiler.ml.schema import (
 )
 
 
+def ml_confidence(primary_distance: float, secondary_distance: float | None) -> str:
+    """Confidence from the nearest / second-nearest centroid distance ratio."""
+    if secondary_distance is None or secondary_distance < 1e-9:
+        return "High"
+    ratio = primary_distance / secondary_distance
+    if ratio < 0.75:
+        return "High"
+    if ratio < 0.9:
+        return "Medium"
+    return "Low"
+
+
 def compute_ml_overlays(
     row: Mapping[str, float],
     *,

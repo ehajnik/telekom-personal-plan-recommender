@@ -28,8 +28,15 @@ def load_usage_panel(path: Path | str) -> pd.DataFrame:
     return df
 
 
+# Floors for relative-trend denominators so near-zero baselines do not explode.
+_DATA_TREND_FLOOR_GB = 1.0
+_VOICE_TREND_FLOOR_MIN = 30.0
+# Clip relative trends to the UI slider range (% per year).
+_TREND_CLIP_PCT = 50.0
+
+
 def _ols_slope(values: NDArray[np.floating]) -> float:
-    """OLS slope over 12 monthly points (x = 0..n-1)."""
+    """OLS slope per month over the observed points (x = 0..n-1)."""
     n = len(values)
     if n < 2:
         return 0.0
@@ -41,22 +48,48 @@ def _ols_slope(values: NDArray[np.floating]) -> float:
     return float(coef[0])
 
 
+def _slopes_per_month(df: pd.DataFrame, column: str) -> pd.Series:
+    """Vectorised per-subscriber OLS slope of ``column`` against month order."""
+    ordered = df.sort_values([SUBSCRIBER_ID_COL, MONTH_COL])
+    x = ordered.groupby(SUBSCRIBER_ID_COL).cumcount().astype(float)
+    y = ordered[column].astype(float)
+    frame = pd.DataFrame({SUBSCRIBER_ID_COL: ordered[SUBSCRIBER_ID_COL], "x": x, "y": y})
+    g = frame.groupby(SUBSCRIBER_ID_COL)
+    x_c = frame["x"] - g["x"].transform("mean")
+    y_c = frame["y"] - g["y"].transform("mean")
+    num = (x_c * y_c).groupby(frame[SUBSCRIBER_ID_COL]).sum()
+    den = (x_c * x_c).groupby(frame[SUBSCRIBER_ID_COL]).sum()
+    return (num / den.where(den > 0)).fillna(0.0)
+
+
+def relative_trend_pct(slope_per_month: float, mean: float, floor: float) -> float:
+    """Annualised relative change in % per year, clipped to the slider range."""
+    pct = slope_per_month * 12.0 / max(mean, floor) * 100.0
+    return float(np.clip(pct, -_TREND_CLIP_PCT, _TREND_CLIP_PCT))
+
+
 def build_subscriber_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Aggregate panel to one row per subscriber with baseline + trend columns.
 
     ``CLUSTER_FEATURES`` are baseline only; ``TREND_COLS`` are for overlays.
+    Trend units are documented next to ``TREND_COLS`` in ``ml/schema.py``.
     """
     grouped = df.groupby(SUBSCRIBER_ID_COL, sort=True)
 
     means = grouped[list(RAW_NUMERIC_COLS)].mean().add_suffix("_mean")
 
+    data_slope = _slopes_per_month(df, "data_gb").reindex(means.index)
+    voice_slope = _slopes_per_month(df, "voice_min").reindex(means.index)
     trends = pd.DataFrame(index=means.index)
-    for sid, grp in grouped:
-        trends.loc[sid, "data_trend"] = _ols_slope(grp["data_gb"].values)
-        trends.loc[sid, "voice_trend"] = _ols_slope(grp["voice_min"].values)
-        trends.loc[sid, "roaming_trend"] = _ols_slope(grp["roaming_days"].values)
-        trends.loc[sid, "lines_trend"] = _ols_slope(grp["lines_active"].values)
+    trends["data_trend"] = (
+        data_slope * 12.0 / means["data_gb_mean"].clip(lower=_DATA_TREND_FLOOR_GB) * 100.0
+    ).clip(-_TREND_CLIP_PCT, _TREND_CLIP_PCT)
+    trends["voice_trend"] = (
+        voice_slope * 12.0 / means["voice_min_mean"].clip(lower=_VOICE_TREND_FLOOR_MIN) * 100.0
+    ).clip(-_TREND_CLIP_PCT, _TREND_CLIP_PCT)
+    trends["roaming_trend"] = _slopes_per_month(df, "roaming_days").reindex(means.index) * 12.0
+    trends["lines_trend"] = _slopes_per_month(df, "lines_active").reindex(means.index) * 12.0
 
     features = means.join(trends)
     features = _add_derived_baseline(features)
@@ -87,6 +120,12 @@ def _add_derived_baseline(features: pd.DataFrame) -> pd.DataFrame:
     features["weekend_share"] = features["weekend_usage_ratio_mean"]
     features["plan_usage_gap"] = (plan - (data / 50.0)).clip(lower=0.0)
     features["device_smartphone_share"] = 1.0  # placeholder if device not encoded
+    # Log-scaled usage levels: usage is right-skewed (0.5 GB vs 140 GB), so log1p keeps
+    # light, voice and data-heavy segments separable on a comparable scale.
+    features["log_data_gb"] = np.log1p(data)
+    features["log_voice_min"] = np.log1p(voice)
+    features["log_sms_count"] = np.log1p(features["sms_count_mean"])
+    features["log_roaming_days"] = np.log1p(roam)
     return features
 
 
@@ -101,12 +140,16 @@ def features_from_usage(usage: CustomerUsage) -> dict[str, float]:
     data, voice, sms, roam = d["data_gb"], d["voice_min"], d["sms_count"], d["roaming_days"]
     lines_total = 1.0
     lines_active = 1.0
-    countries = min(
-        float(defaults.get("countries_max", 12.0)),
-        max(
-            float(defaults.get("countries_min", 1.0)),
-            roam * float(defaults.get("countries_multiplier", 0.8)),
-        ),
+    countries = (
+        0.0
+        if roam <= 0
+        else min(
+            float(defaults.get("countries_max", 12.0)),
+            max(
+                float(defaults.get("countries_min", 1.0)),
+                roam * float(defaults.get("countries_multiplier", 0.3)),
+            ),
+        )
     )
     night_ratio = (
         float(defaults.get("night_ratio_high", 0.35))
@@ -143,8 +186,9 @@ def features_from_usage(usage: CustomerUsage) -> dict[str, float]:
         "plan_tier_mean": plan_tier,
         "lines_total_mean": lines_total,
         "lines_active_mean": lines_active,
-        "data_trend": d["data_trend"] / 50.0,
-        "voice_trend": d["voice_trend"] / 50.0,
+        # Slider trends already use the training unit (% per year).
+        "data_trend": d["data_trend"],
+        "voice_trend": d["voice_trend"],
         "roaming_trend": 0.0,
         "lines_trend": 0.0,
     }
@@ -163,6 +207,27 @@ def features_from_usage(usage: CustomerUsage) -> dict[str, float]:
     row["weekend_share"] = weekend_ratio
     row["plan_usage_gap"] = max(0.0, plan_tier - data / 50.0)
     row["device_smartphone_share"] = 1.0
+    row["log_data_gb"] = float(np.log1p(data))
+    row["log_voice_min"] = float(np.log1p(voice))
+    row["log_sms_count"] = float(np.log1p(sms))
+    row["log_roaming_days"] = float(np.log1p(roam))
+    return row
+
+
+def anchor_feature_row(anchor: dict[str, float]) -> dict[str, float]:
+    """Map a human-unit anchor (``data_gb_mean`` …) into the derived feature space.
+
+    Keys already present in ``anchor`` win; log features are derived from the usage means.
+    """
+    row = dict(anchor)
+    for key, source in (
+        ("log_data_gb", "data_gb_mean"),
+        ("log_voice_min", "voice_min_mean"),
+        ("log_sms_count", "sms_count_mean"),
+        ("log_roaming_days", "roaming_days_mean"),
+    ):
+        if key not in row and source in row:
+            row[key] = float(np.log1p(float(row[source])))
     return row
 
 

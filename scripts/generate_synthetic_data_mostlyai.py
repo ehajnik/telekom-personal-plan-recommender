@@ -18,7 +18,10 @@ from telekom_profiler.paths import ARTIFACTS_DIR, RAW_DATA_DIR
 
 def _default_input() -> Path | None:
     RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
-    candidates = sorted(RAW_DATA_DIR.glob("private_mobile_usage_*_subscribers_12_months.csv"))
+    candidates = sorted(
+        RAW_DATA_DIR.glob("private_mobile_usage_*_subscribers_12_months.csv"),
+        key=lambda path: path.stat().st_mtime,
+    )
     return candidates[-1] if candidates else None
 
 

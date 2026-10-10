@@ -216,7 +216,10 @@ def check_training_data_schema() -> None:
     from telekom_profiler.ml.schema import MONTH_COL, RAW_NUMERIC_COLS, SUBSCRIBER_ID_COL
     from telekom_profiler.paths import RAW_DATA_DIR
 
-    candidates = sorted(RAW_DATA_DIR.glob("private_mobile_usage_*_subscribers_12_months.csv"))
+    candidates = sorted(
+        RAW_DATA_DIR.glob("private_mobile_usage_*_subscribers_12_months.csv"),
+        key=lambda path: path.stat().st_mtime,
+    )
     if not candidates:
         print("    (No raw training CSV found — run scripts/generate_synthetic_data.py)")
         return
@@ -272,11 +275,11 @@ def main() -> int:
 
     print("All sanity checks passed.")
     try:
-        import ollama  # noqa: F401
+        import litellm  # noqa: F401
 
-        print("(ollama package installed — run: ollama serve && ollama pull <model>)")
+        print("(LiteLLM installed — for local LLM: ollama serve && ollama pull <model>)")
     except ImportError:
-        print("(ollama not installed — pip install -r requirements.txt)")
+        print("(LiteLLM not installed — pip install -r requirements.txt)")
     return 0
 
 

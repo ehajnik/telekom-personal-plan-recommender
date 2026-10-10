@@ -13,6 +13,9 @@ _OVERLAYS = _RUNTIME.get("overlay_thresholds", {})
 # Monthly panel grain
 SUBSCRIBER_ID_COL: Final[str] = "subscriber_id"
 MONTH_COL: Final[str] = "month"
+# Optional ground-truth column written by the synthetic generator (evaluation only;
+# never used as a training feature).
+SEED_ARCHETYPE_COL: Final[str] = "seed_archetype"
 
 # Raw monthly columns (synthetic CSV)
 RAW_NUMERIC_COLS: Final[tuple[str, ...]] = (
@@ -37,8 +40,17 @@ SEED_ARCHETYPES: Final[tuple[str, ...]] = (
     "streaming_heavy",
     "voice_centric",
     "travel_heavy",
-    "underutilized_overspending",
+    "broad_usage",
 )
+
+# Ground-truth mapping seed archetype → runtime profile label (evaluation only).
+SEED_TO_PROFILE_LABEL: Final[dict[str, str]] = {
+    "light_user": "Light / occasional user",
+    "streaming_heavy": "Streaming & data-heavy",
+    "voice_centric": "Voice-centric",
+    "travel_heavy": "Roaming / travel-heavy",
+    "broad_usage": "Broad usage profile",
+}
 
 # Human-readable cluster labels assigned post-training via Hungarian matching
 # (``train.assign_labels``) against ``LABEL_CANONICAL_CENTROIDS``. When the
@@ -72,11 +84,16 @@ DERIVED_BASELINE_COLS: Final[tuple[str, ...]] = (
     "device_smartphone_share",
 )
 
-# Core discriminators for K-Means (subset keeps PoC silhouette ≥ 0.5 on synthetic data)
+# Clustering space (configured in ``app_config.yaml``). Only features that can be computed
+# exactly from the six-slider ``CustomerUsage`` input, so batch and UI inference agree.
 CLUSTER_FEATURES: Final[tuple[str, ...]] = (
     *tuple(_MODEL.get("cluster_features", [])),
 )
 
+# Trend units (computed from the 12-month OLS slope in ``features.build_subscriber_features``):
+#   data_trend, voice_trend  → relative change in % per year (same unit as the UI sliders)
+#   roaming_trend            → change in roaming days / month over one year
+#   lines_trend              → change in active lines over one year
 TREND_COLS: Final[tuple[str, ...]] = (
     "data_trend",
     "voice_trend",
@@ -86,21 +103,16 @@ TREND_COLS: Final[tuple[str, ...]] = (
 
 # Overlay thresholds
 MIXED_PROFILE_RATIO: Final[float] = float(_OVERLAYS.get("mixed_profile_ratio", 1.3))
-DATA_TREND_GROWING_MIN: Final[float] = float(_OVERLAYS.get("data_trend_growing_min", 0.15))
-DATA_TREND_SHRINKING_MAX: Final[float] = float(_OVERLAYS.get("data_trend_shrinking_max", -0.15))
-VOICE_TREND_DECLINING_MAX: Final[float] = float(_OVERLAYS.get("voice_trend_declining_max", -0.15))
-ROAMING_TREND_GROWING_MIN: Final[float] = float(_OVERLAYS.get("roaming_trend_growing_min", 0.2))
-LINES_TREND_GROWING_MIN: Final[float] = float(_OVERLAYS.get("lines_trend_growing_min", 0.1))
+DATA_TREND_GROWING_MIN: Final[float] = float(_OVERLAYS.get("data_trend_growing_min", 10.0))
+DATA_TREND_SHRINKING_MAX: Final[float] = float(_OVERLAYS.get("data_trend_shrinking_max", -10.0))
+VOICE_TREND_DECLINING_MAX: Final[float] = float(_OVERLAYS.get("voice_trend_declining_max", -10.0))
+ROAMING_TREND_GROWING_MIN: Final[float] = float(_OVERLAYS.get("roaming_trend_growing_min", 2.0))
+LINES_TREND_GROWING_MIN: Final[float] = float(_OVERLAYS.get("lines_trend_growing_min", 0.5))
 
-# Centroid alignment: which unscaled feature is primary discriminator per label
-LABEL_DISCRIMINATORS: Final[dict[str, str]] = dict(_MODEL.get("discriminators", {}))
-
-# Canonical centroid per named label, in the same feature space as ``CLUSTER_FEATURES``.
-# Used by ``train.assign_labels`` to solve a globally-optimal label↔cluster assignment
-# via ``scipy.optimize.linear_sum_assignment``. Values are midpoints of the synthetic
-# archetype ranges plus derived features computed the same way as
-# ``features._add_derived_baseline``. Features not listed here are excluded from the
-# cost (treated as "don't care" for that label).
+# Canonical anchor per named label in human units (``data_gb_mean``, ``voice_min_mean`` …).
+# ``train.assign_labels`` maps each anchor into the clustering space
+# (``features.anchor_feature_row``) and solves a globally-optimal label↔cluster assignment
+# via ``scipy.optimize.linear_sum_assignment``.
 LABEL_CANONICAL_CENTROIDS: Final[dict[str, dict[str, float]]] = {
     k: {kk: float(vv) for kk, vv in v.items()}
     for k, v in dict(_MODEL.get("fixed_centroids", {})).items()

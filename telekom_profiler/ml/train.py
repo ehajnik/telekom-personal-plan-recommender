@@ -16,8 +16,13 @@ from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 
 from telekom_profiler.config.app_config import model_config, training_config
-from telekom_profiler.ml.features import build_subscriber_features, feature_matrix, load_usage_panel
-from telekom_profiler.ml.overlays import compute_ml_overlays
+from telekom_profiler.ml.features import (
+    anchor_feature_row,
+    build_subscriber_features,
+    feature_matrix,
+    load_usage_panel,
+)
+from telekom_profiler.ml.overlays import compute_ml_overlays, ml_confidence
 from telekom_profiler.ml.profile_characteristics import (
     build_hardcoded_profiles_document,
 )
@@ -28,6 +33,17 @@ from telekom_profiler.ml.schema import (
     SUBSCRIBER_ID_COL,
 )
 
+# Human-unit columns summarised per cluster in ``frozen_centroids.json``.
+_MEMBER_MEAN_COLS: tuple[str, ...] = (
+    "data_gb_mean",
+    "voice_min_mean",
+    "sms_count_mean",
+    "roaming_days_mean",
+    "countries_visited_mean",
+    "data_trend",
+    "voice_trend",
+)
+
 
 def _label_cost_matrix(
     centroids_unscaled: NDArray[np.floating],
@@ -36,8 +52,9 @@ def _label_cost_matrix(
     """Std-normalised squared distance between each named label and each cluster centroid.
 
     Rows are ``PROFILE_LABELS`` in declaration order; columns are cluster indices.
-    Only the features present in ``LABEL_CANONICAL_CENTROIDS[label]`` contribute to
-    that label's row, so each label only "cares" about its own discriminators.
+    Each human-unit anchor is first mapped into the clustering space. A label whose anchor
+    shares no feature with ``CLUSTER_FEATURES`` raises instead of silently producing an
+    arbitrary (all-zero-cost) assignment.
     """
     feature_idx = {name: i for i, name in enumerate(CLUSTER_FEATURES)}
     scales = np.where(scaler.scale_ > 1e-9, scaler.scale_, 1.0)
@@ -45,10 +62,12 @@ def _label_cost_matrix(
     n_labels = len(PROFILE_LABELS)
     cost = np.zeros((n_labels, n_clusters), dtype=float)
     for row, label in enumerate(PROFILE_LABELS):
-        canonical = LABEL_CANONICAL_CENTROIDS.get(label, {})
-        if not canonical:
-            cost[row, :] = 0.0
-            continue
+        canonical = anchor_feature_row(LABEL_CANONICAL_CENTROIDS.get(label, {}))
+        if not any(feature in feature_idx for feature in canonical):
+            raise ValueError(
+                f"Anchor for '{label}' has no feature in CLUSTER_FEATURES "
+                f"({', '.join(CLUSTER_FEATURES)}); check model.fixed_centroids in app_config.yaml"
+            )
         for col in range(n_clusters):
             total = 0.0
             for feature, target in canonical.items():
@@ -86,17 +105,6 @@ def assign_labels(
             assigned[ci] = f"Profile {next_n}"
             next_n += 1
     return assigned
-
-
-def _confidence(primary_d: float, secondary_d: float | None) -> str:
-    if secondary_d is None or secondary_d < 1e-9:
-        return "High"
-    ratio = primary_d / secondary_d
-    if ratio < 0.75:
-        return "High"
-    if ratio < 0.9:
-        return "Medium"
-    return "Low"
 
 
 def _kneedle_elbow(ks: list[int], inertias: list[float]) -> int | None:
@@ -213,15 +221,15 @@ def train_and_save(
     label_map = assign_labels(centroids_unscaled, scaler)
     label_map_json = {str(k): v for k, v in label_map.items()}
 
-    derived_cols = ("evening_peak_share", "weekend_share")
-    centroid_rows: list[dict[str, float]] = []
+    # Human-unit member means per cluster (for drift checks against the curated anchors).
+    member_mean_cols = [c for c in _MEMBER_MEAN_COLS if c in features_df.columns]
+    member_means: dict[str, dict[str, float]] = {}
     for i in range(n_clusters):
-        row = {CLUSTER_FEATURES[j]: float(centroids_unscaled[i, j]) for j in range(len(CLUSTER_FEATURES))}
         members = features_df[cluster_indices == i]
-        for dc in derived_cols:
-            if dc in features_df.columns and len(members):
-                row[dc] = float(members[dc].mean())
-        centroid_rows.append(row)
+        member_means[label_map[i]] = {
+            "n_subscribers": float(len(members)),
+            **{c: round(float(members[c].mean()), 3) for c in member_mean_cols},
+        }
 
     profile_characteristics = build_hardcoded_profiles_document(label_map)
 
@@ -252,7 +260,7 @@ def train_and_save(
                 "cluster_label": label,
                 "primary_distance": primary_dist,
                 "secondary_distance": secondary_dist,
-                "confidence": _confidence(primary_dist, secondary_dist),
+                "confidence": ml_confidence(primary_dist, secondary_dist),
                 "overlays": "|".join(overlays),
                 **dist_cols,
                 **{k: feat_row.get(k) for k in ("data_trend", "voice_trend", "roaming_trend", "lines_trend")},
@@ -285,6 +293,13 @@ def train_and_save(
         },
         "scaler_scale": {
             CLUSTER_FEATURES[i]: float(scaler.scale_[i]) for i in range(len(CLUSTER_FEATURES))
+        },
+        "cluster_member_means": member_means,
+        "training": {
+            "input": Path(input_csv).name,
+            "n_subscribers": len(subscriber_ids),
+            "silhouette": round(sil, 4),
+            "random_state": random_state,
         },
     }
     (artifacts_dir / "frozen_centroids.json").write_text(

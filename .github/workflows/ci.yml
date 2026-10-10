@@ -28,6 +28,12 @@ jobs:
             --input data/raw/private_mobile_usage_300_subscribers_12_months.csv \
             --min-silhouette 0.5
 
+      - name: Evaluate segmentation against synthetic ground truth
+        run: |
+          python scripts/evaluate_model.py \
+            --input data/raw/private_mobile_usage_300_subscribers_12_months.csv \
+            --min-accuracy 0.95
+
       - name: Unit tests
         env:
           OLLAMA_ENABLED: "false"

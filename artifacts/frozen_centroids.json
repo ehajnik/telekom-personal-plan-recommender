@@ -1,109 +1,111 @@
 {
   "cluster_features": [
-    "data_gb_mean",
-    "voice_min_mean",
-    "sms_count_mean",
-    "roaming_days_mean",
-    "countries_visited_mean",
-    "active_days_mean",
-    "avg_session_mb_mean",
-    "plan_tier_mean",
-    "roaming_intensity",
-    "data_per_active_line",
-    "session_intensity",
-    "plan_usage_gap"
+    "log_data_gb",
+    "log_voice_min",
+    "log_sms_count",
+    "log_roaming_days"
   ],
   "labels": [
-    "Voice-centric",
     "Broad usage profile",
-    "Streaming & data-heavy",
     "Light / occasional user",
+    "Voice-centric",
+    "Streaming & data-heavy",
     "Roaming / travel-heavy"
   ],
   "centroids_unscaled": {
-    "Voice-centric": {
-      "data_gb_mean": 5.46341069528809,
-      "voice_min_mean": 1493.9544932150598,
-      "sms_count_mean": 59.71418584509003,
-      "roaming_days_mean": 1.4979627675880498,
-      "countries_visited_mean": 0.7433163205683595,
-      "active_days_mean": 17.868297394455823,
-      "avg_session_mb_mean": 27.100664517945944,
-      "plan_tier_mean": 1.5004017657308817,
-      "roaming_intensity": 0.03720043825478381,
-      "data_per_active_line": 5.463410695288104,
-      "session_intensity": 179.2168039959106,
-      "plan_usage_gap": 1.39113355182512
-    },
     "Broad usage profile": {
-      "data_gb_mean": 64.88772198642387,
-      "voice_min_mean": 623.1675896098876,
-      "sms_count_mean": 90.78380746792278,
-      "roaming_days_mean": 3.4895586264561924,
-      "countries_visited_mean": 2.4954068199419592,
-      "active_days_mean": 18.03874241771269,
-      "avg_session_mb_mean": 321.25064004559954,
-      "plan_tier_mean": 3.503423931987727,
-      "roaming_intensity": 0.2898030201010138,
-      "data_per_active_line": 87.62284707542437,
-      "session_intensity": 20901.924368194144,
-      "plan_usage_gap": 2.2056694922592497
-    },
-    "Streaming & data-heavy": {
-      "data_gb_mean": 117.94723155293605,
-      "voice_min_mean": 331.3118124826065,
-      "sms_count_mean": 36.42342941578989,
-      "roaming_days_mean": 3.0349498987422474,
-      "countries_visited_mean": 1.8582110337071607,
-      "active_days_mean": 17.96921491831976,
-      "avg_session_mb_mean": 585.9093314017337,
-      "plan_tier_mean": 4.0034157274224444,
-      "roaming_intensity": 0.2620149555995928,
-      "data_per_active_line": 142.00847232110377,
-      "session_intensity": 69380.71021106187,
-      "plan_usage_gap": 1.6444710963637235
+      "log_data_gb": 4.066972099027788,
+      "log_voice_min": 6.399970858929448,
+      "log_sms_count": 4.721588592288103,
+      "log_roaming_days": 1.336871955155464
     },
     "Light / occasional user": {
-      "data_gb_mean": 4.97348846088542,
-      "voice_min_mean": 81.73658250340998,
-      "sms_count_mean": 22.54598808628014,
-      "roaming_days_mean": 0.6709987315043602,
-      "countries_visited_mean": 0.3779252983188546,
-      "active_days_mean": 17.995194358831103,
-      "avg_session_mb_mean": 24.758566250125682,
-      "plan_tier_mean": 0.9999999999999987,
-      "roaming_intensity": 0.009908670053374702,
-      "data_per_active_line": 8.779779409230493,
-      "session_intensity": 176.7422934220158,
-      "plan_usage_gap": 0.9005302307822914
+      "log_data_gb": 1.4308036502011015,
+      "log_voice_min": 4.242991719631705,
+      "log_sms_count": 2.8328016729845977,
+      "log_roaming_days": 0.4074528693403534
+    },
+    "Voice-centric": {
+      "log_data_gb": 1.9816420101870948,
+      "log_voice_min": 7.301297798818494,
+      "log_sms_count": 4.146227134606162,
+      "log_roaming_days": 0.6329665602077862
+    },
+    "Streaming & data-heavy": {
+      "log_data_gb": 4.670187828401287,
+      "log_voice_min": 5.609371772155045,
+      "log_sms_count": 3.364191376685814,
+      "log_roaming_days": 1.1400415644820885
     },
     "Roaming / travel-heavy": {
-      "data_gb_mean": 39.74226943214416,
-      "voice_min_mean": 301.5582274407967,
-      "sms_count_mean": 47.02116792670483,
-      "roaming_days_mean": 13.001185713133182,
-      "countries_visited_mean": 6.936988552171698,
-      "active_days_mean": 18.039382450158122,
-      "avg_session_mb_mean": 202.28653934412256,
-      "plan_tier_mean": 2.5130407240988974,
-      "roaming_intensity": 3.0064601793082746,
-      "data_per_active_line": 47.63545641387682,
-      "session_intensity": 8081.2763736039105,
-      "plan_usage_gap": 1.718195335456014
+      "log_data_gb": 3.685921716222906,
+      "log_voice_min": 5.88967894082066,
+      "log_sms_count": 3.760272438595724,
+      "log_roaming_days": 2.6252847634908463
     }
   },
   "scaler_scale": {
-    "data_gb_mean": 47.43383126779899,
-    "voice_min_mean": 457.6558730618366,
-    "sms_count_mean": 23.077066959386386,
-    "roaming_days_mean": 4.1537413936895815,
-    "countries_visited_mean": 2.208701661210619,
-    "active_days_mean": 1.7542407289976947,
-    "avg_session_mb_mean": 238.21494137750076,
-    "plan_tier_mean": 1.2845099852374224,
-    "roaming_intensity": 1.0200039083166943,
-    "data_per_active_line": 57.33923541792339,
-    "session_intensity": 30137.18292344188,
-    "plan_usage_gap": 0.4819883795765487
+    "log_data_gb": 1.2909158449757325,
+    "log_voice_min": 1.0663617308382058,
+    "log_sms_count": 0.7473889848648131,
+    "log_roaming_days": 0.8293459295966019
+  },
+  "cluster_member_means": {
+    "Broad usage profile": {
+      "n_subscribers": 200.0,
+      "data_gb_mean": 59.232,
+      "voice_min_mean": 618.475,
+      "sms_count_mean": 116.71,
+      "roaming_days_mean": 2.987,
+      "countries_visited_mean": 1.535,
+      "data_trend": 4.53,
+      "voice_trend": -14.215
+    },
+    "Light / occasional user": {
+      "n_subscribers": 200.0,
+      "data_gb_mean": 3.56,
+      "voice_min_mean": 78.697,
+      "sms_count_mean": 17.547,
+      "roaming_days_mean": 0.542,
+      "countries_visited_mean": 0.391,
+      "data_trend": 5.051,
+      "voice_trend": -13.536
+    },
+    "Voice-centric": {
+      "n_subscribers": 200.0,
+      "data_gb_mean": 6.858,
+      "voice_min_mean": 1522.716,
+      "sms_count_mean": 65.562,
+      "roaming_days_mean": 0.988,
+      "countries_visited_mean": 0.613,
+      "data_trend": 6.042,
+      "voice_trend": -11.964
+    },
+    "Streaming & data-heavy": {
+      "n_subscribers": 200.0,
+      "data_gb_mean": 108.319,
+      "voice_min_mean": 285.745,
+      "sms_count_mean": 30.349,
+      "roaming_days_mean": 2.326,
+      "countries_visited_mean": 1.1,
+      "data_trend": 3.787,
+      "voice_trend": -14.219
+    },
+    "Roaming / travel-heavy": {
+      "n_subscribers": 200.0,
+      "data_gb_mean": 40.836,
+      "voice_min_mean": 381.109,
+      "sms_count_mean": 44.671,
+      "roaming_days_mean": 13.161,
+      "countries_visited_mean": 3.882,
+      "data_trend": 3.541,
+      "voice_trend": -12.382
+    }
+  },
+  "training": {
+    "input": "private_mobile_usage_1000_subscribers_12_months.csv",
+    "n_subscribers": 1000,
+    "silhouette": 0.5596,
+    "random_state": 42
   }
 }

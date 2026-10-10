@@ -49,7 +49,10 @@ def main() -> None:
     input_csv = args.input
     if input_csv is None:
         RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
-        candidates = sorted(RAW_DATA_DIR.glob("private_mobile_usage_*_subscribers_12_months.csv"))
+        candidates = sorted(
+            RAW_DATA_DIR.glob("private_mobile_usage_*_subscribers_12_months.csv"),
+            key=lambda path: path.stat().st_mtime,
+        )
         if not candidates:
             print(
                 "No input CSV found. Run: python scripts/generate_synthetic_data.py",

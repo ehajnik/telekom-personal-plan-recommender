@@ -14,7 +14,7 @@ import pandas as pd
 from telekom_profiler.config.profiler_settings import artifacts_available as _settings_artifacts
 from telekom_profiler.domain.models import ArchetypeScore, CustomerUsage, ScoringResult
 from telekom_profiler.ml.features import features_from_usage
-from telekom_profiler.ml.overlays import compute_ml_overlays
+from telekom_profiler.ml.overlays import compute_ml_overlays, ml_confidence
 from telekom_profiler.ml.profile_characteristics import (
     build_centroid,
     get_profile,
@@ -93,17 +93,6 @@ def clear_artifacts_cache() -> None:
     load_artifacts.cache_clear()
 
 
-def _confidence(primary_d: float, secondary_d: float | None) -> str:
-    if secondary_d is None or secondary_d < 1e-9:
-        return "High"
-    ratio = primary_d / secondary_d
-    if ratio < 0.75:
-        return "High"
-    if ratio < 0.9:
-        return "Medium"
-    return "Low"
-
-
 def predict_from_features(
     feature_row: dict[str, float],
     *,
@@ -145,7 +134,7 @@ def predict_from_features(
         cluster_idx=int(sorted(bundle.label_map)[primary_idx]),
         distances=scores,
         overlays=overlays,
-        confidence=_confidence(primary_dist, secondary_dist),
+        confidence=ml_confidence(primary_dist, secondary_dist),
         feature_row=feature_row,
         metrics=metrics_from_centroid(centroid),
     )
@@ -192,9 +181,10 @@ def _defaults_for_subscriber(map_row: pd.Series, bundle: _ArtifactBundle) -> Cus
             "voice_min": sliders.get("voice_min", 400),
             "sms_count": sliders.get("sms_count", 50),
             "roaming_days": sliders.get("roaming_days", 2),
-            "data_trend": float(map_row.get("data_trend", 0)) * 50,
-            "voice_trend": float(map_row.get("voice_trend", 0)) * 50,
-        }
+            "data_trend": float(map_row.get("data_trend", 0)),
+            "voice_trend": float(map_row.get("voice_trend", 0)),
+        },
+        clamp=True,
     )
 
 
@@ -229,6 +219,6 @@ def get_slider_defaults_for_subscriber(
     chars = get_profile(bundle.profile_characteristics, label)
     sliders = dict(chars.get("slider_defaults", {}))
     row = match.iloc[0]
-    sliders["data_trend"] = int(min(50, max(-50, round(float(row.get("data_trend", 0)) * 50))))
-    sliders["voice_trend"] = int(min(50, max(-50, round(float(row.get("voice_trend", 0)) * 50))))
+    sliders["data_trend"] = int(min(50, max(-50, round(float(row.get("data_trend", 0))))))
+    sliders["voice_trend"] = int(min(50, max(-50, round(float(row.get("voice_trend", 0))))))
     return sliders

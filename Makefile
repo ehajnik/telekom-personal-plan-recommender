@@ -1,4 +1,4 @@
-.PHONY: setup venv install run test lint typecheck sanity ml-train ml-train-mostlyai help
+.PHONY: setup venv install run test lint typecheck sanity ml-train ml-evaluate ml-train-mostlyai help
 
 PYTHON ?= python3
 VENV := .venv
@@ -12,7 +12,8 @@ help:
 	@echo "  make lint       Ruff check"
 	@echo "  make typecheck  Mypy on telekom_profiler"
 	@echo "  make sanity     Integration sanity script"
-	@echo "  make ml-train   Generate synthetic data and train K-Means (300 subs)"
+	@echo "  make ml-train   Generate synthetic data (1000 subs) and train K-Means"
+	@echo "  make ml-evaluate  Score frozen artifacts against synthetic ground truth"
 	@echo "  make ml-train-mostlyai  Generate MOSTLY AI data and train K-Means"
 
 setup venv install:
@@ -34,10 +35,15 @@ sanity:
 	@OLLAMA_ENABLED=false PROFILER_MODE=rules $(BIN)/python scripts/sanity_check.py
 
 ml-train:
-	@$(BIN)/python scripts/generate_synthetic_data.py --subscribers 300 --seed 42
+	@$(BIN)/python scripts/generate_synthetic_data.py --subscribers 1000 --seed 42
 	@$(BIN)/python scripts/subscriber_profiling.py \
-		--input data/raw/private_mobile_usage_300_subscribers_12_months.csv \
+		--input data/raw/private_mobile_usage_1000_subscribers_12_months.csv \
 		--min-silhouette 0.5
+	@$(BIN)/python scripts/evaluate_model.py \
+		--input data/raw/private_mobile_usage_1000_subscribers_12_months.csv
+
+ml-evaluate:
+	@$(BIN)/python scripts/evaluate_model.py
 
 ml-train-mostlyai:
 	@$(BIN)/python scripts/generate_synthetic_data_mostlyai.py --subscribers 300 --seed 42

@@ -19,32 +19,31 @@ from telekom_profiler.ml.schema import (
 
 PROFILE_SIGNATURES: dict[str, list[str]] = {
     "Light / occasional user": [
-        "Low monthly data and voice",
-        "Few roaming days",
-        "Single-line household typical",
-        "Minimal session intensity",
+        "Low monthly data (typically under 6 GB) and voice (under 150 min)",
+        "Rare roaming",
+        "Price-sensitive; uses the phone on fewer days per month",
     ],
     "Streaming & data-heavy": [
-        "Very high mobile data (tens of GB/month)",
-        "Elevated session intensity",
-        "Evening and weekend usage peaks",
-        "Moderate voice, low roaming",
+        "Very high mobile data (roughly 70–150 GB/month)",
+        "Video streaming / hotspot usage drives volume",
+        "Moderate voice and SMS",
+        "Occasional, mostly EU, roaming",
     ],
     "Voice-centric": [
-        "High call minutes per line",
-        "Low data usage",
-        "Domestic voice-heavy behaviour",
+        "High call volume (roughly 1,000–2,200 min/month)",
+        "Low data usage (typically under 12 GB)",
+        "Domestic voice-heavy behaviour; little roaming",
     ],
     "Roaming / travel-heavy": [
-        "High roaming days per month",
-        "Many countries visited",
-        "Mix of data and voice while abroad",
+        "Frequent roaming (roughly 8–18 days/month)",
+        "Several countries per month; EU and non-EU mix",
+        "Mid-range data and voice while abroad",
     ],
     "Broad usage profile": [
-        "High engagement across data, voice, and messaging",
-        "Upper-mid plan tier with strong regular usage",
-        "Notably high session intensity and app activity",
-        "Value optimization via bundled options",
+        "Above-average data (roughly 35–80 GB), voice (400–900 min) and SMS at the same time",
+        "No single dominant usage dimension",
+        "Daily, all-round smartphone use; occasional roaming",
+        "Bundle value (MagentaEINS, PlusKarte) matters more than any single add-on",
     ],
 }
 
@@ -76,44 +75,47 @@ PROFILE_EXAMPLES: dict[str, list[str]] = {
     ],
 }
 
+# Template slider positions = rounded per-profile anchors from ``app_config.yaml``
+# (``model.fixed_centroids``). ``tests/test_ml_features.py`` checks each template is
+# classified as its own profile.
 HARD_CODED_SLIDER_DEFAULTS: dict[str, dict[str, int]] = {
     "Light / occasional user": {
-        "data_gb": 5,
-        "voice_min": 82,
-        "sms_count": 23,
+        "data_gb": 4,
+        "voice_min": 79,
+        "sms_count": 18,
         "roaming_days": 1,
         "data_trend": 0,
         "voice_trend": 0,
     },
     "Streaming & data-heavy": {
-        "data_gb": 118,
-        "voice_min": 331,
-        "sms_count": 36,
-        "roaming_days": 3,
-        "data_trend": 0,
-        "voice_trend": 0,
-    },
-    "Voice-centric": {
-        "data_gb": 6,
-        "voice_min": 1494,
-        "sms_count": 60,
+        "data_gb": 108,
+        "voice_min": 286,
+        "sms_count": 30,
         "roaming_days": 2,
         "data_trend": 0,
         "voice_trend": 0,
     },
+    "Voice-centric": {
+        "data_gb": 7,
+        "voice_min": 1523,
+        "sms_count": 66,
+        "roaming_days": 1,
+        "data_trend": 0,
+        "voice_trend": 0,
+    },
     "Roaming / travel-heavy": {
-        "data_gb": 40,
-        "voice_min": 302,
-        "sms_count": 47,
+        "data_gb": 41,
+        "voice_min": 381,
+        "sms_count": 45,
         "roaming_days": 13,
         "data_trend": 0,
         "voice_trend": 0,
     },
     "Broad usage profile": {
-        "data_gb": 65,
-        "voice_min": 623,
-        "sms_count": 91,
-        "roaming_days": 4,
+        "data_gb": 59,
+        "voice_min": 618,
+        "sms_count": 117,
+        "roaming_days": 3,
         "data_trend": 0,
         "voice_trend": 0,
     },
@@ -122,9 +124,10 @@ HARD_CODED_SLIDER_DEFAULTS: dict[str, dict[str, int]] = {
 
 def build_centroid(row: dict[str, float]) -> dict[str, float]:
     """Full centroid metrics for a cluster (12-month baseline + trends)."""
-    data_trend = float(row.get("data_trend", 0)) * 50.0
-    voice_trend = float(row.get("voice_trend", 0)) * 50.0
-    roaming_trend = float(row.get("roaming_trend", 0)) * 30.0
+    # Trend units: see ``TREND_COLS`` in ``ml/schema.py``.
+    data_trend = float(row.get("data_trend", 0))
+    voice_trend = float(row.get("voice_trend", 0))
+    roaming_trend = float(row.get("roaming_trend", 0))
     lines_trend = float(row.get("lines_trend", 0))
 
     return {
@@ -147,10 +150,10 @@ def build_centroid(row: dict[str, float]) -> dict[str, float]:
         "evening_peak_share": round(float(row.get("evening_peak_share", 0)), 3),
         "weekend_share": round(float(row.get("weekend_share", 0)), 3),
         "plan_usage_gap": round(float(row.get("plan_usage_gap", 0)), 2),
-        "mean_data_trend_per_month": round(data_trend, 1),
-        "mean_voice_trend_per_month": round(voice_trend, 1),
-        "mean_roaming_trend_per_month": round(roaming_trend, 2),
-        "mean_lines_trend_per_month": round(lines_trend, 2),
+        "data_trend_pct_per_year": round(data_trend, 1),
+        "voice_trend_pct_per_year": round(voice_trend, 1),
+        "roaming_trend_days_per_year": round(roaming_trend, 2),
+        "lines_trend_per_year": round(lines_trend, 2),
     }
 
 
@@ -161,10 +164,8 @@ def ui_slider_defaults_from_row(row: dict[str, float]) -> dict[str, int]:
         "voice_min": int(min(3000, max(0, round(row.get("voice_min_mean", 400))))),
         "sms_count": int(min(500, max(0, round(row.get("sms_count_mean", 50))))),
         "roaming_days": int(min(30, max(0, round(row.get("roaming_days_mean", 2))))),
-        "data_trend": int(min(50, max(-50, round(float(row.get("data_trend", 0)) * 50)))),
-        "voice_trend": int(
-            min(50, max(-50, round(float(row.get("voice_trend", 0)) * 50)))
-        ),
+        "data_trend": int(min(50, max(-50, round(float(row.get("data_trend", 0)))))),
+        "voice_trend": int(min(50, max(-50, round(float(row.get("voice_trend", 0)))))),
     }
 
 
@@ -172,9 +173,9 @@ def overlay_thresholds() -> dict[str, float]:
     """Overlay tuning exported alongside profiles (mirrors enterprise PoC)."""
     return {
         "mixed_profile_ratio": MIXED_PROFILE_RATIO,
-        "data_growth_threshold": DATA_TREND_GROWING_MIN * 50,
-        "data_decline_threshold": DATA_TREND_SHRINKING_MAX * 50,
-        "voice_decline_threshold": VOICE_TREND_DECLINING_MAX * 50,
+        "data_growth_threshold_pct_per_year": DATA_TREND_GROWING_MIN,
+        "data_decline_threshold_pct_per_year": DATA_TREND_SHRINKING_MAX,
+        "voice_decline_threshold_pct_per_year": VOICE_TREND_DECLINING_MAX,
         "roaming_growth_threshold": ROAMING_TREND_GROWING_MIN,
         "lines_growth_threshold": LINES_TREND_GROWING_MIN,
     }
@@ -335,8 +336,8 @@ def format_profiles_for_prompt(doc: dict[str, Any]) -> str:
             lines.append(
                 f"**Centroid:** {c.get('avg_monthly_data_gb', 0):.0f} GB data, "
                 f"{c.get('avg_monthly_voice_min', 0):.0f} voice min, "
-                f"{c.get('avg_roaming_days', 0):.1f} roaming days, "
-                f"{c.get('pct_idle_lines', 0):.0%} idle lines."
+                f"{c.get('avg_monthly_sms', 0):.0f} SMS, "
+                f"{c.get('avg_roaming_days', 0):.1f} roaming days per month."
             )
         lines.append("")
     return "\n".join(lines).strip()

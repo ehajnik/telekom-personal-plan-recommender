@@ -1,14 +1,6 @@
 [
-  "data_gb_mean",
-  "voice_min_mean",
-  "sms_count_mean",
-  "roaming_days_mean",
-  "countries_visited_mean",
-  "active_days_mean",
-  "avg_session_mb_mean",
-  "plan_tier_mean",
-  "roaming_intensity",
-  "data_per_active_line",
-  "session_intensity",
-  "plan_usage_gap"
+  "log_data_gb",
+  "log_voice_min",
+  "log_sms_count",
+  "log_roaming_days"
 ]

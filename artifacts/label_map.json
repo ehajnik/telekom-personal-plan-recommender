@@ -1,7 +1,7 @@
 {
-  "3": "Light / occasional user",
-  "2": "Streaming & data-heavy",
-  "0": "Voice-centric",
+  "1": "Light / occasional user",
+  "3": "Streaming & data-heavy",
+  "2": "Voice-centric",
   "4": "Roaming / travel-heavy",
-  "1": "Broad usage profile"
+  "0": "Broad usage profile"
 }
