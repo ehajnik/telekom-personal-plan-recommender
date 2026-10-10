@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -10,12 +11,18 @@ import yaml
 
 from telekom_profiler.paths import REPO_ROOT
 
-APP_CONFIG_PATH = REPO_ROOT / "app_config.yaml"
+# Override for non-editable installs or containers where the repo root is elsewhere.
+APP_CONFIG_PATH = Path(os.getenv("PROFILER_CONFIG", str(REPO_ROOT / "app_config.yaml")))
 
 
 @lru_cache(maxsize=1)
 def load_app_config(path: Path | None = None) -> dict[str, Any]:
     config_path = path or APP_CONFIG_PATH
+    if not config_path.is_file():
+        raise FileNotFoundError(
+            f"app_config.yaml not found at {config_path}. Run from the repository root "
+            "(editable install) or set PROFILER_CONFIG to the file's path."
+        )
     with config_path.open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle) or {}
     if not isinstance(data, dict):
